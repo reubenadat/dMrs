@@ -1,0 +1,173 @@
+---
+title: "Getting familiar with dMrs"
+author: "Paul Little, Reuben Adatorwovor"
+date: "Last Updated: `r format(Sys.Date(), '%m/%d/%Y')`"
+output: 
+  html_document:
+    theme: journal
+    highlight: tango
+    toc: true
+    toc_depth: 3
+    toc_float:
+      collapsed: true
+      smooth_scroll: true
+    number_sections: true
+vignette: >
+  %\VignetteIndexEntry{Getting familiar with ProjectH}
+  %\VignetteEngine{knitr::rmarkdown}
+  \usepackage[utf8]{inputenc}
+---
+
+```{r global_options,include = FALSE}
+knitr::opts_chunk$set(comment = NA)
+```
+
+# Introduction
+This **dMrs** package is designed to fit survival data to the corresponding manuscript.
+
+```{r load_lib,echo = TRUE,eval = TRUE}
+library(dMrs)
+```
+
+# Simulation
+
+Specify underlying arguments and parameters.
+
+```{r set_parameters,echo = TRUE,eval = TRUE}
+copula = c("Clayton","Gumbel")[1]
+dist1 = c("weibull","expweibull")[1]
+NN = 2e2 # sample size
+theta = 3/2
+alpha1 = 5
+lambda1 = 1.2
+kappa1 = 2
+kappa1 = ifelse(dist1 == "weibull",1,kappa1)
+alpha2 = 2
+lambda2 = 2.1
+propC = 0.1
+```
+
+## One replicate
+
+Simulate a dataset.
+
+```{r gen_data,echo = TRUE,eval = TRUE}
+set.seed(1)
+one_rep = sim_replicate(copula = copula,dist1 = dist1,
+  NN = NN,theta = theta,alpha1 = alpha1,lambda1 = lambda1,
+  kappa1 = kappa1,alpha2 = alpha2,lambda2 = lambda2,
+  propC = propC,show = TRUE)
+str(one_rep)
+head(one_rep$DATA)
+table(one_rep$DATA$D)
+table(one_rep$DATA$delta)
+```
+
+For a given parameter grid and theta value, first, run a grid search. 
+If `show = TRUE`, verbose output is provided and a heatmap of the log likelihood is generated.
+Then run parameter optimization for the true `theta` value and an arbitrary `theta` value for fixed `theta` (`upTHETA = 0`). We are also assuming the first event time is Weibull distributed (`upKAPPA = 0`).
+
+```{r opt_sim,echo = TRUE,eval = TRUE,fig.dim = c(12,7)}
+opt_out = opt_replicate(REP = one_rep,
+  param_grid = seq(-1,3,0.25),
+	theta = one_rep$PARAMS$theta,
+  upKAPPA = 0,
+  upTHETA = 0,
+  show = TRUE)
+str(opt_out)
+
+opt_out = opt_replicate(REP = one_rep,
+  param_grid = seq(-1,3,0.25),
+  theta = 2,
+  upKAPPA = 0,
+  upTHETA = 0,
+  show = TRUE)
+str(opt_out)
+```
+
+We can determine if the optimization converged or not by looking at the gradient and check out other quantities when evaluated at the MLE.
+
+```{r}
+# MLEs (unconstrained)
+opt_out$out
+
+# MLEs (constrained)
+opt_out$cout
+
+# Log-likelihood
+opt_out$LL
+
+# Gradient, Score, first derivative of log-likelihood
+opt_out$GRAD
+
+# Hessian, second derivative of log-likelihood
+opt_out$HESS
+
+# Covariance matrix
+opt_out$COVAR
+
+```
+
+Want to re-generate the heatmap of the log likelihood again?
+
+```{r}
+plot_LL(GPROF = opt_out$GPROF,GOPT = opt_out$GOPT)
+```
+
+## Full simulation, multiple replicates
+
+The code below performs a full simulation across multiple replicates.
+
+```{r full_sim,echo = TRUE,eval = TRUE,fig.dim = c(7,4)}
+RR = 1e2 # number of replicates
+
+sim_out = full_sim(copula = copula,
+  dist1 = dist1,NN = NN,theta = theta,
+  alpha1 = alpha1,lambda1 = lambda1,
+  kappa1 = kappa1,alpha2 = alpha2,
+  lambda2 = lambda2,propC = propC,RR = RR,
+  param_grid = seq(-1,3,0.5),
+  upKAPPA = 1,show = TRUE)
+sim_out
+```
+
+# Applying dMrs
+
+Equivalently, we can run a formal analysis for various thetas, again with the simulated dataset. 
+
+```{r ana,echo = TRUE,eval = TRUE,fig.dim = c(12,7)}
+ana_out = run_analyses(DATA = one_rep$DATA,
+	THETAs = c(0,one_rep$PARAMS$theta,2,5),copula = copula,
+	param_grid = seq(-1,3,0.1),
+	vec_time = seq(0,2 * max(one_rep$DATA$time),length.out = 50),
+  upKAPPA = 0,show = TRUE)
+names(ana_out)
+
+# Estimates per theta
+bb = sapply(names(ana_out),function(xx){
+	# xx = names(run_ana)[1]; xx
+	cat("\n#######\n")
+	print(xx)
+	print(ana_out[[xx]]$RES$cout[,c("PARS","EST","lowCI_2","highCI_2")])
+	print(sprintf("LL = %s",round(ana_out[[xx]]$RES$LL,3)))
+	print(round(ana_out[[xx]]$PRED[1:5,c("time","surv",
+		"low_surv2","high_surv2")],3))
+})
+
+```
+
+Below we plot the corresponding predicted survival with 95% confidence bands. In the latter figure, we can see the corresponding maximum log likelihood estimates per theta.
+
+```{r plot_surv,echo = TRUE,eval = TRUE,fig.dim = c(12,7)}
+plot_SURVs(run_ANA = ana_out,MULTIPLE = FALSE,ALPHA = 0.5)
+plot_SURVs(run_ANA = ana_out,MULTIPLE = TRUE,ALPHA = 0.5)
+```
+
+# Session information
+
+```{r session,echo = FALSE}
+sessionInfo()
+```
+
+# References
+

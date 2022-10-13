@@ -1,0 +1,17 @@
+Package: dMrs
+Type: Package
+Title: Dependence Competing Risk in Net/Relative Survival Analysis
+Version: 1.0.0
+Date: 2022-10-13
+Author: Paul Little, Reuben Adatorwovor
+Maintainer: Paul Little, Reuben Adatorwovor <plittle@fredhutch.org>
+Description: This package performs survival data fitting.
+Encoding: UTF-8
+Imports: Rcpp, smarter, Rmpfr, copula, gplots, 
+	ggplot2, viridis
+LinkingTo: Rcpp, RcppArmadillo
+Suggests: knitr, rmarkdown, markdown
+VignetteBuilder: knitr
+LazyData: true
+License: GPL (>= 3)
+RoxygenNote: 7.2.0
