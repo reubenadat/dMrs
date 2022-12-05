@@ -20,7 +20,7 @@ make_vign = FALSE
 
 # Check: takes some time
 devtools::check(pkg = pack_dir,manual = TRUE,
-	cran = TRUE,error_on = c("warning","note")[1],
+	cran = TRUE,error_on = c("warning","note")[2],
 	vignettes = make_vign)
 
 # Install

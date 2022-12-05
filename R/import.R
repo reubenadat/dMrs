@@ -1,6 +1,3 @@
-#' @importFrom smarter smart_progress smart_df
-#'	smart_digits print_latex_table smart_mkdir
-#'	name_change
 #' @importFrom Rcpp sourceCpp
 #' @importFrom stats median runif dweibull pweibull
 #'	quantile sd qweibull
