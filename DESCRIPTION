@@ -1,6 +1,6 @@
 Package: dMrs
 Type: Package
-Title: Dependence Competing Risk in Net/Relative Survival Analysis
+Title: Competing Risk in Dependent Net Survival Analysis
 Version: 1.0.0
 Date: 2022-10-13
 Author: Paul Little, Reuben Adatorwovor
