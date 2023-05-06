@@ -13,8 +13,8 @@ Rcpp_logSumExp <- function(log_x) {
     .Call('_dMrs_Rcpp_logSumExp', PACKAGE = 'dMrs', log_x)
 }
 
-dMrs_cLL <- function(XX, DELTA, D2, S2, PARS, copula, show = FALSE) {
-    .Call('_dMrs_dMrs_cLL', PACKAGE = 'dMrs', XX, DELTA, D2, S2, PARS, copula, show)
+dMrs_cLL <- function(XX, DELTA, D2, S2, PARS, copula, verb = FALSE) {
+    .Call('_dMrs_dMrs_cLL', PACKAGE = 'dMrs', XX, DELTA, D2, S2, PARS, copula, verb)
 }
 
 dMrs_cGRAD <- function(XX, DELTA, D2, S2, PARS, copula, upPARS) {
@@ -25,15 +25,15 @@ dMrs_cHESS <- function(XX, DELTA, D2, S2, PARS, copula, upPARS) {
     .Call('_dMrs_dMrs_cHESS', PACKAGE = 'dMrs', XX, DELTA, D2, S2, PARS, copula, upPARS)
 }
 
-dMrs_BFGS <- function(XX, DELTA, D2, S2, PARS, copula, upPARS, max_iter = 4e3L, eps = 1e-7, show = TRUE) {
-    invisible(.Call('_dMrs_dMrs_BFGS', PACKAGE = 'dMrs', XX, DELTA, D2, S2, PARS, copula, upPARS, max_iter, eps, show))
+dMrs_BFGS <- function(XX, DELTA, D2, S2, PARS, copula, upPARS, max_iter = 4e3L, eps = 1e-7, verb = TRUE) {
+    invisible(.Call('_dMrs_dMrs_BFGS', PACKAGE = 'dMrs', XX, DELTA, D2, S2, PARS, copula, upPARS, max_iter, eps, verb))
 }
 
-dMrs_GRID <- function(XX, DELTA, D2, S2, log_THETA, log_ALPHA, log_LAMBDA, unc_KAPPA, copula, show = FALSE, ncores = 1L) {
-    .Call('_dMrs_dMrs_GRID', PACKAGE = 'dMrs', XX, DELTA, D2, S2, log_THETA, log_ALPHA, log_LAMBDA, unc_KAPPA, copula, show, ncores)
+dMrs_GRID <- function(XX, DELTA, D2, S2, log_THETA, log_ALPHA, log_LAMBDA, unc_KAPPA, copula, verb = FALSE, ncores = 1L) {
+    .Call('_dMrs_dMrs_GRID', PACKAGE = 'dMrs', XX, DELTA, D2, S2, log_THETA, log_ALPHA, log_LAMBDA, unc_KAPPA, copula, verb, ncores)
 }
 
-dMrs_MATCH <- function(wDAT, rDAT, ncores = 1L, show = TRUE) {
-    .Call('_dMrs_dMrs_MATCH', PACKAGE = 'dMrs', wDAT, rDAT, ncores, show)
+dMrs_MATCH <- function(wDAT, rDAT, ncores = 1L, verb = TRUE) {
+    .Call('_dMrs_dMrs_MATCH', PACKAGE = 'dMrs', wDAT, rDAT, ncores, verb)
 }
 

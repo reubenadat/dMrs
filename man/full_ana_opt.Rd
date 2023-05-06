@@ -4,7 +4,7 @@
 \alias{full_ana_opt}
 \title{full_ana_opt}
 \usage{
-full_ana_opt(DATA, max_year = 100, param_grid = seq(-3, 5, 0.5), show = TRUE)
+full_ana_opt(DATA, max_year = 100, param_grid = seq(-3, 5, 0.5), verb)
 }
 \arguments{
 \item{DATA}{A data.frame containing column names \code{time},
@@ -16,7 +16,7 @@ probability to calculate.}
 \item{param_grid}{Vector of values spanning possible 
 log(alpha1), log(lambda1), and log(kappa1) parameters}
 
-\item{show}{Boolean, set to TRUE for verbose output.}
+\item{verb}{Boolean, set to TRUE for verbose output.}
 }
 \description{
 A comprehensive optimization over copulas

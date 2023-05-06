@@ -46,8 +46,8 @@ BEGIN_RCPP
 END_RCPP
 }
 // dMrs_cLL
-double dMrs_cLL(const arma::vec& XX, const arma::uvec& DELTA, const arma::vec& D2, const arma::vec& S2, const arma::vec& PARS, const std::string& copula, const bool& show);
-RcppExport SEXP _dMrs_dMrs_cLL(SEXP XXSEXP, SEXP DELTASEXP, SEXP D2SEXP, SEXP S2SEXP, SEXP PARSSEXP, SEXP copulaSEXP, SEXP showSEXP) {
+double dMrs_cLL(const arma::vec& XX, const arma::uvec& DELTA, const arma::vec& D2, const arma::vec& S2, const arma::vec& PARS, const std::string& copula, const bool& verb);
+RcppExport SEXP _dMrs_dMrs_cLL(SEXP XXSEXP, SEXP DELTASEXP, SEXP D2SEXP, SEXP S2SEXP, SEXP PARSSEXP, SEXP copulaSEXP, SEXP verbSEXP) {
 BEGIN_RCPP
     Rcpp::RObject rcpp_result_gen;
     Rcpp::RNGScope rcpp_rngScope_gen;
@@ -57,8 +57,8 @@ BEGIN_RCPP
     Rcpp::traits::input_parameter< const arma::vec& >::type S2(S2SEXP);
     Rcpp::traits::input_parameter< const arma::vec& >::type PARS(PARSSEXP);
     Rcpp::traits::input_parameter< const std::string& >::type copula(copulaSEXP);
-    Rcpp::traits::input_parameter< const bool& >::type show(showSEXP);
-    rcpp_result_gen = Rcpp::wrap(dMrs_cLL(XX, DELTA, D2, S2, PARS, copula, show));
+    Rcpp::traits::input_parameter< const bool& >::type verb(verbSEXP);
+    rcpp_result_gen = Rcpp::wrap(dMrs_cLL(XX, DELTA, D2, S2, PARS, copula, verb));
     return rcpp_result_gen;
 END_RCPP
 }
@@ -97,8 +97,8 @@ BEGIN_RCPP
 END_RCPP
 }
 // dMrs_BFGS
-void dMrs_BFGS(const arma::vec& XX, const arma::uvec& DELTA, const arma::vec& D2, const arma::vec& S2, arma::vec& PARS, const std::string& copula, const arma::vec& upPARS, const arma::uword& max_iter, const double& eps, const bool& show);
-RcppExport SEXP _dMrs_dMrs_BFGS(SEXP XXSEXP, SEXP DELTASEXP, SEXP D2SEXP, SEXP S2SEXP, SEXP PARSSEXP, SEXP copulaSEXP, SEXP upPARSSEXP, SEXP max_iterSEXP, SEXP epsSEXP, SEXP showSEXP) {
+void dMrs_BFGS(const arma::vec& XX, const arma::uvec& DELTA, const arma::vec& D2, const arma::vec& S2, arma::vec& PARS, const std::string& copula, const arma::vec& upPARS, const arma::uword& max_iter, const double& eps, const bool& verb);
+RcppExport SEXP _dMrs_dMrs_BFGS(SEXP XXSEXP, SEXP DELTASEXP, SEXP D2SEXP, SEXP S2SEXP, SEXP PARSSEXP, SEXP copulaSEXP, SEXP upPARSSEXP, SEXP max_iterSEXP, SEXP epsSEXP, SEXP verbSEXP) {
 BEGIN_RCPP
     Rcpp::RNGScope rcpp_rngScope_gen;
     Rcpp::traits::input_parameter< const arma::vec& >::type XX(XXSEXP);
@@ -110,14 +110,14 @@ BEGIN_RCPP
     Rcpp::traits::input_parameter< const arma::vec& >::type upPARS(upPARSSEXP);
     Rcpp::traits::input_parameter< const arma::uword& >::type max_iter(max_iterSEXP);
     Rcpp::traits::input_parameter< const double& >::type eps(epsSEXP);
-    Rcpp::traits::input_parameter< const bool& >::type show(showSEXP);
-    dMrs_BFGS(XX, DELTA, D2, S2, PARS, copula, upPARS, max_iter, eps, show);
+    Rcpp::traits::input_parameter< const bool& >::type verb(verbSEXP);
+    dMrs_BFGS(XX, DELTA, D2, S2, PARS, copula, upPARS, max_iter, eps, verb);
     return R_NilValue;
 END_RCPP
 }
 // dMrs_GRID
-Rcpp::List dMrs_GRID(const arma::vec& XX, const arma::uvec& DELTA, const arma::vec& D2, const arma::vec& S2, const arma::vec& log_THETA, const arma::vec& log_ALPHA, const arma::vec& log_LAMBDA, const arma::vec& unc_KAPPA, const std::string& copula, const bool& show, const int& ncores);
-RcppExport SEXP _dMrs_dMrs_GRID(SEXP XXSEXP, SEXP DELTASEXP, SEXP D2SEXP, SEXP S2SEXP, SEXP log_THETASEXP, SEXP log_ALPHASEXP, SEXP log_LAMBDASEXP, SEXP unc_KAPPASEXP, SEXP copulaSEXP, SEXP showSEXP, SEXP ncoresSEXP) {
+Rcpp::List dMrs_GRID(const arma::vec& XX, const arma::uvec& DELTA, const arma::vec& D2, const arma::vec& S2, const arma::vec& log_THETA, const arma::vec& log_ALPHA, const arma::vec& log_LAMBDA, const arma::vec& unc_KAPPA, const std::string& copula, const bool& verb, const int& ncores);
+RcppExport SEXP _dMrs_dMrs_GRID(SEXP XXSEXP, SEXP DELTASEXP, SEXP D2SEXP, SEXP S2SEXP, SEXP log_THETASEXP, SEXP log_ALPHASEXP, SEXP log_LAMBDASEXP, SEXP unc_KAPPASEXP, SEXP copulaSEXP, SEXP verbSEXP, SEXP ncoresSEXP) {
 BEGIN_RCPP
     Rcpp::RObject rcpp_result_gen;
     Rcpp::RNGScope rcpp_rngScope_gen;
@@ -130,23 +130,23 @@ BEGIN_RCPP
     Rcpp::traits::input_parameter< const arma::vec& >::type log_LAMBDA(log_LAMBDASEXP);
     Rcpp::traits::input_parameter< const arma::vec& >::type unc_KAPPA(unc_KAPPASEXP);
     Rcpp::traits::input_parameter< const std::string& >::type copula(copulaSEXP);
-    Rcpp::traits::input_parameter< const bool& >::type show(showSEXP);
+    Rcpp::traits::input_parameter< const bool& >::type verb(verbSEXP);
     Rcpp::traits::input_parameter< const int& >::type ncores(ncoresSEXP);
-    rcpp_result_gen = Rcpp::wrap(dMrs_GRID(XX, DELTA, D2, S2, log_THETA, log_ALPHA, log_LAMBDA, unc_KAPPA, copula, show, ncores));
+    rcpp_result_gen = Rcpp::wrap(dMrs_GRID(XX, DELTA, D2, S2, log_THETA, log_ALPHA, log_LAMBDA, unc_KAPPA, copula, verb, ncores));
     return rcpp_result_gen;
 END_RCPP
 }
 // dMrs_MATCH
-arma::mat dMrs_MATCH(const arma::mat& wDAT, const arma::mat& rDAT, const int& ncores, const bool& show);
-RcppExport SEXP _dMrs_dMrs_MATCH(SEXP wDATSEXP, SEXP rDATSEXP, SEXP ncoresSEXP, SEXP showSEXP) {
+arma::mat dMrs_MATCH(const arma::mat& wDAT, const arma::mat& rDAT, const int& ncores, const bool& verb);
+RcppExport SEXP _dMrs_dMrs_MATCH(SEXP wDATSEXP, SEXP rDATSEXP, SEXP ncoresSEXP, SEXP verbSEXP) {
 BEGIN_RCPP
     Rcpp::RObject rcpp_result_gen;
     Rcpp::RNGScope rcpp_rngScope_gen;
     Rcpp::traits::input_parameter< const arma::mat& >::type wDAT(wDATSEXP);
     Rcpp::traits::input_parameter< const arma::mat& >::type rDAT(rDATSEXP);
     Rcpp::traits::input_parameter< const int& >::type ncores(ncoresSEXP);
-    Rcpp::traits::input_parameter< const bool& >::type show(showSEXP);
-    rcpp_result_gen = Rcpp::wrap(dMrs_MATCH(wDAT, rDAT, ncores, show));
+    Rcpp::traits::input_parameter< const bool& >::type verb(verbSEXP);
+    rcpp_result_gen = Rcpp::wrap(dMrs_MATCH(wDAT, rDAT, ncores, verb));
     return rcpp_result_gen;
 END_RCPP
 }

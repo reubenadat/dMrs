@@ -108,16 +108,17 @@ save(usa,file = file.path(my_dirs$pack_dir,"data/usa.rda"))
 # Running code example
 # ----------
 
-# Specify parameters/arguments
+if( TRUE ){ # Specify parameters/arguments
+
 COPULAS = c("Clayton","Gumbel")
 DISTs		= c("weibull","expweibull")
 COPULA 	= COPULAS[1]
-dist1 	= DISTs[2]
-NN 			= 2e3
-theta 	= 4
+dist1 	= DISTs[1]
+NN 			= 5e2
+theta 	= 2
 if( COPULA == "Clayton" && theta < 0 ) stop("theta issue")
 if( COPULA == "Gumbel" && theta < 1 ) stop("theta issue")
-alpha1 	= 3
+alpha1 	= 4
 lambda1 = 4
 kappa1 	= ifelse(dist1 == "weibull",1,2)
 alpha2 	= 3
@@ -125,15 +126,35 @@ lambda2 = 6
 propC 	= 0.1
 true_PARS = log(c(alpha1,lambda1,kappa1,theta)); true_PARS
 
-# Simulate dataset
+}
+if( TRUE ){ # Simulate dataset
+
 set.seed(1)
 one_rep = sim_replicate(copula = COPULA,dist1 = dist1,
 	NN = NN,theta = theta,alpha1 = alpha1,lambda1 = lambda1,
 	kappa1 = kappa1,alpha2 = alpha2,lambda2 = lambda2,
-	propC = propC,show = TRUE)
+	propC = propC,verb = TRUE)
 one_rep$PARAMS
 table(one_rep$DATA$D)
 table(one_rep$DATA$delta)
+
+}
+if( TRUE ){ # Run analysis, estimate theta by default
+
+vec_time = seq(0,round(max(one_rep$DATA$time),0))
+
+run_ana = run_analyses(
+	DATA = one_rep$DATA,
+	#THETAs = theta,
+	copula = c("Clayton","Gumbel")[1],
+	upKAPPA = c(0,1)[1],
+	vec_time = vec_time,
+	verb = TRUE)
+
+run_ana[[1]]$RES[c("out","cout")]
+
+}
+
 
 # Run analyses
 my_copula = COPULAS[1]; my_copula
@@ -146,7 +167,7 @@ run_ana = run_analyses(DATA = one_rep$DATA,
 	THETAs = THETAs,upKAPPA = upKAPPA,
 	copula = my_copula,param_grid = seq(-2,4,0.25),
 	vec_time = seq(0,round(max(one_rep$DATA$time),0)),
-	show = TRUE)
+	verb = TRUE)
 names(run_ana)
 run_ana[[1]]$RES[c("out","cout")]
 
@@ -183,7 +204,7 @@ sqrt(VV)
 # fsim = full_sim(copula = copula,dist1 = dist1,NN = NN,theta = theta,
 	# alpha1 = alpha1,lambda1 = lambda1,kappa1 = kappa1,alpha2 = alpha2,
 	# lambda2 = lambda2,propC = propC,RR = 1e2,param_grid = seq(-1,3,0.5),
-	# upKAPPA = 1,show = TRUE)
+	# upKAPPA = 1,verb = TRUE)
 # fsim
 
 # Generate Figure 1 about comparing confidence intervals
@@ -213,7 +234,7 @@ gen_fig_CIs = function(theta = 3,lambda1 = 6,VERB = TRUE){
 	one_rep = sim_replicate(copula = COPULA,dist1 = dist1,
 		NN = NN,theta = theta,alpha1 = alpha1,lambda1 = lambda1,
 		kappa1 = kappa1,alpha2 = alpha2,lambda2 = lambda2,
-		propC = propC,show = VERB)
+		propC = propC,verb = VERB)
 	
 	# Optimize
 	param_grid 	= seq(-2,4,0.25)
@@ -223,7 +244,7 @@ gen_fig_CIs = function(theta = 3,lambda1 = 6,VERB = TRUE){
 	run_ana = run_analyses(DATA = one_rep$DATA,
 		THETAs = theta,upKAPPA = upKAPPA,
 		copula = COPULA,param_grid = param_grid,
-		vec_time = vec_time,show = VERB)
+		vec_time = vec_time,verb = VERB)
 	names(run_ana)
 
 	# Get/Prep Survival
@@ -346,7 +367,7 @@ table(rd$delta)
 
 ## Analyze
 res1 = full_ana_opt(DATA = rd,max_year = 100,
-	param_grid = seq(-3,5,0.5),show = TRUE)
+	param_grid = seq(-3,5,0.5),verb = TRUE)
 names(res1)
 
 # Get Estimates
@@ -423,7 +444,7 @@ NAME 		= "Slovenia"
 
 # Analyze
 res2 = full_ana_opt(DATA = rd,max_year = 100,
-	param_grid = seq(-3,5,0.25),show = TRUE)
+	param_grid = seq(-3,5,0.25),verb = TRUE)
 names(res2)
 
 # Get Estimates

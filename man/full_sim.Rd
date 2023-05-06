@@ -19,7 +19,7 @@ full_sim(
   param_grid,
   upKAPPA,
   gTHRES = 0.08,
-  show,
+  verb,
   ncores = 1
 )
 }
@@ -62,7 +62,7 @@ the Weibull distribution is assumed and optimized over.}
 \item{gTHRES}{A numeric threshold on the L2 norm of 
 the gradient evaluated at the MLE.}
 
-\item{show}{Boolean, set to TRUE for verbose output.}
+\item{verb}{Boolean, set to TRUE for verbose output.}
 
 \item{ncores}{An integer for the number of threads}
 }

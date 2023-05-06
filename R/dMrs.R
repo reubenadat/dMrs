@@ -140,18 +140,20 @@ get_PROFILE = function(GRID){
 	rownames(res) = NULL
 	# dim(res); res[1:10,]
 	
+	stop("Add code to loop thru profile, optimize, check gradient and negative covariance")
+	
 	return(res)
 }
-get_LOCAL_OPTS = function(GPROF,show = TRUE){
+get_LOCAL_OPTS = function(GPROF,verb){
 	if(FALSE){
 		GPROF = gprof
-		rownames(GPROF) = NULL
-		show = TRUE
+		verb = verb
 		
 	}
 	
 	# Find all local optimal solutions
-	if( show ) cat(sprintf("%s: Find all local optimums\n",date()))
+	verb = get_verb(verb = verb)
+	if( verb ) cat(sprintf("%s: Find all local optimums\n",date()))
 	res = c(); nn = nrow(GPROF)
 	
 	EPS = sort(unique(GPROF$log_alpha1))
@@ -163,7 +165,7 @@ get_LOCAL_OPTS = function(GPROF,show = TRUE){
 	for(ii in seq(nn)){
 		# ii = 1
 		# GPROF[ii,]
-		if( show ) smart_progress(ii = ii,nn = nn,iter = 1e1,iter2 = 5e2)
+		if( verb ) smart_progress(ii = ii,nn = nn,iter = 1e1,iter2 = 5e2)
 		curr_PARS = as.numeric(GPROF[ii,c("log_alpha1","log_lambda1")])
 		# curr_PARS
 		curr_LL = GPROF$LL[ii]; # curr_LL
@@ -354,7 +356,7 @@ refData_match = function(wDAT,rDAT){
 	wDAT_vars = c("age","datediag_yr","dateEvent_yr","sex2")
 	rDAT_vars = c("Year","Age","qx","sex2")
 	OUT = dMrs_MATCH(wDAT = as.matrix(wDAT[,wDAT_vars]),
-		rDAT = as.matrix(rDAT[,rDAT_vars]),ncores = 1,show = TRUE)
+		rDAT = as.matrix(rDAT[,rDAT_vars]),ncores = 1,verb = TRUE)
 	OUT = smart_df(OUT)
 	names(OUT) = c("dens_t2","surv_t2")
 	wDAT = cbind(wDAT,OUT)
@@ -383,12 +385,13 @@ refData_match = function(wDAT,rDAT){
 #' @param lambda2 Scale parameter for the second/reference event.
 #' @param propC A numeric value between 0 and 1 for
 #'	proportion of subjects with censored event times
-#' @param show Boolean, set to TRUE for verbose output.
+#' @param verb Boolean, set to TRUE for verbose output.
 #' @export
 sim_replicate = function(copula,dist1,NN,theta,
-	alpha1,lambda1,kappa1,alpha2,lambda2,propC,show){
+	alpha1,lambda1,kappa1,alpha2,lambda2,propC,verb){
 	
-	if( show ) cat(sprintf("%s: Simulate dataset ...\n",date()))
+	verb = get_verb(verb = verb)
+	if( verb ) cat(sprintf("%s: Simulate dataset ...\n",date()))
 	
 	# Simulate dataset
 	kappa1 = ifelse(dist1 == "weibull",1,kappa1)
@@ -442,7 +445,7 @@ sim_replicate = function(copula,dist1,NN,theta,
 	## Obtain observed time and event indicator
 	dat$time = apply(dat[,c("T","C")],1,function(xx) min(xx))
 	dat$delta = apply(dat[,c("T","C")],1,function(xx) ifelse(xx[1] <= xx[2],1,0))
-	if( show ) print(table(dat$delta) / NN)
+	if( verb ) print(table(dat$delta) / NN)
 
 	## Get dens_t2 and surv_t2, we assume alpha2/lambda2 are known and from Weibull
 	dat$dens_t2 = dweibull(x = dat$time,shape = alpha2,scale = lambda2)
@@ -473,20 +476,20 @@ sim_replicate = function(copula,dist1,NN,theta,
 #' @param ncores An integer for the number of threads
 #' @export
 opt_replicate = function(REP,param_grid,
-	theta = NULL,upKAPPA,ncores = 1,gTHRES = 8e-2,show){
+	theta = NULL,upKAPPA,ncores = 1,gTHRES = 8e-2,verb){
 	
 	if(FALSE){
-		REP = one_rep; param_grid = seq(-2,3,0.5)
-		theta = NULL; upKAPPA = upKAPPA;
-		ncores = 1; show = FALSE
-		
-		# Test inputs
-		REP = REP; param_grid = param_grid
-		theta = theta; upKAPPA = upKAPPA; 
-		show = show; ncores = ncores
+		REP = REP
+		param_grid = param_grid
+		theta = theta
+		upKAPPA = upKAPPA
+		gTHRES = gTHRES
+		verb = verb
+		ncores = ncores
 		
 	}
 	
+	verb 			= get_verb(verb = verb)
 	upTHETA 	= ifelse(is.null(theta),1,0)
 	DATA 			= REP$DATA
 	PARAMS 		= REP$PARAMS
@@ -499,7 +502,7 @@ opt_replicate = function(REP,param_grid,
 		dMrs_cLL(XX = DATA$time,DELTA = DATA$delta,
 			D2 = DATA$dens_t2,S2 = DATA$surv_t2,
 			PARS = PARS,copula = PARAMS$copula,
-			show = !TRUE)
+			verb = !TRUE)
 	}
 	wrap_GRAD = function(PARS){
 		# PARS = iPARS
@@ -519,7 +522,7 @@ opt_replicate = function(REP,param_grid,
 	
 	# Estimate parameters
 	param_grid = sort(unique(c(0,param_grid)))
-	if( show ) cat(sprintf("%s: Grid search for initial parameters ...\n",date()))
+	if( verb ) cat(sprintf("%s: Grid search for initial parameters ...\n",date()))
 	if( upPARS[3] == 0 ){
 		# logit_KAPPA = Inf
 		unc_KAPPA = 0
@@ -532,22 +535,24 @@ opt_replicate = function(REP,param_grid,
 		log_THETA = log(theta)
 	} else if( upTHETA == 1 ){
 		log_THETA = param_grid
+		if( PARAMS$copula == "Gumbel" )
+			log_THETA = log_THETA[exp(log_THETA) >= 1]
 	}
 	
-	gout = dMrs_GRID(XX = DATA$time,DELTA = DATA$delta,
+	gout = dMrs:::dMrs_GRID(XX = DATA$time,DELTA = DATA$delta,
 		D2 = DATA$dens_t2,S2 = DATA$surv_t2,
 		log_ALPHA = param_grid,log_LAMBDA = param_grid,
 		unc_KAPPA = unc_KAPPA,log_THETA = log_THETA,
-		copula = PARAMS$copula,show = show,ncores = ncores)
+		copula = PARAMS$copula,verb = verb,ncores = ncores)
 	# str(gout)
 	colnames(gout$DAT) = c("log_alpha1","log_lambda1",
 		"unc_kappa1","log_theta","LL")
 	gout$DAT[1:5,]
 	gprof = get_PROFILE(GRID = gout$DAT)
-	gopt = get_LOCAL_OPTS(GPROF = gprof,show = show)
+	gopt = get_LOCAL_OPTS(GPROF = gprof,verb = verb)
 	dim(gopt); gopt
 	
-	if( show ){
+	if( verb ){
 		cat(sprintf("%s: Two-dimensional plot of the log likelihood ...\n",date()))
 		print(plot_LL(GPROF = gprof,GOPT = gopt))
 	}
@@ -556,15 +561,15 @@ opt_replicate = function(REP,param_grid,
 	gopt$fin_logL = NA; gopt$fin_logK = NA; gopt$fin_logT = NA
 	# gopt
 	
-	if( show ) cat(sprintf("%s: BFGS optimization ...\n",date()))
+	if( verb ) cat(sprintf("%s: BFGS optimization ...\n",date()))
 	for(ii in seq(nrow(gopt))){
 		# ii = 1
-		if( show ) cat(".")
+		if( verb ) cat(".")
 		iPARS = as.numeric(gopt[ii,1:4]); iPARS
 		dMrs_BFGS(XX = DATA$time,DELTA = DATA$delta,
 			D2 = DATA$dens_t2,S2 = DATA$surv_t2,
 			PARS = iPARS,copula = PARAMS$copula,upPARS = upPARS,
-			max_iter = 2e2,eps = 1e-6,show = FALSE)
+			max_iter = 2e2,eps = 1e-6,verb = FALSE)
 		tmp_LL = wrap_LL(PARS = iPARS)
 		tmp_GR = wrap_GRAD(PARS = iPARS)
 		
@@ -575,7 +580,7 @@ opt_replicate = function(REP,param_grid,
 		gopt$fin_logT[ii] = iPARS[4]
 		gopt$fin_LL[ii] = round(tmp_LL,3)
 	}
-	if( show ){
+	if( verb ){
 		cat("\n")
 		print(gopt)
 	}
@@ -584,7 +589,7 @@ opt_replicate = function(REP,param_grid,
 	# Remove non-local optimum solutions
 	gopt = gopt[which(gopt$nGRAD < gTHRES),]
 	if( nrow(gopt) == 0 ){
-		if( show ) cat(sprintf("%s: No converged solutions! ...\n",date()))
+		if( verb ) cat(sprintf("%s: No converged solutions! ...\n",date()))
 		return(list(GRID = gout$DAT,GPROF = gprof,GOPT = gopt,
 			GOPT_PRE = gopt_pre,
 			out = NULL,cout = NULL,LL = NULL,GRAD = NULL,
@@ -600,7 +605,7 @@ opt_replicate = function(REP,param_grid,
 	# gopt
 	
 	# Estimate covariance
-	if( show ) cat(sprintf("%s: Get covariance ...\n",date()))
+	if( verb ) cat(sprintf("%s: Get covariance ...\n",date()))
 	gopt$neg_var = NA
 	for(jj in seq(nrow(gopt))){
 		# jj = 1
@@ -621,7 +626,7 @@ opt_replicate = function(REP,param_grid,
 	gopt = gopt[!is.na(gopt$neg_var),,drop = FALSE]
 	gopt = gopt[which(gopt$neg_var == FALSE),]
 	if( nrow(gopt) == 0 ){
-		if( show ) cat(sprintf("%s: Negative variance(s)! ...\n",date()))
+		if( verb ) cat(sprintf("%s: Negative variance(s)! ...\n",date()))
 		return(list(GRID = gout$DAT,GPROF = gprof,GOPT = NULL,
 			GOPT_PRE = gopt_pre,
 			out = NULL,cout = NULL,LL = NULL,GRAD = NULL,
@@ -632,6 +637,9 @@ opt_replicate = function(REP,param_grid,
 	
 	iPARS = as.numeric(gopt[1,
 		paste0("fin_log",c("A","L","K","T"))]); iPARS
+	if(FALSE){
+		iPARS = true_PARS
+	}
 	hess = wrap_HESS(PARS = iPARS); hess
 	nz = which(diag(hess) != 0)
 	if( rcond(hess[nz,nz]) == 0 ){
@@ -699,34 +707,35 @@ opt_replicate = function(REP,param_grid,
 #' @export
 full_sim = function(copula,dist1,NN,theta,
 	alpha1,lambda1,kappa1,alpha2,lambda2,propC,RR,
-	param_grid,upKAPPA,gTHRES = 8e-2,show,ncores = 1){
+	param_grid,upKAPPA,gTHRES = 8e-2,verb,ncores = 1){
 	
 	if(FALSE){
 		copula = copula; dist1 = dist1; NN = NN; theta = theta
 		alpha1 = alpha1; lambda1 = lambda1; kappa1 = kappa1; alpha2 = alpha2
 		lambda2 = lambda2; propC = propC; RR = 1e2; param_grid = seq(-1,3,0.5)
-		upKAPPA = 0; show = TRUE
+		upKAPPA = 0; verb = TRUE
 		
 	}
 	
+	verb = get_verb(verb = verb)
 	kappa1 = ifelse(dist1 == "weibull",1,kappa1)
 	
 	# set.seed(1); 
 	res = c()
 	for(rr in seq(RR)){
 		# rr = 1
-		if( show ) smart_progress(ii = rr,nn = RR)
+		if( verb ) smart_progress(ii = rr,nn = RR)
 		
 		while(TRUE){
 			one_rep = sim_replicate(copula = copula,dist1 = dist1,
 				NN = NN,theta = theta,alpha1 = alpha1,lambda1 = lambda1,
 				kappa1 = kappa1,alpha2 = alpha2,lambda2 = lambda2,
-				propC = propC,show = FALSE)
+				propC = propC,verb = FALSE)
 			table(one_rep$DATA$D)
 			one_opt = opt_replicate(REP = one_rep,
 				param_grid = param_grid,theta = theta,
 				upKAPPA = upKAPPA,gTHRES = gTHRES,
-				show = FALSE,ncores = ncores)
+				verb = FALSE,ncores = ncores)
 			if( !is.null(one_opt$out) ) break
 		}
 		
@@ -758,7 +767,7 @@ full_sim = function(copula,dist1,NN,theta,
 	fin$CP = CP_PARS
 	# fin
 	
-	if( show ){
+	if( verb ){
 		par(mfrow = c(2,2),mar = c(4,4,1,0) + 0.2,
 			cex.lab = 1.3,oma = c(0,0,2,0))
 		for(vv in unique(res$PARS)){
@@ -797,27 +806,22 @@ full_sim = function(copula,dist1,NN,theta,
 }
 
 run_analysis = function(DATA,theta,upKAPPA,
-	gTHRES,copula,param_grid,vec_time,show,ncores = 1){
+	gTHRES,copula,param_grid,vec_time,verb,ncores = 1){
 	
 	if(FALSE){
-		DATA = DATA; theta = theta; upKAPPA = upKAPPA
-		copula = copula; param_grid = param_grid
-		vec_time = vec_time; show = show
-		
-		
-		# Test an issue
-		DATA = rd
-		theta = 4/3
-		upKAPPA = 0
-		copula = "Gumbel"
-		param_grid = seq(-5,5,0.25)
+		DATA = one_rep$DATA
+		theta = NULL
+		upKAPPA = c(0,1)[1]
+		gTHRES = 8e-2
+		copula = c("Clayton","Gumbel")[1]
+		param_grid = seq(-3,3,0.25)
 		vec_time = vec_time
-		show = TRUE
 		
-		ncores = 1
+		verb = TRUE; ncores = 1
 		
 	}
 	
+	verb = get_verb(verb = verb)
 	req_names = c("time","delta","dens_t2","surv_t2")
 	if( !all(req_names %in% names(DATA)) ){
 		miss_names = req_names[!(req_names %in% names(DATA))]
@@ -828,7 +832,7 @@ run_analysis = function(DATA,theta,upKAPPA,
 	REP = list(DATA = DATA,PARAMS = smart_df(copula = copula))
 	opt_out = opt_replicate(REP = REP,param_grid = param_grid,
 		theta = theta,upKAPPA = upKAPPA,gTHRES = gTHRES,
-		show = show,ncores = ncores)
+		verb = verb,ncores = ncores)
 	if( is.null(opt_out$out) ){
 		return(list(upKAPPA = upKAPPA,
 			copula = copula,RES = opt_out,
@@ -934,7 +938,7 @@ run_analysis = function(DATA,theta,upKAPPA,
 #' @export
 run_analyses = function(DATA,THETAs = NULL,upKAPPA,
 	gTHRES = 8e-2,copula,param_grid = seq(-3,3,0.25),
-	vec_time,ncores = 1,show){
+	vec_time,ncores = 1,verb){
 	
 	if(FALSE){
 		DATA = rd
@@ -942,38 +946,40 @@ run_analyses = function(DATA,THETAs = NULL,upKAPPA,
 		copula = my_copula; param_grid = seq(-2,5,0.4)
 		vec_time = round(seq(0,max(c(100,max(DATA$time))),
 			length.out = 50),2)
-		show = TRUE
+		verb = TRUE
 		
 	}
 	
+	copula = get_copula(copula = copula)
+	verb = get_verb(verb = verb)
 	if( copula == "Clayton" ){
-		if( !is.null(THETAs) && any(THETAs < 0) ) stop("THETAs should be >= 0")
+		if( !is.null(THETAs) && any(THETAs < 0) )
+			stop("THETAs should be >= 0")
 	} else if( copula == "Gumbel" ){
-		if( !is.null(THETAs) && any(THETAs < 1) ) stop("THETAs should be >= 1")
-	} else {
-		stop("not a coded copula!")
+		if( !is.null(THETAs) && any(THETAs < 1) )
+			stop("THETAs should be >= 1")
 	}
 	
 	out = list()
 	
 	if( is.null(THETAs) ){
 		out[["theta = MLE"]] = run_analysis(DATA = DATA,
-			theta = THETAs,upKAPPA = upKAPPA,
+			theta = THETAs,upKAPPA = upKAPPA,gTHRES = gTHRES,
 			copula = copula,param_grid = param_grid,
-			vec_time = vec_time,show = show,ncores = ncores)
+			vec_time = vec_time,verb = verb,ncores = ncores)
 		return(out)
 	}
 	
 	THETAs = sort(THETAs)
 	for(theta in THETAs){
 		# theta = THETAs[1]; theta
-		if( show ) cat(sprintf("\n%s: theta = %s ...\n",date(),theta))
+		if( verb ) cat(sprintf("\n%s: theta = %s ...\n",date(),theta))
 		tmp_name = sprintf("theta = %s",round(theta,4))
 		tmp_out = run_analysis(DATA = DATA,
 			theta = theta,upKAPPA = upKAPPA,
 			gTHRES = gTHRES,copula = copula,
 			param_grid = param_grid,
-			vec_time = vec_time,show = show,ncores = ncores)
+			vec_time = vec_time,verb = verb,ncores = ncores)
 		out[[tmp_name]] = tmp_out
 	}
 	
@@ -1127,11 +1133,12 @@ plot_SURVs = function(run_ANA,MULTIPLE,ALPHA = 0.5,
 #'	probability to calculate.
 #' @export
 full_ana_opt = function(DATA,max_year = 100,
-	param_grid = seq(-3,5,0.5),show = TRUE){
+	param_grid = seq(-3,5,0.5),verb){
 	
 	my_copulas	= c("Clayton","Gumbel")
 	upKAPPAs		= c(0,1) # 0 = weibull, 1 = exp-weibull
 	vec_time 		= seq(0,max_year)
+	verb 				= get_verb(verb = verb)
 	
 	res = list()
 	for(my_copula in my_copulas){
@@ -1156,7 +1163,7 @@ full_ana_opt = function(DATA,max_year = 100,
 			gTHRES = 0.5,
 			copula = my_copula,param_grid = param_grid,
 			vec_time = vec_time,
-			show = show)
+			verb = verb)
 		
 		res[[tmp_name]] = run_ana
 		rm(run_ana)

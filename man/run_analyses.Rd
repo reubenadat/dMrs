@@ -13,7 +13,7 @@ run_analyses(
   param_grid = seq(-3, 3, 0.25),
   vec_time,
   ncores = 1,
-  show
+  verb
 )
 }
 \arguments{
@@ -39,7 +39,7 @@ on the same scale as times provided in the \code{DATA} data.frame.}
 
 \item{ncores}{An integer for the number of threads}
 
-\item{show}{Boolean, set to TRUE for verbose output.}
+\item{verb}{Boolean, set to TRUE for verbose output.}
 }
 \description{
 This function performs a full analysis of 

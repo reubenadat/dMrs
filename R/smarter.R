@@ -140,7 +140,32 @@ name_change = function(DATA,ORIG_NAME,NEW_NAME){
 	}
 	
 }
-
+make_menu = function(PROMPT,OPTS){
+	
+	if( missing(PROMPT) )
+		PROMPT = "Select an option"
+	if( missing(OPTS) )
+		stop("Add a vector of options")
+	
+	INDENT = "   "
+	cmd = sprintf("%s:",PROMPT)
+	vec_seq = seq(length(OPTS))
+	for( ii in vec_seq ){
+		cmd = sprintf("%s\n%s%s) %s",cmd,INDENT,ii,OPTS[ii])
+	}
+	cmd = sprintf("%s\n%s> ",cmd,INDENT)
+	
+	while(TRUE){
+		resp = readline(prompt = cmd)
+		if( resp %in% vec_seq )
+			break
+		cat("Not an option, try again\n")
+	}
+	
+	resp = as.integer(resp)
+	return(OPTS[resp])
+	
+}
 
 ###
 

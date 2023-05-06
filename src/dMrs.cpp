@@ -47,7 +47,7 @@ double Rcpp_logSumExp(const arma::vec& log_x){
 double dMrs_LL(const arma::vec& XX,const arma::uvec& DELTA,
 	const arma::vec& D2,const arma::vec& S2,const double& THETA,
 	const double& ALPHA,const double& LAMBDA,const double& KAPPA,
-	const std::string& copula,const bool& show = false){
+	const std::string& copula,const bool& verb = false){
 	
 	arma::uword ii, NN = XX.n_elem;
 	double LL = 0.0, LL_ii, D1, S1, F1, F2,
@@ -111,7 +111,7 @@ double dMrs_LL(const arma::vec& XX,const arma::uvec& DELTA,
 		}
 		
 		/*
-		if( show ){
+		if( verb ){
 			Rcpp::Rcout << "ii = " << ii+1 << "; ";
 			Rcpp::Rcout << "Delta = " << DELTA.at(ii) << "; ";
 			Rcpp::Rcout << "D1 = " << D1 << "; ";
@@ -140,7 +140,7 @@ double dMrs_LL(const arma::vec& XX,const arma::uvec& DELTA,
 // [[Rcpp::export]]
 double dMrs_cLL(const arma::vec& XX,const arma::uvec& DELTA,
 	const arma::vec& D2,const arma::vec& S2,const arma::vec& PARS,
-	const std::string& copula,const bool& show = false){
+	const std::string& copula,const bool& verb = false){
 	
 	// For Clayton: 0 <= THETA < infinity
 	// For Gumbel: 1 <= THETA < infinity
@@ -158,7 +158,7 @@ double dMrs_cLL(const arma::vec& XX,const arma::uvec& DELTA,
 	}
 	
 	return dMrs_LL(XX,DELTA,D2,S2,THETA,ePARS.at(0),
-		ePARS.at(1),KAPPA,copula,show);
+		ePARS.at(1),KAPPA,copula,verb);
 }
 
 arma::vec dMrs_GRAD(const arma::vec& XX,const arma::uvec& DELTA,
@@ -283,13 +283,13 @@ void dMrs_BFGS(const arma::vec& XX,const arma::uvec& DELTA,
 	const arma::vec& D2,const arma::vec& S2,arma::vec& PARS,
 	const std::string& copula,const arma::vec& upPARS,
 	const arma::uword& max_iter = 4e3,const double& eps = 1e-7,
-	const bool& show = true){
+	const bool& verb = true){
 	
 	arma::uword iter = 0, jj, uu,
 		reset_Bk = 0, np = PARS.n_elem;
 	
 	// Initialize parameters
-	if( show ) PARS.t().print("iPARS = "); // Rcpp::Rcout << "iPARS = " << PARS.t();
+	if( verb ) PARS.t().print("iPARS = "); // Rcpp::Rcout << "iPARS = " << PARS.t();
 	arma::mat I_np = arma::eye<arma::mat>(np,np),
 		inv_Bk = I_np, ISYT = I_np;
 	arma::vec xk = PARS, curr_xk = arma::zeros<arma::vec>(np),
@@ -318,7 +318,7 @@ void dMrs_BFGS(const arma::vec& XX,const arma::uvec& DELTA,
 		old_LL = fnscale * dMrs_cLL(XX,DELTA,D2,S2,xk,copula,false);
 		diff_LL = std::abs(old_LL - curr_LL);
 		
-		if( show ){
+		if( verb ){
 			Rcpp::Rcout << "Iter = " << iter + 1 << "\n";
 			Rcpp::Rcout << "   LL = " << -old_LL << "\n";
 			if( iter > 0 ) Rcpp::Rcout << "   abs_diff_LL = " << diff_LL << "\n";
@@ -352,11 +352,11 @@ void dMrs_BFGS(const arma::vec& XX,const arma::uvec& DELTA,
 		
 		if( uu == 0 ) { // aka no update
 			if( Rcpp_norm(gr_k) > 1.0 ){
-				if( show ) printR_obj("Reset inv_Bk");
+				if( verb ) printR_obj("Reset inv_Bk");
 				inv_Bk = I_np;
 				reset_Bk++;
 			} else {
-				if( show ) printR_obj("Failed line search");
+				if( verb ) printR_obj("Failed line search");
 				break;
 			}
 		}
@@ -386,7 +386,7 @@ void dMrs_BFGS(const arma::vec& XX,const arma::uvec& DELTA,
 		PARS = xk;
 	}
 
-	if( show ){
+	if( verb ){
 		Rcpp::Rcout << "####\nNum Iter = " << iter+1 << "\n";
 		Rcpp::Rcout << "Params = " << xk.t();
 		Rcpp::Rcout << "LL = " << old_LL << "\n";
@@ -410,7 +410,7 @@ Rcpp::List dMrs_GRID(const arma::vec& XX,const arma::uvec& DELTA,
 	const arma::vec& D2,const arma::vec& S2,const arma::vec& log_THETA,
 	const arma::vec& log_ALPHA,const arma::vec& log_LAMBDA,
 	const arma::vec& unc_KAPPA,const std::string& copula,
-	const bool& show = false,const int& ncores = 1){
+	const bool& verb = false,const int& ncores = 1){
 	
 	arma::uword num_alpha = log_ALPHA.n_elem, num_lambda = log_LAMBDA.n_elem,
 		num_kappa = unc_KAPPA.n_elem, num_theta = log_THETA.n_elem,
@@ -419,8 +419,8 @@ Rcpp::List dMrs_GRID(const arma::vec& XX,const arma::uvec& DELTA,
 	// log_ALPHA,log_LAMBDA,unc_KAPPA,log_THETA,LL
 	arma::mat DAT = arma::zeros<arma::mat>(tot,5);
 	double error_num = -999.0;
-	bool show2 = show && ncores == 1;
-	if( show )
+	bool verb2 = verb && ncores == 1;
+	if( verb )
 		Rcpp::Rcout << "Num grid points = " << tot << "\n";
 	
 	for(aa = 0; aa < num_alpha; aa++){
@@ -439,11 +439,11 @@ Rcpp::List dMrs_GRID(const arma::vec& XX,const arma::uvec& DELTA,
 	#ifdef _OPENMP
 	# pragma omp parallel for schedule(dynamic) \
 		num_threads(ncores) \
-		shared(show2,copula,tot,num_alpha,num_lambda,\
+		shared(verb2,copula,tot,num_alpha,num_lambda,\
 			num_kappa,num_theta,XX,DELTA,D2,S2,DAT)
 	#endif
 	for(arma::uword cnt2 = 0; cnt2 < tot; cnt2++){
-		if( show2 ){
+		if( verb2 ){
 			if( (cnt2 + 1) % 500 == 0 )
 				Rcpp::Rcout << ".";
 			if( (cnt2 + 1) % 5000 == 0 || (cnt2 + 1) == tot )
@@ -475,22 +475,22 @@ Rcpp::List dMrs_GRID(const arma::vec& XX,const arma::uvec& DELTA,
 
 // [[Rcpp::export]]
 arma::mat dMrs_MATCH(const arma::mat& wDAT,const arma::mat& rDAT,
-	const int& ncores = 1,const bool& show = true){
+	const int& ncores = 1,const bool& verb = true){
 	// wDAT columns: age, yr_diag, yr_event, sex
 	// rDAT columns: Year, age, qx(hazard), sex
 	
 	arma::uword nn = wDAT.n_rows;
 	arma::mat OUT = arma::zeros<arma::mat>(nn,2); // output dens_t2, surv_t2
-	bool show2 = show && ncores == 1;
+	bool verb2 = verb && ncores == 1;
 	
 	#ifdef _OPENMP
 	# pragma omp parallel for schedule(dynamic) \
 		num_threads(ncores) \
-		shared(show2,nn,wDAT,rDAT,OUT)
+		shared(verb2,nn,wDAT,rDAT,OUT)
 	#endif
 	for(arma::uword ii = 0; ii < nn; ii++){
 		
-		if( show2 ){
+		if( verb2 ){
 			if( (ii + 1) % 500 == 0 )
 				Rcpp::Rcout << ".";
 			if( (ii + 1) % 5000 == 0 || (ii + 1) == nn )

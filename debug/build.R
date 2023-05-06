@@ -1,4 +1,5 @@
 # Steps to create/check/install package from directory
+
 rm(list = ls())
 bb = strsplit(getwd(),"/")[[1]]
 pack_dir = paste(bb[-length(bb)],collapse = "/")

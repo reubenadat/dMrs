@@ -15,7 +15,7 @@ sim_replicate(
   alpha2,
   lambda2,
   propC,
-  show
+  verb
 )
 }
 \arguments{
@@ -45,7 +45,7 @@ event's exponentiated Weibull.}
 \item{propC}{A numeric value between 0 and 1 for
 proportion of subjects with censored event times}
 
-\item{show}{Boolean, set to TRUE for verbose output.}
+\item{verb}{Boolean, set to TRUE for verbose output.}
 }
 \description{
 This function simulates an analysis-ready dataset
