@@ -53,7 +53,8 @@ proportion of subjects with censored event times}
 \item{RR}{Integer number of replicates}
 
 \item{param_grid}{Vector of values spanning possible 
-log(alpha1), log(lambda1), and log(kappa1) parameters}
+log(alpha1), log(lambda1), log(kappa1), unconstrained 
+theta parameters}
 
 \item{upKAPPA}{An integer value taking values 0 or 1. If set 
 to 1, the exponentiated Weibull distribution is assumed. Otherwise,

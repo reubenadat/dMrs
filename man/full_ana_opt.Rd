@@ -4,7 +4,13 @@
 \alias{full_ana_opt}
 \title{full_ana_opt}
 \usage{
-full_ana_opt(DATA, max_year = 100, param_grid = seq(-3, 5, 0.5), verb)
+full_ana_opt(
+  DATA,
+  max_year = 100,
+  param_grid = seq(-3, 5, 0.5),
+  ncores = 1,
+  verb
+)
 }
 \arguments{
 \item{DATA}{A data.frame containing column names \code{time},
@@ -14,7 +20,10 @@ full_ana_opt(DATA, max_year = 100, param_grid = seq(-3, 5, 0.5), verb)
 probability to calculate.}
 
 \item{param_grid}{Vector of values spanning possible 
-log(alpha1), log(lambda1), and log(kappa1) parameters}
+log(alpha1), log(lambda1), log(kappa1), unconstrained 
+theta parameters}
+
+\item{ncores}{An integer for the number of threads}
 
 \item{verb}{Boolean, set to TRUE for verbose output.}
 }

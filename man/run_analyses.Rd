@@ -7,10 +7,10 @@
 run_analyses(
   DATA,
   THETAs = NULL,
-  upKAPPA,
+  upKAPPA = NULL,
   gTHRES = 0.08,
-  copula,
-  param_grid = seq(-3, 3, 0.25),
+  COPULAS = NULL,
+  param_grid,
   vec_time,
   ncores = 1,
   verb
@@ -29,10 +29,12 @@ the Weibull distribution is assumed and optimized over.}
 \item{gTHRES}{A numeric threshold on the L2 norm of 
 the gradient evaluated at the MLE.}
 
-\item{copula}{A string input, either "Clayton" or "Gumbel"}
+\item{COPULAS}{If \code{NULL}, will optimize over all copulas. 
+Otherwise set to 'Clayton' or 'Gumbel'}
 
 \item{param_grid}{Vector of values spanning possible 
-log(alpha1), log(lambda1), and log(kappa1) parameters}
+log(alpha1), log(lambda1), log(kappa1), unconstrained 
+theta parameters}
 
 \item{vec_time}{Vector of times to calculate predicted survival
 on the same scale as times provided in the \code{DATA} data.frame.}

@@ -4,7 +4,7 @@
 \alias{plot_SURVs}
 \title{plot_SURVs}
 \usage{
-plot_SURVs(run_ANA, MULTIPLE, ALPHA = 0.5, LAB_THETA = FALSE, hide_LL = TRUE)
+plot_SURVs(run_ANA, MULTIPLE, ALPHA = 0.5)
 }
 \arguments{
 \item{run_ANA}{The object outputed from \code{run_analyses}
@@ -17,12 +17,6 @@ overlayed with a legend.}
 
 \item{ALPHA}{A numeric value between 0 and 1 to control the
 confidence band transparency.}
-
-\item{LAB_THETA}{Boolean set to \code{TRUE} to replace
-theta values with character strings.}
-
-\item{hide_LL}{Boolean set to \code{TRUE} to suppress
-plot title containing evaluated log likelihoods.}
 }
 \description{
 plot_SURVs

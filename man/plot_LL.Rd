@@ -4,7 +4,7 @@
 \alias{plot_LL}
 \title{plot_LL}
 \usage{
-plot_LL(GPROF, GOPT = NULL, nBREAKs = 5, TITLE = NULL)
+plot_LL(GPROF, GOPT = NULL, nBREAKs = 5, COPULA)
 }
 \arguments{
 \item{GPROF}{An outputted data.frame from \code{get_PROFILE()}.}
@@ -14,7 +14,7 @@ plot_LL(GPROF, GOPT = NULL, nBREAKs = 5, TITLE = NULL)
 \item{nBREAKs}{A positive integer set to 5 by default to specify
 the number of breaks in axes ticks.}
 
-\item{TITLE}{String for plot title}
+\item{COPULA}{A string input, either "Clayton" or "Gumbel"}
 }
 \description{
 Visualize grid of profile log likelihood

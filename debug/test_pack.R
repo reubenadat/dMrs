@@ -3,7 +3,7 @@
 # ----------
 # Shortcuts, Install/Load Libraries
 # ----------
-rm(list=ls())
+rm(list = ls())
 setdirs = function(){
 	
 	where_file = gsub("\\\\","/",Sys.getenv("HOME"))
@@ -24,7 +24,7 @@ setdirs = function(){
 	
 	# Package check
 	req_packs = c("devtools","numDeriv","smarter",
-		"ggplot2","viridis","relsurv","dMrs")
+		"ggplot2","viridis","relsurv","copula","dMrs")
 	all_packs = as.character(installed.packages()[,1])
 	for(pack in req_packs){
 		
@@ -36,8 +36,12 @@ setdirs = function(){
 		if( pack == "smarter" ){
 			install_github(repo = "pllittle/smarter")
 		} else if( pack == "dMrs" ){
-			# stop("Look at reubenadat/dMrs for installation")
-			install(pack_dir,build_vignettes = FALSE)
+			# install(pack_dir,build_vignettes = FALSE)
+			Rcpp_fn = file.path(pack_dir,"src/dMrs.cpp")
+			Rcpp::sourceCpp(file = Rcpp_fn,showOutput = TRUE)
+			source(file.path(pack_dir,"R/smarter.R"))
+			source(file.path(pack_dir,"R/parameters.R"))
+			source(file.path(pack_dir,"R/dMrs.R"))
 		} else {
 			install.packages(pack)
 		}
@@ -61,6 +65,8 @@ my_dirs
 # ----------
 # Create package datasets
 # ----------
+if( TRUE ){
+
 library(stringr)
 
 usa_fn = file.path(my_dirs$pack_dir,
@@ -103,6 +109,7 @@ dim(usa); usa[1:10,]
 
 save(usa,file = file.path(my_dirs$pack_dir,"data/usa.rda"))
 
+}
 
 # ----------
 # Running code example
@@ -113,23 +120,26 @@ if( TRUE ){ # Specify parameters/arguments
 COPULAS = c("Clayton","Gumbel")
 DISTs		= c("weibull","expweibull")
 COPULA 	= COPULAS[1]
-dist1 	= DISTs[1]
-NN 			= 5e2
+dist1 	= DISTs[2]
+NN 			= 1e3
 theta 	= 2
 if( COPULA == "Clayton" && theta < 0 ) stop("theta issue")
 if( COPULA == "Gumbel" && theta < 1 ) stop("theta issue")
-alpha1 	= 4
+alpha1 	= 1
 lambda1 = 4
 kappa1 	= ifelse(dist1 == "weibull",1,2)
-alpha2 	= 3
+alpha2 	= 2
 lambda2 = 6
 propC 	= 0.1
-true_PARS = log(c(alpha1,lambda1,kappa1,theta)); true_PARS
+true_PARS = log(c(alpha1,lambda1,kappa1,theta))
+if( COPULA == "Gumbel" ) true_PARS[4] = log(theta - 1)
+names(true_PARS) = sprintf("log_%s",c("A","L","K","T"))
+true_PARS
 
 }
 if( TRUE ){ # Simulate dataset
 
-set.seed(1)
+set.seed(3)
 one_rep = sim_replicate(copula = COPULA,dist1 = dist1,
 	NN = NN,theta = theta,alpha1 = alpha1,lambda1 = lambda1,
 	kappa1 = kappa1,alpha2 = alpha2,lambda2 = lambda2,
@@ -141,64 +151,31 @@ table(one_rep$DATA$delta)
 }
 if( TRUE ){ # Run analysis, estimate theta by default
 
-vec_time = seq(0,round(max(one_rep$DATA$time),0))
-
 run_ana = run_analyses(
 	DATA = one_rep$DATA,
-	#THETAs = theta,
-	copula = c("Clayton","Gumbel")[1],
-	upKAPPA = c(0,1)[1],
-	vec_time = vec_time,
+	THETAs = c(0,2/3,2,6),upKAPPA = 0,COPULAS = c("Clayton"),
+	param_grid = seq(-1,3,0.1),
 	verb = TRUE)
+length(run_ana)
 
-run_ana[[1]]$RES[c("out","cout")]
+# Check estimates
+
+idx = 2
+
+true_PARS
+run_ana[[idx]]$copula
+run_ana[[idx]]$RES[c("out","cout","LL")]
+dim(run_ana[[idx]]$RES$GRID)
+
+plot_LL(GPROF = run_ana[[idx]]$RES$GPROF,
+	GOPT = run_ana[[idx]]$RES$GOPT,
+	COPULA = run_ana[[idx]]$copula)
+
+# Plot survival
+plot_SURVs(run_ANA = run_ana,MULTIPLE = TRUE,ALPHA = 0.4)
+plot_SURVs(run_ANA = run_ana,MULTIPLE = FALSE,ALPHA = 0.4)
 
 }
-
-
-# Run analyses
-my_copula = COPULAS[1]; my_copula
-if( my_copula == "Clayton" ) 	THETAs = c(0,2/3,2,4,6)
-if( my_copula == "Gumbel" ) 	THETAs = c(1,4/3,2,4)
-THETAs 	= round(THETAs,2); THETAs
-upKAPPA = c(0,1)[2] # 0 = Weibull, 1 = Exp-Weibull
-
-run_ana = run_analyses(DATA = one_rep$DATA,
-	THETAs = THETAs,upKAPPA = upKAPPA,
-	copula = my_copula,param_grid = seq(-2,4,0.25),
-	vec_time = seq(0,round(max(one_rep$DATA$time),0)),
-	verb = TRUE)
-names(run_ana)
-run_ana[[1]]$RES[c("out","cout")]
-
-plot_SURVs(run_ANA = run_ana,
-	MULTIPLE = TRUE,ALPHA = 0.4)
-plot_SURVs(run_ANA = run_ana,
-	MULTIPLE = FALSE,ALPHA = 0.4)
-
-## Test delta method and variance
-tt = 5 # try time
-tmp_surv = function(PARS){
-	
-	CDF = pexpweibull(q = tt,
-		lambda = exp(PARS[2]),
-		alpha = exp(PARS[1]),
-		kappa = exp(PARS[3]))
-	SURV = 1 - CDF
-	return(SURV)
-	
-}
-names(run_ana)
-bb = run_ana[["theta = 4"]]
-bb$RES$cout
-bb$PRED[which(bb$PRED$time == tt),]
-PARS = bb$RES$out$EST
-PARS
-tmp_surv(PARS = PARS)
-
-nabla = numDeriv::grad(tmp_surv,PARS)
-VV = t(nabla) %*% bb$RES$COVAR %*% nabla; VV
-sqrt(VV)
 
 # Run full simulation
 # fsim = full_sim(copula = copula,dist1 = dist1,NN = NN,theta = theta,
@@ -443,6 +420,36 @@ cohort 	= "Slovenia Colon Cancer Registry"
 NAME 		= "Slovenia"
 
 # Analyze
+run_ana = run_analyses(
+	DATA = rd,
+	THETAs = c(0,2/3,2,6),COPULAS = "Clayton",
+	# THETAs = c(1,4/3,2,4),COPULAS = "Gumbel",
+	# upKAPPA = c(0,1)[2],
+	# COPULAS = c("Clayton","Gumbel")[2],upKAPPA = 1,
+	param_grid = seq(-3,4,0.25),
+	verb = TRUE)
+length(run_ana)
+
+# Check estimates
+
+idx = 1
+run_ana[[idx]]$copula
+run_ana[[idx]]$RES[c("out","cout","LL")]
+dim(run_ana[[idx]]$RES$GRID)
+
+plot_LL(GPROF = run_ana[[idx]]$RES$GPROF,
+	GOPT = run_ana[[idx]]$RES$GOPT,
+	COPULA = run_ana[[idx]]$copula)
+
+# Plot survival
+plot_SURVs(run_ANA = run_ana,MULTIPLE = TRUE,ALPHA = 0.4)
+plot_SURVs(run_ANA = run_ana,MULTIPLE = !TRUE,ALPHA = 0.4)
+
+### OLDER analysis code below
+
+
+
+
 res2 = full_ana_opt(DATA = rd,max_year = 100,
 	param_grid = seq(-3,5,0.25),verb = TRUE)
 names(res2)

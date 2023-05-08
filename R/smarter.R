@@ -149,14 +149,17 @@ make_menu = function(PROMPT,OPTS){
 	
 	INDENT = "   "
 	cmd = sprintf("%s:",PROMPT)
-	vec_seq = seq(length(OPTS))
-	for( ii in vec_seq ){
-		cmd = sprintf("%s\n%s%s) %s",cmd,INDENT,ii,OPTS[ii])
+	if( length(OPTS) > 0 ){
+		vec_seq = seq(length(OPTS))
+		for( ii in vec_seq ){
+			cmd = sprintf("%s\n%s%s) %s",cmd,INDENT,ii,OPTS[ii])
+		}
 	}
 	cmd = sprintf("%s\n%s> ",cmd,INDENT)
 	
 	while(TRUE){
 		resp = readline(prompt = cmd)
+		if( is.null(OPTS) ) return(resp)
 		if( resp %in% vec_seq )
 			break
 		cat("Not an option, try again\n")
