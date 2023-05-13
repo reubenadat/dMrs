@@ -385,7 +385,7 @@ dev.off()
 
 # Import data
 wdat_fn = file.path(my_dirs$pack_dir,
-	"inst/extdata","bc_git.txt")
+	"inst/extdata","bc.txt")
 wDAT = data.table::fread(wdat_fn,data.table = FALSE)
 rdat_fn = file.path(my_dirs$pack_dir,
 	"inst/extdata","frepop.txt")
