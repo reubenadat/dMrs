@@ -33,7 +33,8 @@ get_copula = function(copula){
 get_verb = function(verb){
 	
 	if( missing(verb) ){
-		verb = make_menu(OPTS = c(TRUE,FALSE))
+		verb = make_menu(PROMPT = "Set verbose parameter:",
+			OPTS = c(TRUE,FALSE))
 	}
 	
 	if( !class(verb) %in% c("logical","character") ){
@@ -107,7 +108,7 @@ get_parGRID = function(LOW,HIGH,STEP){
 		return(get_parGRID(LOW = LOW,HIGH = HIGH))
 	
 	if( length(LOW) != 1 || length(HIGH) != 1 || length(STEP) != 1 ){
-		return(get_parGRID(LOW = LOW,HIGH = HIGH,STEP = STEP))
+		return(get_parGRID())
 	}
 	
 	param_grid = seq(from = LOW,to = HIGH,by = STEP)

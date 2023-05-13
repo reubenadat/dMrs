@@ -122,11 +122,12 @@ RR = 5e2
 # Sample size grid
 NN = c(500,1000,2000)
 
-# Set alpha1, lambda1, alpha2, lambda2: Pick based on real data
+# Set alpha1 = 5, lambda1 = 1.2, alpha2 = 2.1, lambda2 = 2.0
+	# Pick based on real data
 
 # Set kappa1 for Exp-Weibull to 2
 
-# Degree of censoring: 20% censoring
+# Degree of censoring: aim for 20% censoring
 
 # Set grid size to stepsize = 0.1 or 0.25 for now
 
