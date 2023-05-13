@@ -112,6 +112,46 @@ save(usa,file = file.path(my_dirs$pack_dir,"data/usa.rda"))
 }
 
 # ----------
+# Simulation Ideas
+# ----------
+if(FALSE){
+
+# Num replicates
+RR = 5e2
+
+# Sample size grid
+NN = c(500,1000,2000)
+
+# Set alpha1, lambda1, alpha2, lambda2: Pick based on real data
+
+# Set kappa1 for Exp-Weibull to 2
+
+# Degree of censoring: 20% censoring
+
+# Set grid size to stepsize = 0.1 or 0.25 for now
+
+# Theta: Can be independent or moderate dependence
+	# For Clayton: Theta = 0 or Theta = 2
+	# For Gumbel: Theta = 1 or Theta = 2
+
+# If we don't know the truth ...
+	# How often is the true configuration 
+	#		(copula and distribution) selected 
+	#		based on max(LL)? 
+	# Does this approach work in practice?
+	# Maybe max(BIC) should max(LL) not work
+
+# If we already know the configuration, then ...
+	# Bias
+	# SE
+	# SEE
+	# Coverage Probability for alpha = 0.05
+
+
+
+}
+
+# ----------
 # Running code example
 # ----------
 
@@ -150,6 +190,30 @@ table(one_rep$DATA$delta)
 
 }
 if( TRUE ){ # Run analysis, estimate theta by default
+
+run_ana = run_analyses(
+	DATA = one_rep$DATA,
+	upKAPPA = 1)
+class(run_ana)
+length(run_ana)
+
+names(run_ana[[1]])
+
+
+plot_SURVs(run_ANA = run_ana,
+	MULTIPLE = TRUE,ALPHA = 0.4)
+
+
+
+
+
+
+
+
+
+
+
+
 
 run_ana = run_analyses(
 	DATA = one_rep$DATA,
