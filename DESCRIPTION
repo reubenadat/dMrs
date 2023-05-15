@@ -7,7 +7,7 @@ Author: Paul Little, Reuben Adatorwovor
 Maintainer: Paul Little, Reuben Adatorwovor <plittle@fredhutch.org>
 Description: This package performs survival data fitting.
 Encoding: UTF-8
-Imports: Rcpp, Rmpfr, copula, gplots, 
+Imports: methods, Rcpp, Rmpfr, copula, gplots, 
 	ggplot2, viridis
 LinkingTo: Rcpp, RcppArmadillo
 Suggests: knitr, rmarkdown, markdown

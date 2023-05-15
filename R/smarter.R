@@ -169,6 +169,9 @@ make_menu = function(PROMPT,OPTS){
 	return(OPTS[resp])
 	
 }
+chk_int_vec = function(xx){
+	is(xx,"numeric") && all(xx == round(xx))
+}
 
 ###
 

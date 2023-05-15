@@ -7,7 +7,10 @@ pack = strsplit(pack_dir,"/")[[1]]
 pack = pack[length(pack)]
 pack
 
-if( pack %in% installed.packages()[,1] ){
+chk_pack = tryCatch(find.package(pack),
+	error = function(ee){NULL})
+
+if( !is.null(chk_pack) ){
 	remove.packages(pack)
 	q("no")
 }

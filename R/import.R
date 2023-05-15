@@ -15,6 +15,7 @@
 #' @importFrom viridis scale_fill_viridis
 #' @importFrom Rmpfr mpfr
 #' @importFrom utils head
+#' @importFrom methods is
 #' @useDynLib dMrs
 NULL
 
