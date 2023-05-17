@@ -33,7 +33,7 @@ get_copula = function(copula){
 get_verb = function(verb){
 	
 	if( missing(verb) ){
-		verb = make_menu(PROMPT = "Set verbose parameter:",
+		verb = make_menu(PROMPT = "Set verbose parameter",
 			OPTS = c(TRUE,FALSE))
 	}
 	

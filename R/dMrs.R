@@ -702,6 +702,12 @@ opt_replicate = function(REP,param_grid,
 	LL 		= wrap_LL(iPARS)
 	GRAD 	= wrap_GRAD(iPARS)
 	HESS 	= wrap_HESS(iPARS)
+	nparams = 2 								# est. alpha1 + lambda1
+	nparams = nparams + upKAPPA	# est. kappa
+	nparams = nparams + upTHETA # est. theta
+	NN = nrow(DATA)
+	BIC = 2*LL - nparams * log(NN)
+	
 	
 	names(GRAD) 		= out$PARS
 	dimnames(HESS) 	= list(out$PARS,out$PARS)
@@ -710,7 +716,8 @@ opt_replicate = function(REP,param_grid,
 	return(list(GRID = gout$DAT,GPROF = gprof,
 		GOPT = gopt,GOPT_PRE = gopt_pre,
 		out = out,cout = cout,LL = LL,GRAD = GRAD,
-		HESS = HESS,COVAR = covar))
+		HESS = HESS,COVAR = covar,nparams = nparams,
+		BIC = BIC))
 	
 }
 
