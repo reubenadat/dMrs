@@ -4,7 +4,7 @@
 \alias{plot_LL}
 \title{plot_LL}
 \usage{
-plot_LL(GPROF, GOPT = NULL, nBREAKs = 5, COPULA)
+plot_LL(GPROF, GOPT = NULL, nBREAKs = 5, COPULA, HJUST = 1)
 }
 \arguments{
 \item{GPROF}{An outputted data.frame from \code{get_PROFILE()}.}
@@ -15,6 +15,9 @@ plot_LL(GPROF, GOPT = NULL, nBREAKs = 5, COPULA)
 the number of breaks in axes ticks.}
 
 \item{COPULA}{A string input, either "Clayton" or "Gumbel"}
+
+\item{HJUST}{A numeric value for horizontal alignment of labeled
+ggplot points}
 }
 \description{
 Visualize grid of profile log likelihood

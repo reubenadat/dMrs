@@ -161,7 +161,7 @@ if( TRUE ){ # Specify parameters/arguments
 COPULAS = c("Clayton","Gumbel")
 DISTs		= c("weibull","expweibull")
 COPULA 	= COPULAS[1]
-dist1 	= DISTs[2]
+dist1 	= DISTs[1]
 NN 			= 1e3
 theta 	= 2
 if( COPULA == "Clayton" && theta < 0 ) stop("theta issue")
@@ -190,55 +190,98 @@ table(one_rep$DATA$D)
 table(one_rep$DATA$delta)
 
 }
-if( TRUE ){ # Run analysis, estimate theta by default
+if( FALSE ){
 
 run_ana = run_analyses(
 	DATA = one_rep$DATA,
-	upKAPPA = 1)
+	upKAPPA = 0,
+	param_grid = seq(-2,3,0.15),
+	verb = TRUE)
+
 class(run_ana)
 length(run_ana)
 
 names(run_ana[[1]])
 
-
+sapply(run_ana,function(xx) xx$RES$LL)
+sapply(run_ana,function(xx) xx$RES$BIC)
+sapply(run_ana,function(xx){
+	
+	LL = xx$RES$LL
+	
+	np = 2
+	np = np + ifelse(xx$RES$cout$EST[3] == 1,0,1)
+	np = np + ifelse(
+		( xx$copula == "Clayton" & xx$RES$cout$EST[4] == 0 )
+		| ( xx$copula == "Gumbel" & xx$RES$cout$EST[4] == 1 ),0,1)
+	
+	BIC = 2 * LL - log(NN) * np
+	BIC
+	
+},USE.NAMES = FALSE)
 plot_SURVs(run_ANA = run_ana,
 	MULTIPLE = TRUE,ALPHA = 0.4)
 
+ii = 3
+plot_LL(GPROF = run_ana[[ii]]$RES$GPROF,
+	GOPT = run_ana[[ii]]$RES$GOPT,
+	COPULA = run_ana[[ii]]$copula,HJUST = 0)
 
+}
+if( TRUE ){ # Run analysis, estimate theta by default
 
+my_dirs$rep_dir = "C:/Users/Admin/Desktop/dMrs_sim/REPS"
+my_dirs$opt_dir = "C:/Users/Admin/Desktop/dMrs_sim/OPTS"
 
+COPULA = c("Clayton","Gumbel")[1]
+DIST		= c("weibull","expweibull")[1]
+RR 			= 1
+NN			= 5e2
+DEPEND	= !TRUE
 
+repCDNE_dir = file.path(my_dirs$rep_dir,
+	sprintf("C.%s_D.%s_N.%s_E.%s",
+	COPULA,DIST,NN,DEPEND))
 
+optCDNE_dir = file.path(my_dirs$opt_dir,
+	sprintf("C.%s_D.%s_N.%s_E.%s",
+	COPULA,DIST,NN,DEPEND))
+smart_mkdir(optCDNE_dir)
 
+rr = 1
+out_fn = file.path(optCDNE_dir,sprintf("R.%s.rds",rr))
+if( file.exists(out_fn) ) return(NULL)
 
+rds_fn = file.path(repCDNE_dir,sprintf("R.%s.rds",rr))
+one_rep = readRDS(rds_fn)
 
-
-
-
-
+one_rep$PARAMS
 run_ana = run_analyses(
 	DATA = one_rep$DATA,
-	THETAs = c(0,2/3,2,6),upKAPPA = 0,COPULAS = c("Clayton"),
-	param_grid = seq(-1,3,0.1),
+	upKAPPA = 0,
+	param_grid = seq(-2,3,0.15),
 	verb = TRUE)
+
+class(run_ana)
 length(run_ana)
 
-# Check estimates
+names(run_ana[[1]])
 
-idx = 2
+sapply(run_ana,function(xx) xx$RES$LL)
+sapply(run_ana,function(xx) xx$RES$BIC)
+plot_SURVs(run_ANA = run_ana,
+	MULTIPLE = TRUE,ALPHA = 0.4)
 
-true_PARS
-run_ana[[idx]]$copula
-run_ana[[idx]]$RES[c("out","cout","LL")]
-dim(run_ana[[idx]]$RES$GRID)
+idx = 1
+GPROF 	= run_ana[[idx]]$RES$GPROF
+GOPT 		= run_ana[[idx]]$RES$GOPT; GOPT
+COPULA 	= run_ana[[idx]]$copula
 
-plot_LL(GPROF = run_ana[[idx]]$RES$GPROF,
-	GOPT = run_ana[[idx]]$RES$GOPT,
-	COPULA = run_ana[[idx]]$copula)
+plot_LL(GPROF = GPROF,GOPT = GOPT[order(-GOPT$LL),][1:10,],
+	COPULA = COPULA,HJUST = 0)
 
-# Plot survival
-plot_SURVs(run_ANA = run_ana,MULTIPLE = TRUE,ALPHA = 0.4)
-plot_SURVs(run_ANA = run_ana,MULTIPLE = FALSE,ALPHA = 0.4)
+
+
 
 }
 

@@ -2,6 +2,18 @@
 # Parameters
 # ----------
 
+get_PLOT = function(PLOT){
+	
+	if( missing(PLOT) ){
+		PLOT = TRUE
+	}
+	
+	if( !is(PLOT,"logical") )
+		stop("PLOT should be logical")
+	
+	return(PLOT)
+	
+}
 get_copula = function(copula){
 	
 	if( missing(copula) ){
@@ -57,7 +69,7 @@ get_upPARS = function(upKAPPA,THETA){
 	
 	upPARS 		= rep(1,4)
 	upPARS[3] = upKAPPA
-	upPARS[4] = ifelse(is.null(THETA),1,0)
+	upPARS[4] = ifelse(is.na(THETA),1,0)
 	
 	return(upPARS)
 	

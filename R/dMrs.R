@@ -202,19 +202,24 @@ get_LOCAL_OPTS = function(GPROF,verb){
 #' @param nBREAKs A positive integer set to 5 by default to specify
 #'	the number of breaks in axes ticks.
 #' @param COPULA A string input, either "Clayton" or "Gumbel"
+#' @param HJUST A numeric value for horizontal alignment of labeled
+#'	ggplot points
 #' @export
-plot_LL = function(GPROF,GOPT = NULL,nBREAKs = 5,COPULA){
+plot_LL = function(GPROF,GOPT = NULL,nBREAKs = 5,COPULA,
+	HJUST = 1){
+	
 	if(FALSE){
 		GPROF 	= gprof
 		GOPT 		= gopt
-		nBREAKs = 5
 		COPULA 	= PARAMS$copula
+		
+		nBREAKs = 5; HJUST = -0.1
 		
 	}
 	
 	res = GPROF
 	res$LL[res$LL == min(res$LL)] = NA
-	low_quant = quantile(res$LL,0.3,na.rm = TRUE); low_quant
+	low_quant = quantile(res$LL,0.2,na.rm = TRUE); low_quant
 	table(res$LL >= low_quant)
 	res$LL[res$LL < low_quant] = NA
 	
@@ -232,8 +237,11 @@ plot_LL = function(GPROF,GOPT = NULL,nBREAKs = 5,COPULA){
 	
 	LL = log_alpha1 = log_lambda1 = log_theta = NULL
 	
-	g1 = ggplot(data = res,aes(x = log_alpha1,y = log_lambda1)) +
-		geom_tile(aes(fill = LL)) + 
+	my_stepsize = diff(sort(unique(res$log_alpha1)))[1]
+	
+	g1 = ggplot(data = res,mapping = aes(x = log_alpha1,
+		y = log_lambda1,fill = LL)) +
+		geom_tile(width = my_stepsize,height = my_stepsize) + 
 		coord_cartesian(expand = 0,xlim = xrange,ylim = yrange) +
 		scale_x_continuous(breaks = xbreaks) +
 		scale_y_continuous(breaks = ybreaks) +
@@ -267,11 +275,11 @@ plot_LL = function(GPROF,GOPT = NULL,nBREAKs = 5,COPULA){
 		if( COPULA == "Clayton" ){
 			g1 = g1 + geom_text(data = GOPT,
 				aes(label = sprintf("log(\u03B8) = %s",log_theta)),
-				vjust = -1,hjust = -0.1,size = 5,color = "red")
+				vjust = -1,hjust = HJUST,size = 5,color = "red")
 		} else if( COPULA == "Gumbel" ){
 			g1 = g1 + geom_text(data = GOPT,
 				aes(label = sprintf("log(\u03B8-1) = %s",log_theta)),
-				vjust = -1,hjust = -0.1,size = 5,color = "red")
+				vjust = -1,hjust = HJUST,size = 5,color = "red")
 		}
 		
 	}
@@ -479,8 +487,8 @@ sim_replicate = function(copula,dist1,NN,theta,
 	
 }
 
-opt_replicate = function(REP,param_grid,
-	theta = NULL,upKAPPA,ncores = 1,gTHRES = 8e-2,verb){
+opt_replicate = function(REP,param_grid,theta,
+	upKAPPA,ncores = 1,gTHRES = 8e-2,verb,PLOT){
 
 	if(FALSE){
 		REP 				= REP
@@ -489,11 +497,13 @@ opt_replicate = function(REP,param_grid,
 		gTHRES 			= gTHRES
 		verb 				= verb
 		ncores 			= ncores
+		PLOT				= TRUE
 		
 	}
 	
 	verb 		= get_verb(verb = verb)
-	upTHETA = ifelse(is.null(theta),1,0)
+	PLOT		= get_PLOT(PLOT = PLOT)
+	upTHETA = ifelse(is.na(theta),1,0)
 	DATA 		= REP$DATA
 	PARAMS 	= REP$PARAMS
 	upPARS	= get_upPARS(upKAPPA = upKAPPA,
@@ -535,7 +545,8 @@ opt_replicate = function(REP,param_grid,
 		if( PARAMS$copula == "Clayton" ) 	log_THETA = log(theta)
 		if( PARAMS$copula == "Gumbel" ) 	log_THETA = log(theta - 1)
 	} else if( upTHETA == 1 ){
-		log_THETA = c(-Inf,param_grid)
+		# log_THETA = c(-Inf,param_grid)
+		log_THETA = param_grid
 		log_THETA = sort(unique(log_THETA))
 	}
 	
@@ -554,9 +565,12 @@ opt_replicate = function(REP,param_grid,
 	gopt = get_LOCAL_OPTS(GPROF = gprof,verb = verb)
 	# dim(gopt); head(gopt)
 	
-	if( verb ){
+	if( verb && PLOT ){
 		cat(sprintf("%s: Two-dimensional plot of the profile log likelihood ...\n",date()))
-		print(plot_LL(GPROF = gprof,GOPT = gopt,
+		sub_gopt = gopt[order(-gopt$LL),]
+		sub_gopt = sub_gopt[seq(min(c(3,nrow(sub_gopt)))),,drop = FALSE]
+		print(plot_LL(GPROF = gprof,
+			GOPT = sub_gopt,
 			COPULA = PARAMS$copula))
 	}
 	
@@ -650,6 +664,11 @@ opt_replicate = function(REP,param_grid,
 			HESS = NULL,COVAR = NULL))
 	}
 	gopt = gopt[which.max(gopt$fin_LL),]
+	
+	gopt$log_alpha1 = gopt$fin_logA
+	gopt$log_lambda1 = gopt$fin_logL
+	gopt$unc_kappa1 = gopt$fin_logK
+	gopt$log_theta = gopt$fin_logT
 	gopt
 	
 	iPARS = as.numeric(gopt[1,
@@ -702,11 +721,19 @@ opt_replicate = function(REP,param_grid,
 	LL 		= wrap_LL(iPARS)
 	GRAD 	= wrap_GRAD(iPARS)
 	HESS 	= wrap_HESS(iPARS)
-	nparams = 2 								# est. alpha1 + lambda1
-	nparams = nparams + upKAPPA	# est. kappa
-	nparams = nparams + upTHETA # est. theta
+	
+	# est. alpha1 + lambda1
+	nparams = 2 								
+	# est. kappa
+	nparams = nparams + upKAPPA	
+	# est. theta
+	nparams = nparams + ifelse(
+		( PARAMS$copula == "Clayton" & cout$EST[4] == 0 )
+		| ( PARAMS$copula == "Gumbel" & cout$EST[4] == 1 ),
+		0,1)
+	
 	NN = nrow(DATA)
-	BIC = 2*LL - nparams * log(NN)
+	BIC = 2 * LL - nparams * log(NN)
 	
 	
 	names(GRAD) 		= out$PARS
@@ -722,12 +749,12 @@ opt_replicate = function(REP,param_grid,
 }
 
 run_analysis = function(DATA,theta,upKAPPA,
-	gTHRES,copula,param_grid,vec_time,verb,ncores = 1){
+	gTHRES,copula,param_grid,vec_time,verb,PLOT,ncores = 1){
 	
 	if(FALSE){
 		DATA 				= one_rep$DATA
-		theta 			= NULL
-		upKAPPA 		= c(0,1)[2]
+		theta 			= 0
+		upKAPPA 		= c(0,1)[1]
 		gTHRES 			= 8e-2
 		copula 			= c("Clayton","Gumbel")[1]
 		param_grid 	= param_grid
@@ -738,6 +765,7 @@ run_analysis = function(DATA,theta,upKAPPA,
 	}
 	
 	verb = get_verb(verb = verb)
+	PLOT = get_PLOT(PLOT = PLOT)
 	req_names = c("time","delta","dens_t2","surv_t2")
 	if( !all(req_names %in% names(DATA)) ){
 		miss_names = req_names[!(req_names %in% names(DATA))]
@@ -748,7 +776,7 @@ run_analysis = function(DATA,theta,upKAPPA,
 	REP = list(DATA = DATA,PARAMS = smart_df(copula = copula))
 	opt_out = opt_replicate(REP = REP,param_grid = param_grid,
 		theta = theta,upKAPPA = upKAPPA,gTHRES = gTHRES,
-		verb = verb,ncores = ncores)
+		verb = verb,PLOT = PLOT,ncores = ncores)
 	if( is.null(opt_out$out) ){
 		return(list(upKAPPA = upKAPPA,
 			copula = copula,RES = opt_out,
@@ -863,9 +891,13 @@ run_analysis = function(DATA,theta,upKAPPA,
 #' @param vec_time Vector of times to calculate predicted survival
 #'	on the same scale as times provided in the \code{DATA} data.frame.
 #' @param ncores An integer for the number of threads
+#' @param PLOT A logical variable, set to \code{TRUE} by default to
+#'	show the two-dimensional heatmap of the profile likelihood if 
+#'	\code{verb = TRUE}.
 #' @export
 run_analyses = function(DATA,THETAs = NULL,upKAPPA = NULL,
-	gTHRES = 8e-2,COPULAS = NULL,param_grid,vec_time,ncores = 1,verb){
+	gTHRES = 8e-2,COPULAS = NULL,param_grid,vec_time,ncores = 1,
+	verb,PLOT){
 	
 	if(FALSE){
 		DATA 				= one_rep$DATA
@@ -885,6 +917,7 @@ run_analyses = function(DATA,THETAs = NULL,upKAPPA = NULL,
 	
 	COPULAS 		= get_copula(copula = COPULAS)
 	verb 				= get_verb(verb = verb)
+	PLOT				= get_PLOT(PLOT = PLOT)
 	vec_time		= get_vecTIME(TIME = DATA$time,vec_time = vec_time)
 	upKAPPA			= get_upKAPPA(upKAPPA = upKAPPA)
 	if( missing(param_grid) ) param_grid = get_parGRID()
@@ -901,7 +934,7 @@ run_analyses = function(DATA,THETAs = NULL,upKAPPA = NULL,
 			tmp_out = run_analyses(DATA = DATA,THETAs = THETAs,
 				upKAPPA = up_kappa,gTHRES = gTHRES,COPULAS = copula,
 				param_grid = param_grid,vec_time = vec_time,
-				ncores = ncores,verb = verb)
+				ncores = ncores,verb = verb,PLOT = PLOT)
 			
 			nn_tmp_out = length(tmp_out)
 			
@@ -929,11 +962,29 @@ run_analyses = function(DATA,THETAs = NULL,upKAPPA = NULL,
 	out = list()
 	
 	if( is.null(THETAs) ){
+		# Run twice
+		
+		## Once assuming independence
+		theta = ifelse(COPULAS == "Clayton",0,1)
+		if( verb ) cat(sprintf("\n%s: Assume independence ...\n",date()))
 		tmp_out = run_analysis(DATA = DATA,
-			theta = THETAs,upKAPPA = upKAPPA,gTHRES = gTHRES,
+			theta = theta,upKAPPA = upKAPPA,gTHRES = gTHRES,
 			copula = COPULAS,param_grid = param_grid,
-			vec_time = vec_time,verb = verb,ncores = ncores)
-		out[[1]] = tmp_out
+			vec_time = vec_time,verb = verb,PLOT = PLOT,
+			ncores = ncores)
+		if( !is.null(tmp_out$RES$cout) )
+			out[[length(out) + 1]] = tmp_out
+		
+		## Another assuming dependence
+		if( verb ) cat(sprintf("\n%s: Assume dependence ...\n",date()))
+		tmp_out = run_analysis(DATA = DATA,
+			theta = NA,upKAPPA = upKAPPA,gTHRES = gTHRES,
+			copula = COPULAS,param_grid = param_grid,
+			vec_time = vec_time,verb = verb,PLOT = PLOT,
+			ncores = ncores)
+		if( !is.null(tmp_out$RES$cout) )
+			out[[length(out) + 1]] = tmp_out
+		
 		return(out)
 	}
 	
@@ -947,7 +998,8 @@ run_analyses = function(DATA,THETAs = NULL,upKAPPA = NULL,
 			theta = theta,upKAPPA = upKAPPA,
 			gTHRES = gTHRES,copula = COPULAS,
 			param_grid = param_grid,
-			vec_time = vec_time,verb = verb,ncores = ncores)
+			vec_time = vec_time,verb = verb,
+			PLOT = PLOT,ncores = ncores)
 		out[[cnt]] = tmp_out
 		cnt = cnt + 1
 	}

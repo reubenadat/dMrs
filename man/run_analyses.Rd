@@ -13,7 +13,8 @@ run_analyses(
   param_grid,
   vec_time,
   ncores = 1,
-  verb
+  verb,
+  PLOT
 )
 }
 \arguments{
@@ -42,6 +43,10 @@ on the same scale as times provided in the \code{DATA} data.frame.}
 \item{ncores}{An integer for the number of threads}
 
 \item{verb}{Boolean, set to TRUE for verbose output.}
+
+\item{PLOT}{A logical variable, set to \code{TRUE} by default to
+show the two-dimensional heatmap of the profile likelihood if 
+\code{verb = TRUE}.}
 }
 \description{
 This function performs a full analysis of 
