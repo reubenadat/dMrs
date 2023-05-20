@@ -79,7 +79,7 @@ plot_LL = function(GPROF,GOPT = NULL,nBREAKs = 5,COPULA,
 			color = "red",linetype = 3,linewidth = 0.75) +
 			geom_vline(xintercept = GOPT$log_alpha1,
 				color = "red",linetype = 3,linewidth = 0.75)
-		if( COPULA == "Clayton" ){
+		if( COPULA %in% c("Independent","Clayton") ){
 			g1 = g1 + geom_text(data = GOPT,
 				aes(label = sprintf("log(\u03B8) = %s",log_theta)),
 				vjust = -1,hjust = HJUST,size = 5,color = "red")

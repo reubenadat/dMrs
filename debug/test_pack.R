@@ -224,30 +224,20 @@ my_dirs$opt_dir = "C:/Users/Admin/Desktop/dMrs_sim/OPTS"
 
 COPULA = c("Clayton","Gumbel")[1]
 DIST		= c("weibull","expweibull")[1]
-RR 			= 1
+rr 			= 20
 NN			= 5e2
-DEPEND	= !TRUE
 
-repCDNE_dir = file.path(my_dirs$rep_dir,
-	sprintf("C.%s_D.%s_N.%s_E.%s",
-	COPULA,DIST,NN,DEPEND))
+repCDN_dir = file.path(my_dirs$rep_dir,
+	sprintf("C.%s_D.%s_N.%s",COPULA,DIST,NN))
 
-optCDNE_dir = file.path(my_dirs$opt_dir,
-	sprintf("C.%s_D.%s_N.%s_E.%s",
-	COPULA,DIST,NN,DEPEND))
-smart_mkdir(optCDNE_dir)
-
-rr = 1
-out_fn = file.path(optCDNE_dir,sprintf("R.%s.rds",rr))
-if( file.exists(out_fn) ) return(NULL)
-
-rds_fn = file.path(repCDNE_dir,sprintf("R.%s.rds",rr))
+rds_fn = file.path(repCDN_dir,sprintf("R.%s.rds",rr))
 one_rep = readRDS(rds_fn)
 
 one_rep$PARAMS
 run_ana = run_analyses(
 	DATA = one_rep$DATA,
-	upKAPPA = 0,
+	upKAPPA = 1,
+	COPULAS = "Independent",
 	param_grid = seq(-2,3,0.15),
 	verb = TRUE)
 

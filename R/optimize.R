@@ -68,7 +68,6 @@ opt_replicate = function(REP,param_grid,theta,
 		log_THETA = sort(unique(log_THETA))
 	}
 	
-	
 	gout = dMrs_GRID(XX = DATA$time,DELTA = DATA$delta,
 		D2 = DATA$dens_t2,S2 = DATA$surv_t2,
 		log_ALPHA = param_grid,log_LAMBDA = param_grid,
@@ -101,7 +100,7 @@ opt_replicate = function(REP,param_grid,theta,
 	if( verb ) cat(sprintf("%s: BFGS optimization ...\n",date()))
 	nn = nrow(gopt)
 	for(ii in seq(nn)){
-		# ii = 1
+		# ii = 3
 		# if( verb ) cat(".")
 		if( verb ) smart_progress(ii = ii,nn = nn,
 			iter = 5,iter2 = 2e2)
@@ -112,11 +111,22 @@ opt_replicate = function(REP,param_grid,theta,
 			max_iter = 2e2,eps = 1e-6,verb = FALSE)
 		if(FALSE){
 		
-		upPARS = c(1,1,0,0)
-		dMrs_BFGS(XX = DATA$time,DELTA = DATA$delta,
-			D2 = DATA$dens_t2,S2 = DATA$surv_t2,
-			PARS = iPARS,copula = tmp_copula,upPARS = upPARS,
-			max_iter = 2e2,eps = 1e-6,verb = !FALSE)
+			dMrs_BFGS(XX = DATA$time,DELTA = DATA$delta,
+				D2 = DATA$dens_t2,S2 = DATA$surv_t2,
+				PARS = iPARS,copula = tmp_copula,upPARS = upPARS,
+				max_iter = 2e2,eps = 1e-6,verb = TRUE)
+			
+			old_LL = wrap_LL(PARS = iPARS); old_LL
+			shift = 1e-2
+			test_GRAD = rep(0,4)
+			for(jj in seq(4)){
+				upVEC = rep(0,4); upVEC[jj] = 1
+				new_LL = wrap_LL(PARS = iPARS + upVEC * shift)
+				print(new_LL)
+				test_GRAD[jj] = (new_LL - old_LL) / shift
+			}
+			test_GRAD
+		
 		
 		}
 		tmp_LL = wrap_LL(PARS = iPARS)
@@ -133,7 +143,8 @@ opt_replicate = function(REP,param_grid,theta,
 		cat("\n")
 		print(head(gopt))
 	}
-	gopt = gopt[gopt$fin_LL != -999,,drop = FALSE]
+	gopt = gopt[gopt$fin_LL != -999 & gopt$nGRAD > 0,,drop = FALSE]
+	rownames(gopt) = NULL
 	gopt_pre = gopt
 	
 	# Remove non-local optimum solutions
@@ -163,11 +174,9 @@ opt_replicate = function(REP,param_grid,theta,
 			paste0("fin_log",c("A","L","K","T"))]); iPARS
 		hess = wrap_HESS(PARS = iPARS); hess
 		nz = which(diag(hess) != 0)
+		if( length(nz) == 0 ) next
 		# print(hess)
-		if( rcond(hess[nz,nz,drop = FALSE]) == 0 ){
-			next
-			# stop("Error with hessian 1: rcond = 0\n")
-		}
+		if( rcond(hess[nz,nz,drop = FALSE]) == 0 ) next
 		covar = matrix(0,4,4)
 		covar[nz,nz] = solve(-hess[nz,nz,drop = FALSE])
 		# covar
@@ -420,18 +429,18 @@ run_analyses = function(DATA,THETAs = NULL,upKAPPA,
 	verb,PLOT){
 	
 	if(FALSE){
-		DATA 				= one_rep$DATA
-		DATA				= rd
 		
+		DATA 				= one_rep$DATA
 		THETAs 			= NULL
-		upKAPPA 		= NULL
-		gTHRES 			= 8e-2
-		COPULAS			= c("Clayton","Gumbel")[2]
-		param_grid 	= seq(-3,5,0.5)
+		upKAPPA 		= 1
+		COPULAS 		= "Independent"
+		param_grid 	= seq(-2,3,0.15)
+		######
 		vec_time 		= round(seq(0,max(c(100,max(DATA$time))),
 										length.out = 100),2)
+		gTHRES 			= 8e-2
 		ncores			= 1
-		verb 				= TRUE
+		verb 				= TRUE; PLOT = verb
 		
 	}
 	
