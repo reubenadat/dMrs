@@ -14,29 +14,32 @@ get_PLOT = function(PLOT){
 	return(PLOT)
 	
 }
-get_copula = function(copula){
+get_copula = function(copula,PO){
+	
+	if( missing(PO) )
+		stop("Set PO for get_copula")
 	
 	if( missing(copula) ){
-		copula = make_menu(
-			PROMPT = "Select an option",
-			OPTS = c("Clayton","Gumbel"))
+		if( PO ){
+			copula = make_menu(
+				PROMPT = "Select an option",
+				OPTS = c("Independent","Clayton","Gumbel"))
+		} else {
+			return(c("Independent","Clayton","Gumbel"))
+		}
 	}
 	
-	if( is.null(copula) ){
-		return(c("Clayton","Gumbel"))
-	}
-	
-	if( !class(copula) %in% "character" ){
-		return(get_copula())
+	if( !is(copula,"character") ){
+		return(get_copula(PO = PO))
 	}
 	
 	copula = unique(copula)
 	if( length(copula) != 1 ){
-		return(get_copula())
+		return(get_copula(PO = PO))
 	}
 	
-	if( !copula %in% c("Clayton","Gumbel") ){
-		return(get_copula())
+	if( !copula %in% c("Independent","Clayton","Gumbel") ){
+		return(get_copula(PO = PO))
 	}
 	
 	return(copula)
@@ -76,16 +79,11 @@ get_upPARS = function(upKAPPA,THETA){
 }
 get_upKAPPA = function(upKAPPA){
 	
-	if( missing(upKAPPA) ){
-		DIST = make_menu(PROMPT = "Select a distribution",
-			OPTS = c("Weibull","Exp-Weibull"))
-		upKAPPA = ifelse(DIST == "Weibull",0,1)
-		return(upKAPPA)
-	}
+	if( missing(upKAPPA) )
+		return(c(0,1))
 	
-	if( is.null(upKAPPA) ){
-		upKAPPA = c(0,1)
-	}
+	if( !all(upKAPPA %in% c(0,1)) )
+		return(get_upKAPPA())
 	
 	return(upKAPPA)
 	
@@ -138,6 +136,24 @@ get_vecTIME = function(TIME,vec_time){
 	vec_time = sort(unique(vec_time))
 	
 	return(vec_time)
+	
+}
+get_THETAs = function(THETAs,COPULA){
+	
+	if( missing(THETAs) ){
+		if( COPULA == "Independent" )
+			THETAs = NULL
+	}
+	
+	if( COPULA == "Clayton" ){
+		if( !is.null(THETAs) && any(THETAs <= 0) )
+			THETAs = THETAs[THETAs > 0]
+	} else if( COPULA == "Gumbel" ){
+		if( !is.null(THETAs) && any(THETAs <= 1) )
+			THETAs = THETAs[THETAs > 1]
+	}
+	
+	return(THETAs)
 	
 }
 

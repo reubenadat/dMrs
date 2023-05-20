@@ -41,6 +41,8 @@ setdirs = function(){
 			Rcpp::sourceCpp(file = Rcpp_fn,showOutput = TRUE)
 			source(file.path(pack_dir,"R/smarter.R"))
 			source(file.path(pack_dir,"R/parameters.R"))
+			source(file.path(pack_dir,"R/plots.R"))
+			source(file.path(pack_dir,"R/optimize.R"))
 			source(file.path(pack_dir,"R/dMrs.R"))
 		} else {
 			install.packages(pack)
@@ -158,12 +160,12 @@ NN = c(500,1000,2000)
 
 if( TRUE ){ # Specify parameters/arguments
 
-COPULAS = c("Clayton","Gumbel")
+COPULAS = c("Independent","Clayton","Gumbel")
 DISTs		= c("weibull","expweibull")
-COPULA 	= COPULAS[1]
+COPULA 	= COPULAS[2]
 dist1 	= DISTs[1]
 NN 			= 1e3
-theta 	= 2
+theta 	= ifelse(COPULA == "Independent",0,2)
 if( COPULA == "Clayton" && theta < 0 ) stop("theta issue")
 if( COPULA == "Gumbel" && theta < 1 ) stop("theta issue")
 alpha1 	= 1
@@ -175,7 +177,9 @@ propC 	= 0.1
 true_PARS = log(c(alpha1,lambda1,kappa1,theta))
 if( COPULA == "Gumbel" ) true_PARS[4] = log(theta - 1)
 names(true_PARS) = sprintf("log_%s",c("A","L","K","T"))
-true_PARS
+# true_PARS
+TRUTH = list(COPULA = COPULA,PARS = true_PARS)
+print(TRUTH)
 
 }
 if( TRUE ){ # Simulate dataset
@@ -194,33 +198,18 @@ if( FALSE ){
 
 run_ana = run_analyses(
 	DATA = one_rep$DATA,
-	upKAPPA = 0,
-	param_grid = seq(-2,3,0.15),
+	param_grid = seq(-1,3,0.2),
 	verb = TRUE)
 
 class(run_ana)
 length(run_ana)
 
-names(run_ana[[1]])
-
-sapply(run_ana,function(xx) xx$RES$LL)
-sapply(run_ana,function(xx) xx$RES$BIC)
-sapply(run_ana,function(xx){
-	
-	LL = xx$RES$LL
-	
-	np = 2
-	np = np + ifelse(xx$RES$cout$EST[3] == 1,0,1)
-	np = np + ifelse(
-		( xx$copula == "Clayton" & xx$RES$cout$EST[4] == 0 )
-		| ( xx$copula == "Gumbel" & xx$RES$cout$EST[4] == 1 ),0,1)
-	
-	BIC = 2 * LL - log(NN) * np
-	BIC
-	
-},USE.NAMES = FALSE)
 plot_SURVs(run_ANA = run_ana,
 	MULTIPLE = TRUE,ALPHA = 0.4)
+
+ii = 1
+list(COPULA = run_ana[[ii]]$copula,
+	COUT = run_ana[[ii]]$RES$cout)
 
 ii = 3
 plot_LL(GPROF = run_ana[[ii]]$RES$GPROF,

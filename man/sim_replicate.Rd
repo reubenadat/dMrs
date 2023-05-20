@@ -19,7 +19,7 @@ sim_replicate(
 )
 }
 \arguments{
-\item{copula}{A string input, either "Clayton" or "Gumbel"}
+\item{copula}{A string input, either "Independent", "Clayton" or "Gumbel"}
 
 \item{dist1}{A string input for distribution of work dataset 
 event times, either "weibull" or "expweibull" for Weibull with

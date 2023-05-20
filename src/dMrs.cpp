@@ -447,7 +447,9 @@ Rcpp::List dMrs_GRID(const arma::vec& XX,const arma::uvec& DELTA,
 			if( (cnt2 + 1) % 500 == 0 )
 				Rcpp::Rcout << ".";
 			if( (cnt2 + 1) % 5000 == 0 || (cnt2 + 1) == tot )
-				Rcpp::Rcout << (cnt2 + 1) << " out of " << tot << " done\n";
+				Rcpp::Rcout << (cnt2 + 1);
+			if( (cnt2 + 1) % 10000 == 0 || (cnt2 + 1) == tot )
+				Rcpp::Rcout << " out of " << tot << " done\n";
 		}
 		
 		arma::vec PARS = DAT(cnt2,arma::span(0,3)).t();
