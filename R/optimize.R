@@ -217,7 +217,7 @@ opt_replicate = function(REP,param_grid,theta,
 			HESS = NULL,COVAR = NULL))
 	}
 	covar = matrix(0,4,4)
-	covar[nz,nz] = solve(-hess[nz,nz,drop = FALSE])
+	covar[nz,nz] = smart_solve(MAT = -hess[nz,nz,drop = FALSE])
 	covar
 	
 	out = smart_df(PARS = c("log_alpha1","log_lambda1",
