@@ -20,6 +20,16 @@ smart_df = function(...){
 smart_digits = function(x,digits = 2){
 	sprintf(paste0("%.",digits,"f"),round(x,digits))
 }
+smart_solve = function(MAT){
+	
+	mat_rcond = rcond(MAT)
+	if( mat_rcond == 0 )
+		return(NULL)
+	
+	out = solve(MAT,tol = 0.1 * mat_rcond)
+	return(out)
+	
+}
 format_latex = function(INPUT){
 	# INPUT = "optE_AIC%"
 	

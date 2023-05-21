@@ -178,7 +178,9 @@ opt_replicate = function(REP,param_grid,theta,
 		# print(hess)
 		if( rcond(hess[nz,nz,drop = FALSE]) == 0 ) next
 		covar = matrix(0,4,4)
-		covar[nz,nz] = solve(-hess[nz,nz,drop = FALSE])
+		tmp_mat = smart_solve(MAT = -hess[nz,nz,drop = FALSE])
+		if( is.null(tmp_mat) ) next
+		covar[nz,nz] = tmp_mat
 		# covar
 		gopt$neg_var[jj] = any(diag(covar) < 0)
 	}
