@@ -167,13 +167,18 @@ arma::vec dMrs_GRAD(const arma::vec& XX,const arma::uvec& DELTA,
 	const std::string& copula,const arma::vec& upPARS){
 	
 	arma::uword ii;
-	double shift = 1e-5, old_LL, new_LL, error_num = -999.0;
+	double shift = 1e-5, old_LL, new_LL, error_num = -999.0, new_theta;
 	arma::vec GRAD = arma::zeros<arma::vec>(4),
 		old_PARS = GRAD, new_PARS = GRAD;
 	old_PARS.at(0) = std::log(ALPHA);
 	old_PARS.at(1) = std::log(LAMBDA);
 	old_PARS.at(2) = std::log(KAPPA);
-	old_PARS.at(3) = std::log(THETA);
+	
+	if( copula == "Gumbel" ){
+		old_PARS.at(3) = std::log(THETA - 1.0);
+	} else { // Clayton and Independent
+		old_PARS.at(3) = std::log(THETA);
+	}
 	
 	old_LL = dMrs_LL(XX,DELTA,D2,S2,THETA,ALPHA,
 		LAMBDA,KAPPA,copula,false);
@@ -186,7 +191,13 @@ arma::vec dMrs_GRAD(const arma::vec& XX,const arma::uvec& DELTA,
 		new_PARS = old_PARS;
 		if( upPARS.at(ii) == 0.0 ) continue;
 		new_PARS.at(ii) += shift;
-		new_LL = dMrs_LL(XX,DELTA,D2,S2,std::exp(new_PARS.at(3)),
+		
+		new_theta = std::exp(new_PARS.at(3));
+		if( copula == "Gumbel" ){
+			new_theta += 1.0;
+		}
+		
+		new_LL = dMrs_LL(XX,DELTA,D2,S2,new_theta,
 			std::exp(new_PARS.at(0)),
 			std::exp(new_PARS.at(1)),
 			std::exp(new_PARS.at(2)),
@@ -225,7 +236,7 @@ arma::mat dMrs_HESS(const arma::vec& XX,const arma::uvec& DELTA,
 	const std::string& copula,const arma::vec& upPARS){
 	
 	arma::uword ii, np = 4;
-	double shift = 1e-5, error_num = -999.0;
+	double shift = 1e-5, error_num = -999.0, new_theta;
 	arma::vec old_GRAD = dMrs_GRAD(XX,DELTA,D2,S2,
 		THETA,ALPHA,LAMBDA,KAPPA,copula,upPARS),
 		PARS = arma::zeros<arma::vec>(np),
@@ -241,15 +252,31 @@ arma::mat dMrs_HESS(const arma::vec& XX,const arma::uvec& DELTA,
 	PARS.at(0) = std::log(ALPHA);
 	PARS.at(1) = std::log(LAMBDA);
 	PARS.at(2) = std::log(KAPPA);
-	PARS.at(3) = std::log(THETA);
+	
+	if( copula == "Gumbel" ){
+		PARS.at(3) = std::log(THETA - 1.0);
+	} else {
+		PARS.at(3) = std::log(THETA);
+	}
 	
 	for(ii = 0; ii < np; ii++){
 		if( upPARS.at(ii) == 0.0 ) continue;
 		PARS_2 = PARS + shift * I_np.col(ii) % upPARS;
+		
+		new_theta = std::exp(PARS_2.at(3));
+		if( copula == "Gumbel" ){
+			new_theta += 1.0;
+		}
+		
 		tmp_vec = dMrs_GRAD(XX,DELTA,D2,S2,
-			std::exp(PARS_2.at(3)),std::exp(PARS_2.at(0)),
+			new_theta,std::exp(PARS_2.at(0)),
 			std::exp(PARS_2.at(1)),std::exp(PARS_2.at(2)),
-			copula,upPARS) - old_GRAD;
+			copula,upPARS);
+		if( arma::any(tmp_vec == error_num) ){
+			HESS.fill(error_num);
+			return HESS;
+		}
+		tmp_vec = tmp_vec - old_GRAD;
 		tmp_vec /= shift;
 		HESS(arma::span(ii,np - 1),ii) = tmp_vec.subvec(ii,np - 1);
 		if( ii < np - 1 ){

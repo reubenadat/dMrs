@@ -222,10 +222,10 @@ if( TRUE ){ # Run analysis, estimate theta by default
 my_dirs$rep_dir = "C:/Users/Admin/Desktop/dMrs_sim/REPS"
 my_dirs$opt_dir = "C:/Users/Admin/Desktop/dMrs_sim/OPTS"
 
-COPULA = c("Clayton","Gumbel")[1]
+COPULA 	= c("Clayton","Gumbel")[1]
 DIST		= c("weibull","expweibull")[1]
-rr 			= 20
-NN			= 5e2
+rr 			= 3
+NN			= 5e3
 
 repCDN_dir = file.path(my_dirs$rep_dir,
 	sprintf("C.%s_D.%s_N.%s",COPULA,DIST,NN))
@@ -234,11 +234,13 @@ rds_fn = file.path(repCDN_dir,sprintf("R.%s.rds",rr))
 one_rep = readRDS(rds_fn)
 
 one_rep$PARAMS
+
+# Estimate assuming truth known
 run_ana = run_analyses(
 	DATA = one_rep$DATA,
-	upKAPPA = 1,
-	COPULAS = "Independent",
-	param_grid = seq(-2,3,0.15),
+	upKAPPA = ifelse(DIST == "weibull",0,1),
+	COPULAS = COPULA,
+	param_grid = seq(0,1.7,0.1),
 	verb = TRUE)
 
 class(run_ana)

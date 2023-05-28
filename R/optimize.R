@@ -2,6 +2,83 @@
 # Optimization functions
 # ----------
 
+ref_LL = function(DATA,PARS,COPULA){
+	# PARS = (ALPHA1,LAMBDA1,KAPPA1,THETA)
+	if(FALSE){
+		PARS = iPARS
+		COPULA = PARAMS$copula; COPULA
+		
+	}
+	
+	LL = 0
+	nn = nrow(DATA)
+	error_num = -999
+	
+	ALPHA1 	= exp(PARS[1])
+	LAMBDA1 = exp(PARS[2])
+	KAPPA1 	= exp(PARS[3])
+	THETA 	= exp(PARS[4])
+	if( COPULA == "Gumbel" ) THETA = THETA + 1
+	
+	KAL = KAPPA1 * ALPHA1 / LAMBDA1
+	
+	for(ii in seq(nn)){
+		# ii = 1
+		TT_LL = DATA$time[ii] / LAMBDA1
+		TLA = (TT_LL)^ALPHA1
+		E_mTLA = exp(-TLA)
+		CDF = (1 - E_mTLA)^KAPPA1
+		PDF = KAL * (TT_LL)^(ALPHA1 - 1) * 
+			(1 - E_mTLA)^(KAPPA1 - 1) * E_mTLA
+		f1 = PDF
+		f2 = DATA$dens_t2[ii]
+		F1 = CDF
+		if(F1 <= 0){
+			print(sprintf("ii = %s",ii))
+			return(error_num)
+		}
+		F2 = 1 - DATA$surv_t2[ii]
+		
+		if( COPULA == "Independent" ){
+			f_T1_T2 = f1 * F2 + f2 * F1
+			F_T1_T2 = F1 * F2
+		} else if( COPULA == "Clayton" ){
+			f_T1_T2 = ( (F1)^(-THETA) + (F2)^(-THETA) - 1 )^(-1/THETA - 1) *
+				(f1 / F1^(THETA + 1) + f2 / F2^(THETA + 1))
+			F_T1_T2 = (F1^(-THETA) + F2^(-THETA) - 1)^(-1/THETA)
+		} else if( COPULA == "Gumbel" ){
+			nlog_u1 = -log(F1)
+			nlog_u2 = -log(F2)
+			F_T1_T2 = exp(-(nlog_u1^THETA + nlog_u2^THETA)^(1/THETA))
+			f_T1_T2 = F_T1_T2 *
+				(( nlog_u1^THETA + nlog_u2^THETA )^THETA)^(1/THETA-1) *
+				( nlog_u1^(THETA-1) * f1 / F1 + nlog_u2^(THETA-1) * f2 / F2 )
+		}
+		
+		if( DATA$delta[ii] == 1 ){
+			tmp_num = f1 + f2 - f_T1_T2
+			if( tmp_num <= 0 ){
+				print(sprintf("ii = %s",ii))
+				return(error_num)
+			}
+			tmp_LL = log(tmp_num)
+		} else {
+			tmp_num = (1-F1) + (1-F2) - 1 + F_T1_T2
+			if( tmp_num <= 0 ){
+				print(sprintf("ii = %s",ii))
+				return(error_num)
+			}
+			tmp_LL = log(tmp_num)
+		}
+		
+		LL = LL + tmp_LL
+		
+	}
+	
+	return(LL)
+	
+}
+
 opt_replicate = function(REP,param_grid,theta,
 	upKAPPA,ncores = 1,gTHRES = 8e-2,verb,PLOT){
 
@@ -92,6 +169,20 @@ opt_replicate = function(REP,param_grid,theta,
 			COPULA = PARAMS$copula))
 	}
 	
+	if(FALSE){ # Check profile LL
+	head(gout$DAT)
+	GRID = smart_df(gout$DAT)
+	nms = names(GRID)[1:4]; nms
+	nm = nms[1]; nm
+	
+	xx = sort(unique(GRID[[nm]]))
+	yy = sapply(xx,function(zz){
+		max(GRID$LL[which(GRID[[nm]] == zz)])
+	},USE.NAMES = FALSE)
+	plot(xx,yy,type = "b")
+	
+	}
+	
 	# gopt = gprof
 	gopt$fin_LL = NA; gopt$nGRAD = NA; gopt$fin_logA = NA
 	gopt$fin_logL = NA; gopt$fin_logK = NA; gopt$fin_logT = NA
@@ -100,7 +191,7 @@ opt_replicate = function(REP,param_grid,theta,
 	if( verb ) cat(sprintf("%s: BFGS optimization ...\n",date()))
 	nn = nrow(gopt)
 	for(ii in seq(nn)){
-		# ii = 3
+		# ii = 1
 		# if( verb ) cat(".")
 		if( verb ) smart_progress(ii = ii,nn = nn,
 			iter = 5,iter2 = 2e2)
@@ -146,6 +237,34 @@ opt_replicate = function(REP,param_grid,theta,
 	gopt = gopt[gopt$fin_LL != -999 & gopt$nGRAD > 0,,drop = FALSE]
 	rownames(gopt) = NULL
 	gopt_pre = gopt
+	
+	# if(FALSE){ # Debug gradient
+		# library(numDeriv)
+		# iPARS = gopt[1,c(1:4)]
+		# iPARS = gopt[1,c(8:11)]
+		# iPARS = as.numeric(iPARS)
+		# # iPARS[3] = 1e-3
+		# iPARS
+		
+		# wrap_LL(iPARS)
+		# ref_LL(DATA = DATA,PARS = iPARS,COPULA = PARAMS$copula)
+		# ref_LL_2 = function(PARS){
+			# ref_LL(DATA = DATA,PARS = PARS,
+				# COPULA = PARAMS$copula)
+		# }
+		
+		# grad(wrap_LL,iPARS)
+		# grad(ref_LL_2,iPARS)
+		# wrap_GRAD(iPARS)
+		
+		# ii = 1; shift = 1e-6
+		# new_PARS = iPARS
+		# new_PARS[ii] = new_PARS[ii] + shift
+		# old_LL = ref_LL(DATA = DATA,PARS = iPARS,COPULA = PARAMS$copula); old_LL
+		# new_LL = ref_LL(DATA = DATA,PARS = new_PARS,COPULA = PARAMS$copula); new_LL
+		# (new_LL - old_LL)/shift
+	
+	# }
 	
 	# Remove non-local optimum solutions
 	gopt = gopt[which(gopt$nGRAD < gTHRES),]
@@ -282,9 +401,9 @@ run_analysis = function(DATA,theta,upKAPPA,
 	gTHRES,copula,param_grid,vec_time,verb,PLOT,ncores = 1){
 	
 	if(FALSE){
-		DATA 				= one_rep$DATA
-		theta 			= 0
-		upKAPPA 		= c(0,1)[1]
+		DATA 				= DATA
+		theta 			= NA
+		upKAPPA 		= upKAPPA
 		gTHRES 			= 8e-2
 		copula 			= c("Clayton","Gumbel")[1]
 		param_grid 	= param_grid
@@ -434,9 +553,10 @@ run_analyses = function(DATA,THETAs = NULL,upKAPPA,
 		
 		DATA 				= one_rep$DATA
 		THETAs 			= NULL
-		upKAPPA 		= 1
-		COPULAS 		= "Independent"
-		param_grid 	= seq(-2,3,0.15)
+		upKAPPA 		= ifelse(DIST == "weibull",0,1)
+		COPULAS 		= COPULA
+		param_grid 	= seq(-2,3,0.2)
+		
 		######
 		vec_time 		= round(seq(0,max(c(100,max(DATA$time))),
 										length.out = 100),2)
