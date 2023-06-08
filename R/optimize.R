@@ -34,7 +34,7 @@ ref_LL = function(DATA,PARS,COPULA){
 		f2 = DATA$dens_t2[ii]
 		F1 = CDF
 		if(F1 <= 0){
-			print(sprintf("ii = %s",ii))
+			print(sprintf("ii = %s: error1",ii))
 			return(error_num)
 		}
 		F2 = 1 - DATA$surv_t2[ii]
@@ -51,19 +51,102 @@ ref_LL = function(DATA,PARS,COPULA){
 			nlog_u2 = -log(F2)
 			F_T1_T2 = exp(-(nlog_u1^THETA + nlog_u2^THETA)^(1/THETA))
 			f_T1_T2 = F_T1_T2 *
-				(( nlog_u1^THETA + nlog_u2^THETA )^THETA)^(1/THETA-1) *
+				( nlog_u1^THETA + nlog_u2^THETA )^(1 / THETA - 1) *
 				( nlog_u1^(THETA-1) * f1 / F1 + nlog_u2^(THETA-1) * f2 / F2 )
 		}
 		
 		if( DATA$delta[ii] == 1 ){
 			tmp_num = f1 + f2 - f_T1_T2
 			if( tmp_num <= 0 ){
-				print(sprintf("ii = %s",ii))
+				print(sprintf("ii = %s: error2, f1=%s, f2=%s, f_T1_T2=%s, F1=%s, F2=%s, T1=%s, T2=%s",
+					ii,f1,f2,f_T1_T2,F1,F2,( (F1)^(-THETA) + (F2)^(-THETA) - 1 )^(-1/THETA - 1),
+					(f1 / F1^(THETA + 1) + f2 / F2^(THETA + 1))))
 				return(error_num)
 			}
 			tmp_LL = log(tmp_num)
 		} else {
 			tmp_num = (1-F1) + (1-F2) - 1 + F_T1_T2
+			if( tmp_num <= 0 ){
+				print(sprintf("ii = %s: error3",ii))
+				return(error_num)
+			}
+			tmp_LL = log(tmp_num)
+		}
+		
+		LL = LL + tmp_LL
+		
+	}
+	
+	return(LL)
+	
+}
+ref_LL_cpp = function(DATA,PARS,COPULA){
+	# PARS = (ALPHA1,LAMBDA1,KAPPA1,THETA)
+	
+	LL = 0
+	nn = nrow(DATA)
+	error_num = -999
+	
+	ALPHA1 	= exp(PARS[1])
+	LAMBDA1 = exp(PARS[2])
+	KAPPA1 	= exp(PARS[3])
+	THETA 	= exp(PARS[4])
+	if( COPULA == "Gumbel" ) THETA = THETA + 1
+	
+	KAL = KAPPA1 * ALPHA1 / LAMBDA1
+	PART1 = 0; PART2 = 0;
+	
+	for(ii in seq(nn)){
+		# ii = 38
+		XDL = DATA$time[ii] / LAMBDA1
+		enXDLa = exp(-(XDL)^ALPHA1)
+		
+		F1 = 1 - enXDLa
+		if( KAPPA1 != 1.0 ) F1 = F1^KAPPA1
+		S1 = 1.0 - F1
+		D1 = KAL * (XDL)^(ALPHA1 - 1) * enXDLa
+		if( KAPPA1 != 1.0 ) D1 = D1 * F1 / ( 1.0 - enXDLa )
+		
+		D2 = DATA$dens_t2[ii]
+		S2 = DATA$surv_t2[ii]
+		F2 = 1 - S2
+		if( F1 == 0.0 || F2 == 0.0 ) return(error_num)
+		
+		if( COPULA == "Independent" ){
+			D1_D2 = D1 * F2 + D2 * F1
+			F1_F2 = F1 * F2
+		} else if( COPULA == "Clayton" ){
+			U1T1 = F1^(THETA+1)
+			U2T1 = F2^(THETA+1)
+			if( U1T1 == 0.0 || U2T1 == 0.0 ) return(error_num)
+			U1T_U2T = F1^(-THETA) + F2^(-THETA) - 1.0
+			PART1 = U1T_U2T^(-1.0 / THETA - 1.0)
+			PART2 = D1 / U1T1 + D2 / U2T1
+			D1_D2 = PART1 * PART2
+			F1_F2 = U1T_U2T^(-1.0 / THETA)
+		} else if( COPULA == "Gumbel" ){
+			log_F1 = log(F1)
+			log_F2 = log(F2)
+			U1T_U2T = (-log_F1)^THETA + (-log_F2)^THETA
+			F1_F2 = exp(-U1T_U2T^(1.0/THETA))
+			D1_D2 = F1_F2 * U1T_U2T^(1.0/THETA - 1.0) *
+				( (-log_F1)^(THETA - 1.0) * D1 / F1 + 
+				(-log_F2)^(THETA - 1.0) * D2 / F2 );
+		}
+		
+		if( DATA$delta[ii] == 1 ){
+			tmp_num = D1 + D2 - D1_D2
+			
+			if( tmp_num <= 0 ){
+				print(sprintf("ii = %s: D1=%s, D2=%s, D1_D2=%s, F1=%s, F2=%s, T1=%s, T2=%s",
+					ii,D1,D2,D1_D2,F1,F2,PART1,PART2))
+				# print(sprintf("ii = %s",ii))
+				return(error_num)
+			}
+			tmp_LL = log(tmp_num)
+		} else {
+			#########
+			tmp_num = S1 + S2 - 1 + F1_F2
 			if( tmp_num <= 0 ){
 				print(sprintf("ii = %s",ii))
 				return(error_num)
@@ -76,7 +159,6 @@ ref_LL = function(DATA,PARS,COPULA){
 	}
 	
 	return(LL)
-	
 }
 
 opt_replicate = function(REP,param_grid,theta,
@@ -173,13 +255,19 @@ opt_replicate = function(REP,param_grid,theta,
 	head(gout$DAT)
 	GRID = smart_df(gout$DAT)
 	nms = names(GRID)[1:4]; nms
-	nm = nms[1]; nm
 	
-	xx = sort(unique(GRID[[nm]]))
-	yy = sapply(xx,function(zz){
-		max(GRID$LL[which(GRID[[nm]] == zz)])
-	},USE.NAMES = FALSE)
-	plot(xx,yy,type = "b")
+	par(mfrow = c(2,2))
+	for(nm in nms){
+		# nm = nms[1]; nm
+		
+		xx = sort(unique(GRID[[nm]]))
+		yy = sapply(xx,function(zz){
+			max(GRID$LL[which(GRID[[nm]] == zz)])
+		},USE.NAMES = FALSE)
+		plot(xx,yy,type = "b",xlab = nm,ylab = "LL")
+		
+	}
+	par(mfrow = c(1,1))
 	
 	}
 	
@@ -238,16 +326,17 @@ opt_replicate = function(REP,param_grid,theta,
 	rownames(gopt) = NULL
 	gopt_pre = gopt
 	
-	# if(FALSE){ # Debug gradient
+	# if(FALSE){ # Debug LL/gradient
 		# library(numDeriv)
 		# iPARS = gopt[1,c(1:4)]
 		# iPARS = gopt[1,c(8:11)]
 		# iPARS = as.numeric(iPARS)
-		# # iPARS[3] = 1e-3
+		# # iPARS[3] = 1e-1
 		# iPARS
 		
 		# wrap_LL(iPARS)
 		# ref_LL(DATA = DATA,PARS = iPARS,COPULA = PARAMS$copula)
+		# ref_LL_cpp(DATA = DATA,PARS = iPARS,COPULA = PARAMS$copula)
 		# ref_LL_2 = function(PARS){
 			# ref_LL(DATA = DATA,PARS = PARS,
 				# COPULA = PARAMS$copula)
@@ -555,7 +644,7 @@ run_analyses = function(DATA,THETAs = NULL,upKAPPA,
 		THETAs 			= NULL
 		upKAPPA 		= ifelse(DIST == "weibull",0,1)
 		COPULAS 		= COPULA
-		param_grid 	= seq(-2,3,0.2)
+		param_grid 	= seq(0,2,0.2)
 		
 		######
 		vec_time 		= round(seq(0,max(c(100,max(DATA$time))),

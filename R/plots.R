@@ -172,7 +172,7 @@ plot_SURVs = function(run_ANA,MULTIPLE,ALPHA = 0.5){
 			strip.text.x = element_text(size = 12))
 		
 		gg = ggplot(data = res,mapping = aes(x = time,y = surv)) +
-			geom_line(size = 1,aes(color = LABEL)) + 
+			geom_line(linewidth = 1,aes(color = LABEL)) + 
 			geom_ribbon(mapping = aes(ymin = low_surv,
 				ymax = high_surv,fill = LABEL),alpha = ALPHA) +
 			ylim(c(0,1)) + xlab("Time") + ylab("Survival Probability") +

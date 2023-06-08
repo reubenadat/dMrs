@@ -164,16 +164,16 @@ COPULAS = c("Independent","Clayton","Gumbel")
 DISTs		= c("weibull","expweibull")
 COPULA 	= COPULAS[2]
 dist1 	= DISTs[1]
-NN 			= 1e3
+NN 			= 2e3
 theta 	= ifelse(COPULA == "Independent",0,2)
 if( COPULA == "Clayton" && theta < 0 ) stop("theta issue")
 if( COPULA == "Gumbel" && theta < 1 ) stop("theta issue")
-alpha1 	= 1
-lambda1 = 4
+alpha1 	= 1.2
+lambda1 = 20
 kappa1 	= ifelse(dist1 == "weibull",1,2)
-alpha2 	= 2
-lambda2 = 6
-propC 	= 0.1
+alpha2 	= 2.1
+lambda2 = 38
+propC 	= 0.2
 true_PARS = log(c(alpha1,lambda1,kappa1,theta))
 if( COPULA == "Gumbel" ) true_PARS[4] = log(theta - 1)
 names(true_PARS) = sprintf("log_%s",c("A","L","K","T"))
@@ -184,21 +184,23 @@ print(TRUTH)
 }
 if( TRUE ){ # Simulate dataset
 
-set.seed(3)
+set.seed(1)
 one_rep = sim_replicate(copula = COPULA,dist1 = dist1,
 	NN = NN,theta = theta,alpha1 = alpha1,lambda1 = lambda1,
 	kappa1 = kappa1,alpha2 = alpha2,lambda2 = lambda2,
 	propC = propC,verb = TRUE)
 one_rep$PARAMS
-table(one_rep$DATA$D)
-table(one_rep$DATA$delta)
+table(one_rep$DATA$D) / NN
+table(one_rep$DATA$delta) / NN
 
 }
 if( FALSE ){
 
 run_ana = run_analyses(
 	DATA = one_rep$DATA,
-	param_grid = seq(-1,3,0.2),
+	# COPULAS = COPULA,
+	upKAPPA = ifelse(dist1 == "weibull",0,1),
+	param_grid = seq(-1,4,0.4),
 	verb = TRUE)
 
 class(run_ana)
@@ -206,6 +208,21 @@ length(run_ana)
 
 plot_SURVs(run_ANA = run_ana,
 	MULTIPLE = TRUE,ALPHA = 0.4)
+
+# Test R vs Rcpp coding of LL
+idx = 2
+iPARS = run_ana[[idx]]$RES$out$EST; iPARS
+ref_LL(DATA = one_rep$DATA,PARS = iPARS,
+	COPULA = run_ana[[idx]]$copula)
+ref_LL_cpp(DATA = one_rep$DATA,PARS = iPARS,
+	COPULA = run_ana[[idx]]$copula)
+dMrs_cLL(XX = one_rep$DATA$time,
+	DELTA = one_rep$DATA$delta,
+	D2 = one_rep$DATA$dens_t2,
+	S2 = one_rep$DATA$surv_t2,
+	PARS = iPARS,
+	copula = run_ana[[idx]]$copula)
+
 
 ii = 1
 list(COPULA = run_ana[[ii]]$copula,
@@ -240,7 +257,7 @@ run_ana = run_analyses(
 	DATA = one_rep$DATA,
 	upKAPPA = ifelse(DIST == "weibull",0,1),
 	COPULAS = COPULA,
-	param_grid = seq(0,1.7,0.1),
+	param_grid = seq(0,2,0.2),
 	verb = TRUE)
 
 class(run_ana)

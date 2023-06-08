@@ -8,7 +8,7 @@ pack = pack[length(pack)]
 pack
 
 chk_pack = tryCatch(find.package(pack),
-	error = function(ee){NULL})
+	error = function(ee){NULL}); chk_pack
 
 if( !is.null(chk_pack) ){
 	remove.packages(pack)
