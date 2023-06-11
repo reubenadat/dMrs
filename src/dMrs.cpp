@@ -44,6 +44,107 @@ double Rcpp_logSumExp(const arma::vec& log_x){
 // --------------------
 // New Functions
 
+// [[Rcpp::export]]
+double calc_copula(const double& F1,const double& F2,
+	const std::string& copula,const double& THETA){
+	
+	double F_T1_T2 = 0.0;
+	
+	if( F1 == 0.0 || F2 == 0.0 )
+		return 0.0;
+	
+	if( F1 == 1.0 && F2 == 1.0 )
+		return 1.0;
+	
+	if( copula == "Independent" ){
+		F_T1_T2 = F1 * F2;
+	} else if( copula == "Clayton" ){
+		F_T1_T2 = std::pow(F1,-THETA) + std::pow(F2,-THETA) - 1.0;
+		F_T1_T2 = std::pow(F_T1_T2,-1.0 / THETA);
+	} else if( copula == "Gumbel" ){
+		F_T1_T2 = std::pow(-std::log(F1),THETA) + 
+			std::pow(-std::log(F2),THETA);
+		F_T1_T2 = std::pow(F_T1_T2,1.0 / THETA);
+		F_T1_T2 = std::exp(-F_T1_T2);
+	} else {
+		Rcpp::stop("Not a valid copula!");
+	}
+	
+	if( F_T1_T2 < 0 )
+		Rcpp::stop("Negative copula detected!");
+	
+	return F_T1_T2;
+}
+
+// [[Rcpp::export]]
+double calc_copula_dens(const double& D1,const double& D2,
+	const double& F1,const double& F2,
+	const std::string& copula,const double& THETA){
+	
+	double f_T1_T2 = 0.0, nlog_F1, nlog_F2,
+		F_T1_T2 = calc_copula(F1,F2,copula,THETA);
+	
+	if( F_T1_T2 == 0.0 || F_T1_T2 == 1.0 )
+		return 0.0;
+	
+	if( copula == "Independent" ){
+		f_T1_T2 = D1 * F2 + D2 * F1;
+	} else if( copula == "Clayton" ){
+		f_T1_T2 = std::pow(F1,-THETA) + std::pow(F2,-THETA) - 1.0;
+		f_T1_T2 = std::pow(f_T1_T2,-1.0 / THETA - 1.0);
+		f_T1_T2 *= (D1 / std::pow(F1,THETA + 1.0) 
+			+ D2 / std::pow(F2,THETA + 1.0));
+	} else if( copula == "Gumbel" ){
+		f_T1_T2 = F_T1_T2;
+		nlog_F1 = -std::log(F1);
+		nlog_F2 = -std::log(F2);
+		f_T1_T2 *= std::pow(std::pow(nlog_F1,THETA) 
+			+ std::pow(nlog_F2,THETA),1.0 / THETA - 1.0);
+		f_T1_T2 *= (std::pow(nlog_F1,THETA - 1.0) * D1 / F1
+			+ std::pow(nlog_F2,THETA - 1.0) * D2 / F2);
+	}
+	
+	return f_T1_T2;
+}
+
+// [[Rcpp::export]]
+arma::vec calc_copula_CDF_PDF(const double& D1,const double& D2,
+	const double& F1,const double& F2,
+	const std::string& copula,const double& THETA){
+	
+	double f_T1_T2 = 0.0, nlog_F1, nlog_F2,
+		F_T1_T2 = calc_copula(F1,F2,copula,THETA);
+	arma::vec out = arma::zeros<arma::vec>(2);
+	out.at(0) = F_T1_T2;
+	
+	if( F_T1_T2 == 0.0 || F_T1_T2 == 1.0 ){
+		out.at(1) = 0.0;
+		return out;
+	}
+	
+	if( copula == "Independent" ){
+		out.at(1) = D1 * F2 + D2 * F1;
+	} else if( copula == "Clayton" ){
+		f_T1_T2 = std::pow(F1,-THETA) + std::pow(F2,-THETA) - 1.0;
+		f_T1_T2 = std::pow(f_T1_T2,-1.0 / THETA - 1.0);
+		f_T1_T2 *= (D1 / std::pow(F1,THETA + 1.0) 
+			+ D2 / std::pow(F2,THETA + 1.0));
+		out.at(1) = f_T1_T2;
+	} else if( copula == "Gumbel" ){
+		f_T1_T2 = F_T1_T2;
+		nlog_F1 = -std::log(F1);
+		nlog_F2 = -std::log(F2);
+		f_T1_T2 *= std::pow(std::pow(nlog_F1,THETA) 
+			+ std::pow(nlog_F2,THETA),1.0 / THETA - 1.0);
+		f_T1_T2 *= (std::pow(nlog_F1,THETA - 1.0) * D1 / F1
+			+ std::pow(nlog_F2,THETA - 1.0) * D2 / F2);
+		out.at(1) = f_T1_T2;
+	}
+	
+	return out;
+}
+
+
 double dMrs_LL(const arma::vec& XX,const arma::uvec& DELTA,
 	const arma::vec& D2,const arma::vec& S2,const double& THETA,
 	const double& ALPHA,const double& LAMBDA,const double& KAPPA,
@@ -51,9 +152,12 @@ double dMrs_LL(const arma::vec& XX,const arma::uvec& DELTA,
 	
 	arma::uword ii, NN = XX.n_elem;
 	double LL = 0.0, LL_ii, D1, S1, F1, F2,
-		log_F1, log_F2, D1_D2, XDL, enXDLa, U1T_U2T, U1T1, U2T1,
+		// log_F1, log_F2, 
+		D1_D2, XDL, enXDLa, 
+		// U1T_U2T, U1T1, U2T1,
 		F1_F2, AA, BB, error_num = -999.0,
 		KAL = KAPPA * ALPHA / LAMBDA;
+	arma::vec out = arma::zeros<arma::vec>(2);
 	
 	for(ii = 0; ii < NN; ii++){
 		XDL = XX.at(ii) / LAMBDA;
@@ -68,37 +172,34 @@ double dMrs_LL(const arma::vec& XX,const arma::uvec& DELTA,
 		if( KAPPA != 1.0 ) D1 *= F1 / ( 1.0 - enXDLa );
 		
 		F2 = 1.0 - S2.at(ii);
-		if( F1 == 0.0 || F2 == 0.0 ) return error_num;
+		// if( F1 == 0.0 || F2 == 0.0 ) return error_num;
 		
-		if( copula == "Clayton" ){
-			if( THETA == 0.0 ){
-				F1_F2 = F1 * F2;
-				D1_D2 = D1 * F2 + F1 * D2.at(ii);
-			} else {
-				U1T1 = std::pow(F1,THETA) * F1;
-				U2T1 = std::pow(F2,THETA) * F2;
-				if( U1T1 == 0.0 || U2T1 == 0.0 ) return error_num;
-				U1T_U2T = std::pow(F1,-THETA) + std::pow(F2,-THETA) - 1.0;
-				D1_D2 = std::pow(U1T_U2T,-1.0 / THETA - 1.0) *
-					( D1 / U1T1 + D2.at(ii) / U2T1 );
-				F1_F2 = std::pow(U1T_U2T,-1.0 / THETA);
-			}
-		} else if( copula == "Gumbel" ){
-			if( THETA == 1.0 ){
-				F1_F2 = F1 * F2;
-				D1_D2 = D1 * F2 + F1 * D2.at(ii);
-			} else {
-				log_F1 = std::log(F1);
-				log_F2 = std::log(F2);
-				U1T_U2T = std::pow(-log_F1,THETA) + std::pow(-log_F2,THETA);
-				F1_F2 = std::exp(-std::pow(U1T_U2T,1.0/THETA));
-				D1_D2 = F1_F2 * std::pow(U1T_U2T,1.0/THETA - 1.0) *
-					( std::pow(-log_F1,THETA - 1.0) * D1 / F1 + 
-					std::pow(-log_F2,THETA - 1.0) * D2.at(ii) / F2 );
-			}
-		} else {
-			Rcpp::stop("Not a valid copula!");
-		}
+		// if( copula == "Independent" ){
+			// F1_F2 = F1 * F2;
+			// D1_D2 = D1 * F2 + F1 * D2.at(ii);
+		// } else if( copula == "Clayton" ){
+			// U1T1 = std::pow(F1,THETA + 1.0);
+			// U2T1 = std::pow(F2,THETA + 1.0);
+			// if( U1T1 == 0.0 || U2T1 == 0.0 ) return error_num;
+			// U1T_U2T = std::pow(F1,-THETA) + std::pow(F2,-THETA) - 1.0;
+			// D1_D2 = std::pow(U1T_U2T,-1.0 / THETA - 1.0) *
+				// ( D1 / U1T1 + D2.at(ii) / U2T1 );
+			// F1_F2 = std::pow(U1T_U2T,-1.0 / THETA);
+		// } else if( copula == "Gumbel" ){
+			// log_F1 = std::log(F1);
+			// log_F2 = std::log(F2);
+			// U1T_U2T = std::pow(-log_F1,THETA) + std::pow(-log_F2,THETA);
+			// F1_F2 = std::exp(-std::pow(U1T_U2T,1.0/THETA));
+			// D1_D2 = F1_F2 * std::pow(U1T_U2T,1.0/THETA - 1.0) *
+				// ( std::pow(-log_F1,THETA - 1.0) * D1 / F1 + 
+				// std::pow(-log_F2,THETA - 1.0) * D2.at(ii) / F2 );
+		// } else {
+			// Rcpp::stop("Not a valid copula!");
+		// }
+		out = calc_copula_CDF_PDF(D1,D2.at(ii),
+			F1,F2,copula,THETA);
+		F1_F2 = out.at(0);
+		D1_D2 = out.at(1);
 		
 		if( DELTA.at(ii) == 1 ){
 			AA = D1 + D2.at(ii) - D1_D2;

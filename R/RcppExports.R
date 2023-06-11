@@ -13,6 +13,18 @@ Rcpp_logSumExp <- function(log_x) {
     .Call('_dMrs_Rcpp_logSumExp', PACKAGE = 'dMrs', log_x)
 }
 
+calc_copula <- function(F1, F2, copula, THETA) {
+    .Call('_dMrs_calc_copula', PACKAGE = 'dMrs', F1, F2, copula, THETA)
+}
+
+calc_copula_dens <- function(D1, D2, F1, F2, copula, THETA) {
+    .Call('_dMrs_calc_copula_dens', PACKAGE = 'dMrs', D1, D2, F1, F2, copula, THETA)
+}
+
+calc_copula_CDF_PDF <- function(D1, D2, F1, F2, copula, THETA) {
+    .Call('_dMrs_calc_copula_CDF_PDF', PACKAGE = 'dMrs', D1, D2, F1, F2, copula, THETA)
+}
+
 dMrs_cLL <- function(XX, DELTA, D2, S2, PARS, copula, verb = FALSE) {
     .Call('_dMrs_dMrs_cLL', PACKAGE = 'dMrs', XX, DELTA, D2, S2, PARS, copula, verb)
 }

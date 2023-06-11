@@ -183,9 +183,10 @@ opt_replicate = function(REP,param_grid,theta,
 	upPARS	= get_upPARS(upKAPPA = upKAPPA,
 							THETA = theta)
 	upTHETA	= upPARS[4]
-	tmp_copula = ifelse(
-		PARAMS$copula %in% c("Independent","Clayton"),
-		"Clayton",PARAMS$copula)
+	# tmp_copula = ifelse(
+		# PARAMS$copula %in% c("Independent","Clayton"),
+		# "Clayton",PARAMS$copula)
+	tmp_copula = PARAMS$copula
 	
 	wrap_LL 	= function(PARS){
 		# PARS = iPARS
@@ -219,8 +220,9 @@ opt_replicate = function(REP,param_grid,theta,
 		unc_KAPPA = param_grid
 	}
 	if( upTHETA == 0 ){
-		if( tmp_copula == "Clayton" ) 	log_THETA = log(theta)
-		if( tmp_copula == "Gumbel" )	log_THETA = log(theta - 1)
+		if( tmp_copula == "Independent" ) 	log_THETA = log(theta)
+		if( tmp_copula == "Clayton" ) 			log_THETA = log(theta)
+		if( tmp_copula == "Gumbel" )				log_THETA = log(theta - 1)
 	} else if( upTHETA == 1 ){
 		# log_THETA = c(-Inf,param_grid)
 		log_THETA = param_grid
@@ -465,14 +467,16 @@ opt_replicate = function(REP,param_grid,theta,
 	# est. kappa
 	nparams = nparams + upKAPPA	
 	# est. theta
-	nparams = nparams + ifelse(
-		( tmp_copula == "Clayton" & cout$EST[4] == 0 )
-		| ( PARAMS$copula == "Gumbel" & cout$EST[4] == 1 ),
-		0,1)
+	# nparams = nparams + ifelse(
+		# ( tmp_copula == "Independent" )
+		# | ( tmp_copula == "Clayton" & cout$EST[4] == 0 )
+		# | ( PARAMS$copula == "Gumbel" & cout$EST[4] == 1 ),
+		# 0,1)
+	nparams = nparams + upTHETA
+	nparams
 	
 	NN = nrow(DATA)
 	BIC = 2 * LL - nparams * log(NN)
-	
 	
 	names(GRAD) 		= out$PARS
 	dimnames(HESS) 	= list(out$PARS,out$PARS)
@@ -491,7 +495,7 @@ run_analysis = function(DATA,theta,upKAPPA,
 	
 	if(FALSE){
 		DATA 				= DATA
-		theta 			= NA
+		theta 			= 0
 		upKAPPA 		= upKAPPA
 		gTHRES 			= 8e-2
 		copula 			= c("Clayton","Gumbel")[1]
@@ -644,7 +648,7 @@ run_analyses = function(DATA,THETAs = NULL,upKAPPA,
 		THETAs 			= NULL
 		upKAPPA 		= ifelse(DIST == "weibull",0,1)
 		COPULAS 		= COPULA
-		param_grid 	= seq(0,2,0.2)
+		param_grid 	= seq(0,4,0.2)
 		
 		######
 		vec_time 		= round(seq(0,max(c(100,max(DATA$time))),

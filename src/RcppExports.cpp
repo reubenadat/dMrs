@@ -45,6 +45,52 @@ BEGIN_RCPP
     return rcpp_result_gen;
 END_RCPP
 }
+// calc_copula
+double calc_copula(const double& F1, const double& F2, const std::string& copula, const double& THETA);
+RcppExport SEXP _dMrs_calc_copula(SEXP F1SEXP, SEXP F2SEXP, SEXP copulaSEXP, SEXP THETASEXP) {
+BEGIN_RCPP
+    Rcpp::RObject rcpp_result_gen;
+    Rcpp::RNGScope rcpp_rngScope_gen;
+    Rcpp::traits::input_parameter< const double& >::type F1(F1SEXP);
+    Rcpp::traits::input_parameter< const double& >::type F2(F2SEXP);
+    Rcpp::traits::input_parameter< const std::string& >::type copula(copulaSEXP);
+    Rcpp::traits::input_parameter< const double& >::type THETA(THETASEXP);
+    rcpp_result_gen = Rcpp::wrap(calc_copula(F1, F2, copula, THETA));
+    return rcpp_result_gen;
+END_RCPP
+}
+// calc_copula_dens
+double calc_copula_dens(const double& D1, const double& D2, const double& F1, const double& F2, const std::string& copula, const double& THETA);
+RcppExport SEXP _dMrs_calc_copula_dens(SEXP D1SEXP, SEXP D2SEXP, SEXP F1SEXP, SEXP F2SEXP, SEXP copulaSEXP, SEXP THETASEXP) {
+BEGIN_RCPP
+    Rcpp::RObject rcpp_result_gen;
+    Rcpp::RNGScope rcpp_rngScope_gen;
+    Rcpp::traits::input_parameter< const double& >::type D1(D1SEXP);
+    Rcpp::traits::input_parameter< const double& >::type D2(D2SEXP);
+    Rcpp::traits::input_parameter< const double& >::type F1(F1SEXP);
+    Rcpp::traits::input_parameter< const double& >::type F2(F2SEXP);
+    Rcpp::traits::input_parameter< const std::string& >::type copula(copulaSEXP);
+    Rcpp::traits::input_parameter< const double& >::type THETA(THETASEXP);
+    rcpp_result_gen = Rcpp::wrap(calc_copula_dens(D1, D2, F1, F2, copula, THETA));
+    return rcpp_result_gen;
+END_RCPP
+}
+// calc_copula_CDF_PDF
+arma::vec calc_copula_CDF_PDF(const double& D1, const double& D2, const double& F1, const double& F2, const std::string& copula, const double& THETA);
+RcppExport SEXP _dMrs_calc_copula_CDF_PDF(SEXP D1SEXP, SEXP D2SEXP, SEXP F1SEXP, SEXP F2SEXP, SEXP copulaSEXP, SEXP THETASEXP) {
+BEGIN_RCPP
+    Rcpp::RObject rcpp_result_gen;
+    Rcpp::RNGScope rcpp_rngScope_gen;
+    Rcpp::traits::input_parameter< const double& >::type D1(D1SEXP);
+    Rcpp::traits::input_parameter< const double& >::type D2(D2SEXP);
+    Rcpp::traits::input_parameter< const double& >::type F1(F1SEXP);
+    Rcpp::traits::input_parameter< const double& >::type F2(F2SEXP);
+    Rcpp::traits::input_parameter< const std::string& >::type copula(copulaSEXP);
+    Rcpp::traits::input_parameter< const double& >::type THETA(THETASEXP);
+    rcpp_result_gen = Rcpp::wrap(calc_copula_CDF_PDF(D1, D2, F1, F2, copula, THETA));
+    return rcpp_result_gen;
+END_RCPP
+}
 // dMrs_cLL
 double dMrs_cLL(const arma::vec& XX, const arma::uvec& DELTA, const arma::vec& D2, const arma::vec& S2, const arma::vec& PARS, const std::string& copula, const bool& verb);
 RcppExport SEXP _dMrs_dMrs_cLL(SEXP XXSEXP, SEXP DELTASEXP, SEXP D2SEXP, SEXP S2SEXP, SEXP PARSSEXP, SEXP copulaSEXP, SEXP verbSEXP) {
@@ -155,6 +201,9 @@ static const R_CallMethodDef CallEntries[] = {
     {"_dMrs_Rcpp_norm", (DL_FUNC) &_dMrs_Rcpp_norm, 1},
     {"_dMrs_Rcpp_max_abs_diff", (DL_FUNC) &_dMrs_Rcpp_max_abs_diff, 2},
     {"_dMrs_Rcpp_logSumExp", (DL_FUNC) &_dMrs_Rcpp_logSumExp, 1},
+    {"_dMrs_calc_copula", (DL_FUNC) &_dMrs_calc_copula, 4},
+    {"_dMrs_calc_copula_dens", (DL_FUNC) &_dMrs_calc_copula_dens, 6},
+    {"_dMrs_calc_copula_CDF_PDF", (DL_FUNC) &_dMrs_calc_copula_CDF_PDF, 6},
     {"_dMrs_dMrs_cLL", (DL_FUNC) &_dMrs_dMrs_cLL, 7},
     {"_dMrs_dMrs_cGRAD", (DL_FUNC) &_dMrs_dMrs_cGRAD, 7},
     {"_dMrs_dMrs_cHESS", (DL_FUNC) &_dMrs_dMrs_cHESS, 7},

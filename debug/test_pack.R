@@ -12,7 +12,7 @@ setdirs = function(){
 	if( where_file == "C:/Users/Admin/Documents" ){
 		desk_dir = "C:/Users/Admin/Desktop"
 		git_dir = file.path(desk_dir,"github")
-		curr_dir = file.path(desk_dir,"dMrs")
+		curr_dir = file.path(desk_dir,"dMrs_sim")
 	} else if( where_file == "/home/pllittle" && clust_name == "plough" ){
 		git_dir = "~/github"
 		curr_dir = "~/dMrs"
@@ -114,6 +114,58 @@ save(usa,file = file.path(my_dirs$pack_dir,"data/usa.rda"))
 }
 
 # ----------
+# Test Rcpp functions
+# ----------
+if(FALSE){
+
+# F1 = c(0,0.5)[1]; F1
+# F1 = seq(0,1,length.out = 5e2)
+ALPHA 	= 1.5
+LAMBDA 	= 20
+KAPPA 	= 2
+TT			= seq(0,100,length.out = 5e2)
+F1			= pexpweibull(q = TT,lambda = LAMBDA,alpha = ALPHA,kappa = KAPPA)
+F2 = c(0,0.3)[1]; F2
+COPULA = c("Independent","Clayton","Gumbel")[2]
+THETA = 3
+
+# Test derivatives of copula
+LAMBDA2 = LAMBDA * 1.5
+ALPHA2 	= ALPHA * 0.8
+KAPPA2	= 1
+
+ff = function(tt){
+	F1 = pexpweibull(q = tt,lambda = LAMBDA,
+		alpha = ALPHA,kappa = KAPPA)
+	F2 = pexpweibull(q = tt,lambda = LAMBDA2,
+		alpha = ALPHA2,kappa = KAPPA2)
+	calc_copula(F1 = F1,F2 = F2,
+		copula = COPULA,THETA = THETA)
+}
+tt = 5e3
+ff(tt)
+g1 = grad(ff,tt); g1
+gg = function(tt){
+	F1 = pexpweibull(q = tt,lambda = LAMBDA,
+		alpha = ALPHA,kappa = KAPPA)
+	D1 = dexpweibull(x = tt,lambda = LAMBDA,
+		alpha = ALPHA,kappa = KAPPA)
+	D2 = dexpweibull(x = tt,lambda = LAMBDA2,
+		alpha = ALPHA2,kappa = KAPPA2)
+	F2 = pexpweibull(q = tt,lambda = LAMBDA2,
+		alpha = ALPHA2,kappa = KAPPA2)
+	calc_copula_dens(D1 = D1,D2 = D2,
+		F1 = F1,F2 = F2,
+		copula = COPULA,THETA = THETA)
+}
+g2 = gg(tt); g2
+
+abs(g1 - g2)
+
+
+}
+
+# ----------
 # Simulation Ideas
 # ----------
 if(FALSE){
@@ -162,9 +214,9 @@ if( TRUE ){ # Specify parameters/arguments
 
 COPULAS = c("Independent","Clayton","Gumbel")
 DISTs		= c("weibull","expweibull")
-COPULA 	= COPULAS[2]
+COPULA 	= COPULAS[3]
 dist1 	= DISTs[1]
-NN 			= 2e3
+NN 			= 5e2
 theta 	= ifelse(COPULA == "Independent",0,2)
 if( COPULA == "Clayton" && theta < 0 ) stop("theta issue")
 if( COPULA == "Gumbel" && theta < 1 ) stop("theta issue")
@@ -208,6 +260,19 @@ length(run_ana)
 
 plot_SURVs(run_ANA = run_ana,
 	MULTIPLE = TRUE,ALPHA = 0.4)
+
+res = sapply(run_ana,function(xx){
+	BIC = xx$RES$BIC
+	COPU = xx$copula
+	DIST = ifelse(xx$RES$cout$EST[3] == 1,"Weibull","Exp-Weibull")
+	c(COPU = COPU,DIST = DIST,BIC = BIC)
+})
+res = smart_df(t(res))
+res$BIC = as.numeric(res$BIC)
+# str(res)
+res$POST = exp(res$BIC - Rcpp_logSumExp(res$BIC))
+res
+
 
 # Test R vs Rcpp coding of LL
 idx = 2
