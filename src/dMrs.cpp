@@ -113,8 +113,10 @@ arma::vec calc_copula_CDF_PDF(const double& D1,const double& D2,
 	const std::string& copula,const double& THETA){
 	
 	double f_T1_T2 = 0.0, nlog_F1, nlog_F2,
-		F_T1_T2 = calc_copula(F1,F2,copula,THETA);
-	arma::vec out = arma::zeros<arma::vec>(2);
+		F_T1_T2 = calc_copula(F1,F2,copula,THETA),
+		log_TERM_1, log_TERM_2;
+	arma::vec out = arma::zeros<arma::vec>(2),
+		log_P = out;
 	out.at(0) = F_T1_T2;
 	
 	if( F_T1_T2 == 0.0 || F_T1_T2 == 1.0 ){
@@ -125,11 +127,22 @@ arma::vec calc_copula_CDF_PDF(const double& D1,const double& D2,
 	if( copula == "Independent" ){
 		out.at(1) = D1 * F2 + D2 * F1;
 	} else if( copula == "Clayton" ){
-		f_T1_T2 = std::pow(F1,-THETA) + std::pow(F2,-THETA) - 1.0;
-		f_T1_T2 = std::pow(f_T1_T2,-1.0 / THETA - 1.0);
-		f_T1_T2 *= (D1 / std::pow(F1,THETA + 1.0) 
-			+ D2 / std::pow(F2,THETA + 1.0));
+		
+		log_P.at(0) = std::log(D1) - (THETA + 1.0) * std::log(F1);
+		log_P.at(1) = std::log(D2) - (THETA + 1.0) * std::log(F2);
+		log_TERM_1 = (-1.0 / THETA - 1.0) * 
+			std::log(std::pow(F1,-THETA) + std::pow(F2,-THETA) - 1.0);
+		log_TERM_2 = Rcpp_logSumExp(log_P);
+		f_T1_T2 = std::exp(log_TERM_1 + log_TERM_2);
 		out.at(1) = f_T1_T2;
+		
+		// OLD CODE BELOW ----
+		// f_T1_T2 = std::pow(F1,-THETA) + std::pow(F2,-THETA) - 1.0;
+		// f_T1_T2 = std::pow(f_T1_T2,-1.0 / THETA - 1.0);
+		// f_T1_T2 *= (D1 / std::pow(F1,THETA + 1.0) 
+			// + D2 / std::pow(F2,THETA + 1.0));
+		// out.at(1) = f_T1_T2;
+		
 	} else if( copula == "Gumbel" ){
 		f_T1_T2 = F_T1_T2;
 		nlog_F1 = -std::log(F1);

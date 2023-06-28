@@ -214,9 +214,9 @@ if( TRUE ){ # Specify parameters/arguments
 
 COPULAS = c("Independent","Clayton","Gumbel")
 DISTs		= c("weibull","expweibull")
-COPULA 	= COPULAS[3]
+COPULA 	= COPULAS[1]
 dist1 	= DISTs[1]
-NN 			= 5e2
+NN 			= 1e3
 theta 	= ifelse(COPULA == "Independent",0,2)
 if( COPULA == "Clayton" && theta < 0 ) stop("theta issue")
 if( COPULA == "Gumbel" && theta < 1 ) stop("theta issue")
@@ -250,9 +250,9 @@ if( FALSE ){
 
 run_ana = run_analyses(
 	DATA = one_rep$DATA,
-	# COPULAS = COPULA,
+	#COPULAS = COPULA,
 	upKAPPA = ifelse(dist1 == "weibull",0,1),
-	param_grid = seq(-1,4,0.4),
+	param_grid = seq(-2,4,0.35),
 	verb = TRUE)
 
 class(run_ana)
@@ -272,6 +272,8 @@ res$BIC = as.numeric(res$BIC)
 # str(res)
 res$POST = exp(res$BIC - Rcpp_logSumExp(res$BIC))
 res
+
+run_ana[[6]]$RES$cout
 
 
 # Test R vs Rcpp coding of LL
@@ -301,16 +303,16 @@ plot_LL(GPROF = run_ana[[ii]]$RES$GPROF,
 }
 if( TRUE ){ # Run analysis, estimate theta by default
 
-my_dirs$rep_dir = "C:/Users/Admin/Desktop/dMrs_sim/REPS"
-my_dirs$opt_dir = "C:/Users/Admin/Desktop/dMrs_sim/OPTS"
+my_dirs$rep_dir = file.path(my_dirs$curr_dir,"REPS")
+my_dirs$opt_dir = file.path(my_dirs$curr_dir,"OPTS")
 
-COPULA 	= c("Clayton","Gumbel")[1]
-DIST		= c("weibull","expweibull")[1]
-rr 			= 3
+COPULA 	= c("Independent","Clayton","Gumbel")[2]
+DIST		= c("weibull","expweibull")[2]
+rr 			= 7
 NN			= 5e3
 
 repCDN_dir = file.path(my_dirs$rep_dir,
-	sprintf("C.%s_D.%s_N.%s",COPULA,DIST,NN))
+	sprintf("C.%s_D.%s",COPULA,DIST))
 
 rds_fn = file.path(repCDN_dir,sprintf("R.%s.rds",rr))
 one_rep = readRDS(rds_fn)
@@ -322,7 +324,7 @@ run_ana = run_analyses(
 	DATA = one_rep$DATA,
 	upKAPPA = ifelse(DIST == "weibull",0,1),
 	COPULAS = COPULA,
-	param_grid = seq(0,2,0.2),
+	param_grid = seq(-1,3,0.25),
 	verb = TRUE)
 
 class(run_ana)
@@ -332,6 +334,7 @@ names(run_ana[[1]])
 
 sapply(run_ana,function(xx) xx$RES$LL)
 sapply(run_ana,function(xx) xx$RES$BIC)
+run_ana[[1]]$RES$out
 plot_SURVs(run_ANA = run_ana,
 	MULTIPLE = TRUE,ALPHA = 0.4)
 
@@ -343,6 +346,28 @@ COPULA 	= run_ana[[idx]]$copula
 plot_LL(GPROF = GPROF,GOPT = GOPT[order(-GOPT$LL),][1:10,],
 	COPULA = COPULA,HJUST = 0)
 
+
+# Get profile likelihood per param
+GR = smart_df(run_ana[[1]]$RES$GRID)
+pars = colnames(GR)[1:4]; pars
+
+par(mfrow = c(2,2),mar = c(4.5,4,2,2))
+sapply(pars,function(xx){
+	# xx = pars[1]; xx
+	x1 = sort(unique(GR[,xx]))
+	y1 = sapply(x1,function(zz){
+		# zz = x1[3]; zz
+		max(GR$LL[which(GR[[xx]] == zz)],na.rm = TRUE)
+	})
+	
+	dat = smart_df(x1 = x1,y1 = y1)
+	plot(dat,xlab = xx,ylab = "Prof.LL",
+		type = "b",pch = 16)
+	abline(v = x1[which.max(y1)],lty = 2,lwd = 2,col = "red")
+	max(dat$y1)
+	
+})
+par(mfrow = c(1,1),mar = c(5,4,4,2)+0.1)
 
 
 

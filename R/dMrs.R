@@ -161,11 +161,11 @@ get_LOCAL_OPTS = function(GPROF,verb){
 	EPS = sort(unique(GPROF$log_alpha1))
 	EPS = min(unique(diff(EPS)))
 	EPS = c(EPS,sort(unique(GPROF$log_lambda1)))
-	EPS = min(abs(diff(EPS))) + 0.1
-	# EPS
+	EPS = min(abs(diff(EPS))) * 1.1
+	EPS
 	
 	for(ii in seq(nn)){
-		# ii = 1
+		# ii = 84
 		# GPROF[ii,]
 		if( verb ) smart_progress(ii = ii,nn = nn,iter = 1e1,iter2 = 5e2)
 		curr_PARS = as.numeric(GPROF[ii,c("log_alpha1","log_lambda1")])
@@ -174,6 +174,28 @@ get_LOCAL_OPTS = function(GPROF,verb){
 		while(TRUE){
 			# Get neighborhood around curr_PARS
 			curr_PARS; curr_LL
+			
+			if(FALSE){
+				# Check what set of parameters are 'close' to curr_PARS
+				curr_kappa = GPROF$unc_kappa1[which(
+					GPROF$log_alpha1 == curr_PARS[1]
+					& GPROF$log_lambda1 == curr_PARS[2]
+					)]; curr_kappa
+				curr_theta = GPROF$log_theta[which(
+					GPROF$log_alpha1 == curr_PARS[1]
+					& GPROF$log_lambda1 == curr_PARS[2]
+					)]; curr_theta
+				
+				GPROF[which(abs(GPROF$log_alpha1 - curr_PARS[1]) < EPS
+					& abs(GPROF$log_lambda1 - curr_PARS[2]) < EPS
+					& abs(GPROF$unc_kappa1 - curr_kappa) < EPS
+					& abs(GPROF$log_theta - curr_theta) < EPS
+					),]
+				
+			}
+			
+			stop("Possible new idea for neighborhood local grid")
+			
 			idx = which(abs(GPROF$log_alpha1 - curr_PARS[1]) < EPS
 				& abs(GPROF$log_lambda1 - curr_PARS[2]) < EPS)
 			length(idx)
@@ -181,6 +203,7 @@ get_LOCAL_OPTS = function(GPROF,verb){
 			
 			# Move to next optimal point
 			tmp_df = GPROF[idx[which.max(GPROF$LL[idx])],]
+			tmp_df
 			if( tmp_df$LL == curr_LL
 				& tmp_df$log_alpha1 == curr_PARS[1]
 				& tmp_df$log_lambda1 == curr_PARS[2] ){
@@ -198,7 +221,102 @@ get_LOCAL_OPTS = function(GPROF,verb){
 	
 	return(res)
 }
-
+test_LOCAL_OPTS = function(GRID,PLOT = FALSE){
+	if(FALSE){
+		GRID = smart_df(gout$DAT)
+		PLOT = TRUE
+		
+	}
+	
+	GRID = smart_df(GRID)
+	if( any(is.na(GRID$LL)) ) 
+		stop("NA/NaN for LL in GRID")
+	
+	PARS = names(GRID)[1:4]; PARS
+	
+	if( PLOT ){
+		par(mfrow = c(2,2),mar = c(4,4,0.5,0.5))
+	}
+	
+	out = c()
+	for(PAR in PARS){
+		# PAR = PARS[1]; PAR
+		
+		xx = sort(unique(GRID[[PAR]])); xx
+		yy = sapply(xx,function(zz){
+			max(GRID$LL[which(GRID[[PAR]] == zz)])
+		})
+		EPS = min(diff(xx)); EPS
+		
+		nvals = length(xx)
+		
+		# If no grid for this par, skip
+		if( nvals == 1 ) next
+		
+		dat = smart_df(xx,yy,row = seq(nvals),max_idx = NA); # dat
+		out_par = c()
+		
+		for(ii in seq(nvals)){
+			# ii = 1
+			
+			if( !is.na(dat$max_idx[ii]) ) next
+			
+			curr_xx = dat$xx[ii]; curr_xx
+			curr_LL = dat$yy[ii]; curr_LL
+			idx_path = ii
+			
+			while(TRUE){
+				idx = which( abs(dat$xx - curr_xx) <= EPS 
+					& dat$yy >= curr_LL ); idx
+				
+				tmp_df = dat[idx,,drop = FALSE]
+				tmp_df = tmp_df[order(-tmp_df$yy),,drop = FALSE]; tmp_df
+				new_xx = tmp_df$xx[1]
+				new_LL = tmp_df$yy[1]
+				
+				if( new_xx == curr_xx ){
+					# stop("not ready yet")
+					dat$max_idx[idx_path] = tmp_df$row[1]
+					
+					# Get data from GRID
+					out_par = rbind(out_par,GRID[which(GRID[[PAR]] == new_xx
+						& GRID$LL == new_LL),,drop = FALSE])
+					
+					break
+				}
+				
+				curr_xx = new_xx
+				curr_LL = new_LL
+				idx_path = c(idx_path,tmp_df$row[1])
+				
+			}
+			
+		}
+		
+		out_par = unique(out_par)
+		rownames(out_par) = NULL
+		out_par
+		
+		out = rbind(out,out_par)
+		out = unique(out)
+		rownames(out) = NULL
+		
+		if( PLOT ){
+			plot(dat[,c("xx","yy")],xlab = PAR,
+				ylab = "Profile LL",type = "b",pch = 16)
+			abline(v = out_par[[PAR]],lty = 2,lwd = 2,col = "red")
+		}
+		
+	}
+	
+	if( PLOT ){
+		par(mfrow = c(1,1),mar = c(5,4,4,2) + 0.1)
+	}
+	
+	out
+	return(out)
+	
+}
 
 # ----------
 # Main functions

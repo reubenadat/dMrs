@@ -81,6 +81,13 @@ ref_LL = function(DATA,PARS,COPULA){
 	
 }
 ref_LL_cpp = function(DATA,PARS,COPULA){
+	if(FALSE){
+		DATA 		= DATA
+		PARS 		= iPARS
+		COPULA 	= tmp_copula
+		
+	}
+	
 	# PARS = (ALPHA1,LAMBDA1,KAPPA1,THETA)
 	
 	LL = 0
@@ -110,29 +117,40 @@ ref_LL_cpp = function(DATA,PARS,COPULA){
 		D2 = DATA$dens_t2[ii]
 		S2 = DATA$surv_t2[ii]
 		F2 = 1 - S2
-		if( F1 == 0.0 || F2 == 0.0 ) return(error_num)
+		# if( F1 == 0.0 || F2 == 0.0 ) return(error_num)
 		
-		if( COPULA == "Independent" ){
-			D1_D2 = D1 * F2 + D2 * F1
-			F1_F2 = F1 * F2
-		} else if( COPULA == "Clayton" ){
-			U1T1 = F1^(THETA+1)
-			U2T1 = F2^(THETA+1)
-			if( U1T1 == 0.0 || U2T1 == 0.0 ) return(error_num)
-			U1T_U2T = F1^(-THETA) + F2^(-THETA) - 1.0
-			PART1 = U1T_U2T^(-1.0 / THETA - 1.0)
-			PART2 = D1 / U1T1 + D2 / U2T1
-			D1_D2 = PART1 * PART2
-			F1_F2 = U1T_U2T^(-1.0 / THETA)
-		} else if( COPULA == "Gumbel" ){
-			log_F1 = log(F1)
-			log_F2 = log(F2)
-			U1T_U2T = (-log_F1)^THETA + (-log_F2)^THETA
-			F1_F2 = exp(-U1T_U2T^(1.0/THETA))
-			D1_D2 = F1_F2 * U1T_U2T^(1.0/THETA - 1.0) *
-				( (-log_F1)^(THETA - 1.0) * D1 / F1 + 
-				(-log_F2)^(THETA - 1.0) * D2 / F2 );
+		tmp_vec = calc_copula_CDF_PDF(D1 = D1,D2 = D2,
+			F1 = F1,F2 = F2,copula = COPULA,THETA = THETA)
+		tmp_vec = as.numeric(tmp_vec)
+		if( any(is.na(tmp_vec)) ){
+			tmp_vec
+			print(sprintf("Check on ii = %s",ii))
+			print(sprintf("D1=%s, D2=%s, F1=%s, F2=%s",D1,D2,F1,F2))
+			return(error_num)
+			
+			# Check on calculation
+			f_T1_T2 = F1^(-THETA) + F2^(-THETA) - 1.0
+				f_T1_T2
+				log(f_T1_T2)
+			f_T1_T2 = f_T1_T2^(-1.0 / THETA - 1.0)
+				f_T1_T2
+				exp((-1/THETA - 1) * log(f_T1_T2))
+			f_T1_T2 = f_T1_T2 * (D1 / F1^(THETA + 1.0) 
+				+ D2 / F2^(THETA + 1.0)); f_T1_T2
+			
+			log_P = rep(NA,2)
+			log_P[1] = log(D1) - (THETA + 1) * log(F1)
+			log_P[2] = log(D2) - (THETA + 1) * log(F2)
+			log_P
+			
+			log_TERM_1 = (-1/THETA-1) * log(F1^(-THETA) + F2^(-THETA) - 1); log_TERM_1
+			log_TERM_2 = logSumExp(log_P); log_TERM_2
+			exp(log_TERM_1 + log_TERM_2)
+			
+			
 		}
+		F1_F2 = tmp_vec[1]
+		D1_D2 = tmp_vec[2]
 		
 		if( DATA$delta[ii] == 1 ){
 			tmp_num = D1 + D2 - D1_D2
@@ -145,7 +163,6 @@ ref_LL_cpp = function(DATA,PARS,COPULA){
 			}
 			tmp_LL = log(tmp_num)
 		} else {
-			#########
 			tmp_num = S1 + S2 - 1 + F1_F2
 			if( tmp_num <= 0 ){
 				print(sprintf("ii = %s",ii))
@@ -158,6 +175,8 @@ ref_LL_cpp = function(DATA,PARS,COPULA){
 		
 	}
 	
+	LL
+	
 	return(LL)
 }
 
@@ -166,6 +185,7 @@ opt_replicate = function(REP,param_grid,theta,
 
 	if(FALSE){
 		REP 				= REP
+		param_grid	= seq(0,3,0.15)
 		theta 			= theta
 		upKAPPA 		= upKAPPA
 		gTHRES 			= gTHRES
@@ -238,8 +258,16 @@ opt_replicate = function(REP,param_grid,theta,
 	colnames(gout$DAT) = c("log_alpha1","log_lambda1",
 		"unc_kappa1","log_theta","LL")
 	gout$DAT[1:5,]
+	if( any(is.na(gout$DAT[,"LL"])) ){
+		stop("NAs in LL grid, debug this")
+	}
 	gprof = get_PROFILE(GRID = gout$DAT)
 	# dim(gprof); head(gprof)
+	
+	if(FALSE){
+		gopt = test_LOCAL_OPTS(GRID = gout$DAT,PLOT = TRUE)
+		
+	}
 	
 	gopt = get_LOCAL_OPTS(GPROF = gprof,verb = verb)
 	# dim(gopt); head(gopt)
@@ -247,30 +275,37 @@ opt_replicate = function(REP,param_grid,theta,
 	if( verb && PLOT ){
 		cat(sprintf("%s: Two-dimensional plot of the profile log likelihood ...\n",date()))
 		sub_gopt = gopt[order(-gopt$LL),]
-		sub_gopt = sub_gopt[seq(min(c(3,nrow(sub_gopt)))),,drop = FALSE]
+		sub_gopt = sub_gopt[seq(min(c(5,nrow(sub_gopt)))),,drop = FALSE]
 		print(plot_LL(GPROF = gprof,
 			GOPT = sub_gopt,
 			COPULA = PARAMS$copula))
 	}
 	
 	if(FALSE){ # Check profile LL
-	head(gout$DAT)
-	GRID = smart_df(gout$DAT)
-	nms = names(GRID)[1:4]; nms
-	
-	par(mfrow = c(2,2))
-	for(nm in nms){
-		# nm = nms[1]; nm
+		head(gout$DAT)
+		GRID = smart_df(gout$DAT)
+		nms = names(GRID)[1:4]; nms
 		
-		xx = sort(unique(GRID[[nm]]))
-		yy = sapply(xx,function(zz){
-			max(GRID$LL[which(GRID[[nm]] == zz)])
-		},USE.NAMES = FALSE)
-		plot(xx,yy,type = "b",xlab = nm,ylab = "LL")
+		par(mfrow = c(2,2),mar = c(4,4,0.5,0.5))
+		for(nm in nms){
+			# nm = nms[1]; nm
+			
+			xx = sort(unique(GRID[[nm]]))
+			yy = sapply(xx,function(zz){
+				max(GRID$LL[which(GRID[[nm]] == zz)],na.rm = TRUE)
+			},USE.NAMES = FALSE)
+			plot(xx,yy,type = "b",xlab = nm,
+				ylab = "LL",pch = 16)
+			
+		}
+		par(mfrow = c(1,1),mar = c(5,4,4,2) + 0.1)
 		
-	}
-	par(mfrow = c(1,1))
-	
+		# Check NA/NaN LL
+		miss_GR = GRID[is.na(GRID$LL),]; head(miss_GR)
+		iPARS = as.numeric(miss_GR[1,1:4])
+		iPARS
+		ref_LL_cpp(DATA = DATA,PARS = iPARS,COPULA = tmp_copula)
+		
 	}
 	
 	# gopt = gprof
@@ -281,7 +316,7 @@ opt_replicate = function(REP,param_grid,theta,
 	if( verb ) cat(sprintf("%s: BFGS optimization ...\n",date()))
 	nn = nrow(gopt)
 	for(ii in seq(nn)){
-		# ii = 1
+		# ii = 6
 		# if( verb ) cat(".")
 		if( verb ) smart_progress(ii = ii,nn = nn,
 			iter = 5,iter2 = 2e2)
@@ -456,6 +491,12 @@ opt_replicate = function(REP,param_grid,theta,
 	cout$highCI 	= cout$EST + z_alpha * cout$SE
 	cout$lowCI_2 	= cout$EST * exp(-z_alpha * out$SE)
 	cout$highCI_2 = cout$EST * exp(z_alpha * out$SE)
+	
+	if( tmp_copula == "Gumbel" ){
+		cout$lowCI_2[4] 	= exp(out$EST[4]) * exp(-z_alpha * out$SE[4]) + 1
+		cout$highCI_2[4] 	= exp(out$EST[4]) * exp(z_alpha * out$SE[4]) + 1
+	}
+	
 	cout
 	
 	LL 		= wrap_LL(iPARS)
@@ -495,7 +536,7 @@ run_analysis = function(DATA,theta,upKAPPA,
 	
 	if(FALSE){
 		DATA 				= DATA
-		theta 			= 0
+		theta 			= NA
 		upKAPPA 		= upKAPPA
 		gTHRES 			= 8e-2
 		copula 			= c("Clayton","Gumbel")[1]
@@ -648,7 +689,7 @@ run_analyses = function(DATA,THETAs = NULL,upKAPPA,
 		THETAs 			= NULL
 		upKAPPA 		= ifelse(DIST == "weibull",0,1)
 		COPULAS 		= COPULA
-		param_grid 	= seq(0,4,0.2)
+		param_grid = seq(-1,3,0.25)
 		
 		######
 		vec_time 		= round(seq(0,max(c(100,max(DATA$time))),
