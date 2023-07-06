@@ -194,7 +194,7 @@ get_LOCAL_OPTS = function(GPROF,verb){
 				
 			}
 			
-			stop("Possible new idea for neighborhood local grid")
+			# stop("Possible new idea for neighborhood local grid")
 			
 			idx = which(abs(GPROF$log_alpha1 - curr_PARS[1]) < EPS
 				& abs(GPROF$log_lambda1 - curr_PARS[2]) < EPS)

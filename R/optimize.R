@@ -144,7 +144,7 @@ ref_LL_cpp = function(DATA,PARS,COPULA){
 			log_P
 			
 			log_TERM_1 = (-1/THETA-1) * log(F1^(-THETA) + F2^(-THETA) - 1); log_TERM_1
-			log_TERM_2 = logSumExp(log_P); log_TERM_2
+			log_TERM_2 = Rcpp_logSumExp(log_P); log_TERM_2
 			exp(log_TERM_1 + log_TERM_2)
 			
 			

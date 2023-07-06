@@ -126,9 +126,8 @@ arma::vec calc_copula_CDF_PDF(const double& D1,const double& D2,
 	const double& F1,const double& F2,
 	const std::string& copula,const double& THETA){
 	
-	double f_T1_T2 = 0.0, nlog_F1, nlog_F2,
-		F_T1_T2 = calc_copula(F1,F2,copula,THETA),
-		log_TERM_1, log_TERM_2;
+	double f_T1_T2 = 0.0, 
+		F_T1_T2 = calc_copula(F1,F2,copula,THETA);
 	arma::vec out = arma::zeros<arma::vec>(2),
 		log_P = out;
 	out.at(0) = F_T1_T2;
