@@ -79,29 +79,43 @@ double calc_copula(const double& F1,const double& F2,
 // [[Rcpp::export]]
 double calc_copula_dens(const double& D1,const double& D2,
 	const double& F1,const double& F2,
-	const std::string& copula,const double& THETA){
+	const std::string& copula,const double& THETA,
+	const double& F_T1_T2){
 	
-	double f_T1_T2 = 0.0, nlog_F1, nlog_F2,
-		F_T1_T2 = calc_copula(F1,F2,copula,THETA);
+	double f_T1_T2 = 0.0, nlog_F1, nlog_F2, log_sum;
 	
 	if( F_T1_T2 == 0.0 || F_T1_T2 == 1.0 )
 		return 0.0;
+	
+	arma::vec log_vec = arma::zeros<arma::vec>(2);
 	
 	if( copula == "Independent" ){
 		f_T1_T2 = D1 * F2 + D2 * F1;
 	} else if( copula == "Clayton" ){
 		f_T1_T2 = std::pow(F1,-THETA) + std::pow(F2,-THETA) - 1.0;
 		f_T1_T2 = std::pow(f_T1_T2,-1.0 / THETA - 1.0);
-		f_T1_T2 *= (D1 / std::pow(F1,THETA + 1.0) 
-			+ D2 / std::pow(F2,THETA + 1.0));
+		
+		log_vec.at(0) = std::log(D1) - (THETA + 1.0) * std::log(F1);
+		log_vec.at(1) = std::log(D2) - (THETA + 1.0) * std::log(F2);
+		log_sum = Rcpp_logSumExp(log_vec);
+		
+		f_T1_T2 *= std::exp(log_sum);
+		
 	} else if( copula == "Gumbel" ){
 		f_T1_T2 = F_T1_T2;
 		nlog_F1 = -std::log(F1);
 		nlog_F2 = -std::log(F2);
 		f_T1_T2 *= std::pow(std::pow(nlog_F1,THETA) 
 			+ std::pow(nlog_F2,THETA),1.0 / THETA - 1.0);
-		f_T1_T2 *= (std::pow(nlog_F1,THETA - 1.0) * D1 / F1
-			+ std::pow(nlog_F2,THETA - 1.0) * D2 / F2);
+		
+		log_vec.at(0) = (THETA - 1.0) * std::log(nlog_F1) + std::log(D1) + nlog_F1;
+		log_vec.at(1) = (THETA - 1.0) * std::log(nlog_F2) + std::log(D2) + nlog_F2;
+		log_sum = Rcpp_logSumExp(log_vec);
+		
+		f_T1_T2 *= std::exp(log_sum);
+		
+	} else {
+		Rcpp::stop("Not a valid copula!");
 	}
 	
 	return f_T1_T2;
@@ -124,35 +138,9 @@ arma::vec calc_copula_CDF_PDF(const double& D1,const double& D2,
 		return out;
 	}
 	
-	if( copula == "Independent" ){
-		out.at(1) = D1 * F2 + D2 * F1;
-	} else if( copula == "Clayton" ){
-		
-		log_P.at(0) = std::log(D1) - (THETA + 1.0) * std::log(F1);
-		log_P.at(1) = std::log(D2) - (THETA + 1.0) * std::log(F2);
-		log_TERM_1 = (-1.0 / THETA - 1.0) * 
-			std::log(std::pow(F1,-THETA) + std::pow(F2,-THETA) - 1.0);
-		log_TERM_2 = Rcpp_logSumExp(log_P);
-		f_T1_T2 = std::exp(log_TERM_1 + log_TERM_2);
-		out.at(1) = f_T1_T2;
-		
-		// OLD CODE BELOW ----
-		// f_T1_T2 = std::pow(F1,-THETA) + std::pow(F2,-THETA) - 1.0;
-		// f_T1_T2 = std::pow(f_T1_T2,-1.0 / THETA - 1.0);
-		// f_T1_T2 *= (D1 / std::pow(F1,THETA + 1.0) 
-			// + D2 / std::pow(F2,THETA + 1.0));
-		// out.at(1) = f_T1_T2;
-		
-	} else if( copula == "Gumbel" ){
-		f_T1_T2 = F_T1_T2;
-		nlog_F1 = -std::log(F1);
-		nlog_F2 = -std::log(F2);
-		f_T1_T2 *= std::pow(std::pow(nlog_F1,THETA) 
-			+ std::pow(nlog_F2,THETA),1.0 / THETA - 1.0);
-		f_T1_T2 *= (std::pow(nlog_F1,THETA - 1.0) * D1 / F1
-			+ std::pow(nlog_F2,THETA - 1.0) * D2 / F2);
-		out.at(1) = f_T1_T2;
-	}
+	f_T1_T2 = calc_copula_dens(D1,D2,F1,F2,copula,THETA,F_T1_T2);
+	
+	out.at(1) = f_T1_T2;
 	
 	return out;
 }
@@ -185,30 +173,7 @@ double dMrs_LL(const arma::vec& XX,const arma::uvec& DELTA,
 		if( KAPPA != 1.0 ) D1 *= F1 / ( 1.0 - enXDLa );
 		
 		F2 = 1.0 - S2.at(ii);
-		// if( F1 == 0.0 || F2 == 0.0 ) return error_num;
 		
-		// if( copula == "Independent" ){
-			// F1_F2 = F1 * F2;
-			// D1_D2 = D1 * F2 + F1 * D2.at(ii);
-		// } else if( copula == "Clayton" ){
-			// U1T1 = std::pow(F1,THETA + 1.0);
-			// U2T1 = std::pow(F2,THETA + 1.0);
-			// if( U1T1 == 0.0 || U2T1 == 0.0 ) return error_num;
-			// U1T_U2T = std::pow(F1,-THETA) + std::pow(F2,-THETA) - 1.0;
-			// D1_D2 = std::pow(U1T_U2T,-1.0 / THETA - 1.0) *
-				// ( D1 / U1T1 + D2.at(ii) / U2T1 );
-			// F1_F2 = std::pow(U1T_U2T,-1.0 / THETA);
-		// } else if( copula == "Gumbel" ){
-			// log_F1 = std::log(F1);
-			// log_F2 = std::log(F2);
-			// U1T_U2T = std::pow(-log_F1,THETA) + std::pow(-log_F2,THETA);
-			// F1_F2 = std::exp(-std::pow(U1T_U2T,1.0/THETA));
-			// D1_D2 = F1_F2 * std::pow(U1T_U2T,1.0/THETA - 1.0) *
-				// ( std::pow(-log_F1,THETA - 1.0) * D1 / F1 + 
-				// std::pow(-log_F2,THETA - 1.0) * D2.at(ii) / F2 );
-		// } else {
-			// Rcpp::stop("Not a valid copula!");
-		// }
 		out = calc_copula_CDF_PDF(D1,D2.at(ii),
 			F1,F2,copula,THETA);
 		F1_F2 = out.at(0);

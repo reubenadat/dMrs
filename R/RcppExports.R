@@ -17,8 +17,8 @@ calc_copula <- function(F1, F2, copula, THETA) {
     .Call('_dMrs_calc_copula', PACKAGE = 'dMrs', F1, F2, copula, THETA)
 }
 
-calc_copula_dens <- function(D1, D2, F1, F2, copula, THETA) {
-    .Call('_dMrs_calc_copula_dens', PACKAGE = 'dMrs', D1, D2, F1, F2, copula, THETA)
+calc_copula_dens <- function(D1, D2, F1, F2, copula, THETA, F_T1_T2) {
+    .Call('_dMrs_calc_copula_dens', PACKAGE = 'dMrs', D1, D2, F1, F2, copula, THETA, F_T1_T2)
 }
 
 calc_copula_CDF_PDF <- function(D1, D2, F1, F2, copula, THETA) {
