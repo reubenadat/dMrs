@@ -82,7 +82,8 @@ double calc_copula_dens(const double& D1,const double& D2,
 	const std::string& copula,const double& THETA,
 	const double& F_T1_T2){
 	
-	double f_T1_T2 = 0.0, nlog_F1, nlog_F2, log_sum;
+	double f_T1_T2 = 0.0, nlog_F1, nlog_F2, log_sum,
+		log_TERM_1, log_TERM_2;
 	
 	if( F_T1_T2 == 0.0 || F_T1_T2 == 1.0 )
 		return 0.0;
@@ -92,14 +93,13 @@ double calc_copula_dens(const double& D1,const double& D2,
 	if( copula == "Independent" ){
 		f_T1_T2 = D1 * F2 + D2 * F1;
 	} else if( copula == "Clayton" ){
-		f_T1_T2 = std::pow(F1,-THETA) + std::pow(F2,-THETA) - 1.0;
-		f_T1_T2 = std::pow(f_T1_T2,-1.0 / THETA - 1.0);
-		
+		log_TERM_1 = (-1.0 / THETA - 1.0) * 
+			std::log( std::pow(F1,-THETA) + std::pow(F2,-THETA) - 1.0 );
 		log_vec.at(0) = std::log(D1) - (THETA + 1.0) * std::log(F1);
 		log_vec.at(1) = std::log(D2) - (THETA + 1.0) * std::log(F2);
-		log_sum = Rcpp_logSumExp(log_vec);
+		log_TERM_2 = Rcpp_logSumExp(log_vec);
 		
-		f_T1_T2 *= std::exp(log_sum);
+		f_T1_T2 = std::exp(log_TERM_1 + log_TERM_2);
 		
 	} else if( copula == "Gumbel" ){
 		f_T1_T2 = F_T1_T2;

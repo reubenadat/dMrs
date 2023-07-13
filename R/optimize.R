@@ -23,7 +23,7 @@ ref_LL = function(DATA,PARS,COPULA){
 	KAL = KAPPA1 * ALPHA1 / LAMBDA1
 	
 	for(ii in seq(nn)){
-		# ii = 1
+		# ii = 2071
 		TT_LL = DATA$time[ii] / LAMBDA1
 		TLA = (TT_LL)^ALPHA1
 		E_mTLA = exp(-TLA)
@@ -43,9 +43,13 @@ ref_LL = function(DATA,PARS,COPULA){
 			f_T1_T2 = f1 * F2 + f2 * F1
 			F_T1_T2 = F1 * F2
 		} else if( COPULA == "Clayton" ){
+			F_T1_T2 = calc_copula(F1 = F1,F2 = F2,
+				copula = COPULA,THETA = THETA)
 			f_T1_T2 = ( (F1)^(-THETA) + (F2)^(-THETA) - 1 )^(-1/THETA - 1) *
 				(f1 / F1^(THETA + 1) + f2 / F2^(THETA + 1))
-			F_T1_T2 = (F1^(-THETA) + F2^(-THETA) - 1)^(-1/THETA)
+			f_T1_T2 = calc_copula_dens(D1 = f1,D2 = f2,
+				F1 = F1,F2 = F2,copula = COPULA,THETA = THETA,
+				F_T1_T2 = F_T1_T2)
 		} else if( COPULA == "Gumbel" ){
 			nlog_u1 = -log(F1)
 			nlog_u2 = -log(F2)
@@ -57,6 +61,11 @@ ref_LL = function(DATA,PARS,COPULA){
 		
 		if( DATA$delta[ii] == 1 ){
 			tmp_num = f1 + f2 - f_T1_T2
+			if( is.na(tmp_num) ){
+				cat(sprintf("ii = %s, f1 = %s, f2 = %s, F_T1_T2 = %s\n",ii,f1,f2,F_T1_T2))
+				break
+			}
+			
 			if( tmp_num <= 0 ){
 				print(sprintf("ii = %s: error2, f1=%s, f2=%s, f_T1_T2=%s, F1=%s, F2=%s, T1=%s, T2=%s",
 					ii,f1,f2,f_T1_T2,F1,F2,( (F1)^(-THETA) + (F2)^(-THETA) - 1 )^(-1/THETA - 1),
@@ -104,7 +113,7 @@ ref_LL_cpp = function(DATA,PARS,COPULA){
 	PART1 = 0; PART2 = 0;
 	
 	for(ii in seq(nn)){
-		# ii = 38
+		# ii = 3623
 		XDL = DATA$time[ii] / LAMBDA1
 		enXDLa = exp(-(XDL)^ALPHA1)
 		
@@ -127,6 +136,14 @@ ref_LL_cpp = function(DATA,PARS,COPULA){
 			print(sprintf("Check on ii = %s",ii))
 			print(sprintf("D1=%s, D2=%s, F1=%s, F2=%s",D1,D2,F1,F2))
 			return(error_num)
+			
+			F_T1_T2 = calc_copula(F1 = F1,F2 = F2,
+				copula = COPULA,THETA = THETA); F_T1_T2
+			
+			calc_copula_dens(D1 = D1,D2 = D2,
+				F1 = F1,F2 = F2,copula = COPULA,
+				THETA = THETA,F_T1_T2 = F_T1_T2)
+			
 			
 			# Check on calculation
 			f_T1_T2 = F1^(-THETA) + F2^(-THETA) - 1.0
@@ -185,7 +202,7 @@ opt_replicate = function(REP,param_grid,theta,
 
 	if(FALSE){
 		REP 				= REP
-		param_grid	= seq(0,3,0.15)
+		param_grid	= param_grid
 		theta 			= theta
 		upKAPPA 		= upKAPPA
 		gTHRES 			= gTHRES
@@ -258,8 +275,25 @@ opt_replicate = function(REP,param_grid,theta,
 	colnames(gout$DAT) = c("log_alpha1","log_lambda1",
 		"unc_kappa1","log_theta","LL")
 	gout$DAT[1:5,]
-	if( any(is.na(gout$DAT[,"LL"])) ){
+	chk_NA = any(is.na(gout$DAT[,"LL"])); chk_NA
+	if( chk_NA ){
 		stop("NAs in LL grid, debug this")
+		smart_table(!is.na(gout$DAT[,"LL"]))
+		gout$DAT[is.na(gout$DAT[,"LL"]),]
+		
+		iPARS = c(-0.1,2.6,2.9,2.9)
+		
+		# Rcpp function
+		dMrs_cLL(XX = DATA$time,DELTA = DATA$delta,
+			D2 = DATA$dens_t2,S2 = DATA$surv_t2,
+			PARS = iPARS,copula = tmp_copula,
+			verb = TRUE)
+		
+		# R function
+		ref_LL_cpp(DATA = DATA,PARS = iPARS,COPULA = tmp_copula)
+		
+		ref_LL(DATA = DATA,PARS = iPARS,COPULA = tmp_copula)
+		
 	}
 	gprof = get_PROFILE(GRID = gout$DAT)
 	# dim(gprof); head(gprof)
@@ -316,10 +350,12 @@ opt_replicate = function(REP,param_grid,theta,
 	if( verb ) cat(sprintf("%s: BFGS optimization ...\n",date()))
 	nn = nrow(gopt)
 	for(ii in seq(nn)){
-		# ii = 6
+		# ii = 5
 		# if( verb ) cat(".")
 		if( verb ) smart_progress(ii = ii,nn = nn,
 			iter = 5,iter2 = 2e2)
+		if( !is.na(gopt$fin_LL[ii]) ) next
+		
 		iPARS = as.numeric(gopt[ii,1:4]); iPARS
 		dMrs_BFGS(XX = DATA$time,DELTA = DATA$delta,
 			D2 = DATA$dens_t2,S2 = DATA$surv_t2,
@@ -330,7 +366,7 @@ opt_replicate = function(REP,param_grid,theta,
 			dMrs_BFGS(XX = DATA$time,DELTA = DATA$delta,
 				D2 = DATA$dens_t2,S2 = DATA$surv_t2,
 				PARS = iPARS,copula = tmp_copula,upPARS = upPARS,
-				max_iter = 2e2,eps = 1e-6,verb = TRUE)
+				max_iter = 2e2,eps = 1e-5,verb = TRUE)
 			
 			old_LL = wrap_LL(PARS = iPARS); old_LL
 			shift = 1e-2
@@ -539,7 +575,7 @@ run_analysis = function(DATA,theta,upKAPPA,
 		theta 			= NA
 		upKAPPA 		= upKAPPA
 		gTHRES 			= 8e-2
-		copula 			= c("Clayton","Gumbel")[1]
+		copula 			= c(COPULA,"Clayton","Gumbel")[1]
 		param_grid 	= param_grid
 		vec_time 		= vec_time
 		
@@ -689,7 +725,7 @@ run_analyses = function(DATA,THETAs = NULL,upKAPPA,
 		THETAs 			= NULL
 		upKAPPA 		= ifelse(DIST == "weibull",0,1)
 		COPULAS 		= COPULA
-		param_grid = seq(-1,3,0.25)
+		param_grid = seq(-1,3,0.3)
 		
 		######
 		vec_time 		= round(seq(0,max(c(100,max(DATA$time))),

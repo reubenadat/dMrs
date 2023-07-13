@@ -306,7 +306,7 @@ if( TRUE ){ # Run analysis, estimate theta by default
 my_dirs$rep_dir = file.path(my_dirs$curr_dir,"REPS")
 my_dirs$opt_dir = file.path(my_dirs$curr_dir,"OPTS")
 
-COPULA 	= c("Independent","Clayton","Gumbel")[2]
+COPULA 	= c("Independent","Clayton","Gumbel")[3]
 DIST		= c("weibull","expweibull")[2]
 rr 			= 7
 NN			= 5e3
@@ -319,65 +319,12 @@ one_rep = readRDS(rds_fn)
 
 one_rep$PARAMS
 
-# Test one sample joint cdf vs joint pdf coding in Rcpp
-ii = 1
-one_rep$DATA[ii,]
-TT = one_rep$DATA$time[ii]; TT
-F2 = 1 - one_rep$DATA$surv_t2[ii]; F2
-D2 = one_rep$DATA$dens_t2[ii]; D2
-COP = c("Independent","Clayton","Gumbel")[1]; COP
-THETA = one_rep$PARAMS$theta; THETA
-LAM = one_rep$PARAMS$lambda1
-ALP = one_rep$PARAMS$alpha1
-KAP = one_rep$PARAMS$kappa1
-
-jCDF = function(TT){
-	
-	XDL = TT / LAM
-	enXDLa = exp(-(XDL)^ALP)
-	F1 = 1 - enXDLa
-	F1 = ifelse(KAP == 1,F1,F1^KAP)
-	
-	# D1 = KAP * ALP / LAM * (XDL)^(ALP - 1) * enXDLa
-	# D1 = ifelse(KAP == 1,D1,D1 * F1 /(1 - enXDLa));
-	
-	calc_copula(F1 = F1,F2 = F2,
-		copula = COP,THETA = THETA)
-	
-}
-jPDF = function(TT){
-	
-	XDL = TT / LAM
-	enXDLa = exp(-(XDL)^ALP)
-	F1 = 1 - enXDLa
-	F1 = ifelse(KAP == 1,F1,F1^KAP)
-	
-	D1 = KAP * ALP / LAM * (XDL)^(ALP - 1) * enXDLa
-	D1 = ifelse(KAP == 1,D1,D1 * F1 /(1 - enXDLa));
-	
-	F_T1_T2 = jCDF(TT = TT)
-	
-	calc_copula_dens(D1 = D1,D2 = D2,
-		F1 = F1,F2 = F2,copula = COP,
-		THETA = THETA,F_T1_T2 = F_T1_T2)
-}
-
-TT = 15
-jCDF(TT = TT)
-
-grad(jCDF,TT)
-jPDF(TT = TT)
-
-stop("Precision problem?")
-
-
-
 # Estimate assuming truth known
 run_ana = run_analyses(
 	DATA = one_rep$DATA,
 	upKAPPA = ifelse(DIST == "weibull",0,1),
 	COPULAS = COPULA,
-	param_grid = seq(-1,3,0.25),
+	param_grid = seq(-1,3,0.3),
 	verb = TRUE)
 
 class(run_ana)
