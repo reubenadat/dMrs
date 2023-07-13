@@ -163,7 +163,7 @@ BEGIN_RCPP
 END_RCPP
 }
 // dMrs_GRID
-Rcpp::List dMrs_GRID(const arma::vec& XX, const arma::uvec& DELTA, const arma::vec& D2, const arma::vec& S2, const arma::vec& log_THETA, const arma::vec& log_ALPHA, const arma::vec& log_LAMBDA, const arma::vec& unc_KAPPA, const std::string& copula, const bool& verb, const int& ncores);
+arma::mat dMrs_GRID(const arma::vec& XX, const arma::uvec& DELTA, const arma::vec& D2, const arma::vec& S2, const arma::vec& log_THETA, const arma::vec& log_ALPHA, const arma::vec& log_LAMBDA, const arma::vec& unc_KAPPA, const std::string& copula, const bool& verb, const int& ncores);
 RcppExport SEXP _dMrs_dMrs_GRID(SEXP XXSEXP, SEXP DELTASEXP, SEXP D2SEXP, SEXP S2SEXP, SEXP log_THETASEXP, SEXP log_ALPHASEXP, SEXP log_LAMBDASEXP, SEXP unc_KAPPASEXP, SEXP copulaSEXP, SEXP verbSEXP, SEXP ncoresSEXP) {
 BEGIN_RCPP
     Rcpp::RObject rcpp_result_gen;

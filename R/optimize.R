@@ -272,14 +272,15 @@ opt_replicate = function(REP,param_grid,theta,
 		unc_KAPPA = unc_KAPPA,log_THETA = log_THETA,
 		copula = tmp_copula,verb = verb,ncores = ncores)
 	# str(gout)
-	colnames(gout$DAT) = c("log_alpha1","log_lambda1",
+	colnames(gout) = c("log_alpha1","log_lambda1",
 		"unc_kappa1","log_theta","LL")
-	gout$DAT[1:5,]
-	chk_NA = any(is.na(gout$DAT[,"LL"])); chk_NA
+	gout = gout[which(gout[,"LL"] != -999),,drop = FALSE]
+	gout[1:5,]
+	chk_NA = any(is.na(gout[,"LL"])); chk_NA
 	if( chk_NA ){
 		stop("NAs in LL grid, debug this")
-		smart_table(!is.na(gout$DAT[,"LL"]))
-		gout$DAT[is.na(gout$DAT[,"LL"]),]
+		smart_table(!is.na(gout[,"LL"]))
+		gout[is.na(gout[,"LL"]),]
 		
 		iPARS = c(-0.1,2.6,2.9,2.9)
 		
@@ -295,11 +296,11 @@ opt_replicate = function(REP,param_grid,theta,
 		ref_LL(DATA = DATA,PARS = iPARS,COPULA = tmp_copula)
 		
 	}
-	gprof = get_PROFILE(GRID = gout$DAT)
+	gprof = get_PROFILE(GRID = gout)
 	# dim(gprof); head(gprof)
 	
 	if(FALSE){
-		gopt = test_LOCAL_OPTS(GRID = gout$DAT,PLOT = TRUE)
+		gopt = test_LOCAL_OPTS(GRID = gout,PLOT = TRUE)
 		
 	}
 	
@@ -316,8 +317,8 @@ opt_replicate = function(REP,param_grid,theta,
 	}
 	
 	if(FALSE){ # Check profile LL
-		head(gout$DAT)
-		GRID = smart_df(gout$DAT)
+		head(gout)
+		GRID = smart_df(gout)
 		nms = names(GRID)[1:4]; nms
 		
 		par(mfrow = c(2,2),mar = c(4,4,0.5,0.5))
@@ -432,7 +433,7 @@ opt_replicate = function(REP,param_grid,theta,
 	gopt = gopt[which(gopt$nGRAD < gTHRES),]
 	if( nrow(gopt) == 0 ){
 		if( verb ) cat(sprintf("%s: No converged solutions! ...\n",date()))
-		return(list(GRID = gout$DAT,GPROF = gprof,GOPT = gopt,
+		return(list(GRID = gout,GPROF = gprof,GOPT = gopt,
 			GOPT_PRE = gopt_pre,
 			out = NULL,cout = NULL,LL = NULL,GRAD = NULL,
 			HESS = NULL,COVAR = NULL))
@@ -469,7 +470,7 @@ opt_replicate = function(REP,param_grid,theta,
 	gopt = gopt[which(gopt$neg_var == FALSE),]
 	if( nrow(gopt) == 0 ){
 		if( verb ) cat(sprintf("%s: Negative variance(s)! ...\n",date()))
-		return(list(GRID = gout$DAT,GPROF = gprof,GOPT = NULL,
+		return(list(GRID = gout,GPROF = gprof,GOPT = NULL,
 			GOPT_PRE = gopt_pre,
 			out = NULL,cout = NULL,LL = NULL,GRAD = NULL,
 			HESS = NULL,COVAR = NULL))
@@ -492,7 +493,7 @@ opt_replicate = function(REP,param_grid,theta,
 	if( rcond(hess[nz,nz,drop = FALSE]) == 0 ){
 		print(hess)
 		cat("Error with hessian 1: rcond = 0\n")
-		return(list(GRID = gout$DAT,GPROF = gprof,GOPT = NULL,
+		return(list(GRID = gout,GPROF = gprof,GOPT = NULL,
 			GOPT_PRE = gopt_pre,
 			out = NULL,cout = NULL,LL = NULL,GRAD = NULL,
 			HESS = NULL,COVAR = NULL))
@@ -559,7 +560,7 @@ opt_replicate = function(REP,param_grid,theta,
 	dimnames(HESS) 	= list(out$PARS,out$PARS)
 	dimnames(covar) = list(out$PARS,out$PARS)
 	
-	return(list(GRID = gout$DAT,GPROF = gprof,
+	return(list(GRID = gout,GPROF = gprof,
 		GOPT = gopt,GOPT_PRE = gopt_pre,
 		out = out,cout = cout,LL = LL,GRAD = GRAD,
 		HESS = HESS,COVAR = covar,nparams = nparams,

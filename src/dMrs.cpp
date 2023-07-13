@@ -511,7 +511,7 @@ void dMrs_BFGS(const arma::vec& XX,const arma::uvec& DELTA,
 }
 
 // [[Rcpp::export]]
-Rcpp::List dMrs_GRID(const arma::vec& XX,const arma::uvec& DELTA,
+arma::mat dMrs_GRID(const arma::vec& XX,const arma::uvec& DELTA,
 	const arma::vec& D2,const arma::vec& S2,const arma::vec& log_THETA,
 	const arma::vec& log_ALPHA,const arma::vec& log_LAMBDA,
 	const arma::vec& unc_KAPPA,const std::string& copula,
@@ -523,7 +523,7 @@ Rcpp::List dMrs_GRID(const arma::vec& XX,const arma::uvec& DELTA,
 		aa, ll, kk, tt, cnt = 0;
 	// log_ALPHA,log_LAMBDA,unc_KAPPA,log_THETA,LL
 	arma::mat DAT = arma::zeros<arma::mat>(tot,5);
-	double error_num = -999.0;
+	// double error_num = -999.0;
 	bool verb2 = verb && ncores == 1;
 	if( verb )
 		Rcpp::Rcout << "Num grid points = " << tot << "\n";
@@ -562,22 +562,14 @@ Rcpp::List dMrs_GRID(const arma::vec& XX,const arma::uvec& DELTA,
 	}
 	
 	// Get parameters with largest log-likelihood
-	double min_val = arma::min(DAT.col(4));
-	arma::uvec uDAT = arma::zeros<arma::uvec>(DAT.n_rows);
-	uDAT = DAT.col(4) == error_num;
-	if( min_val != error_num ){
-		DAT.col(4) = DAT.col(4) + min_val * arma::conv_to<arma::vec>::from(uDAT);
-	}
-	arma::uword max_idx = arma::index_max(DAT.col(4));
-	arma::vec fPARS = arma::zeros<arma::vec>(4);
-	fPARS.at(0) = DAT.at(max_idx,0);
-	fPARS.at(1) = DAT.at(max_idx,1);
-	fPARS.at(2) = DAT.at(max_idx,2);
+	// double min_val = arma::min(DAT.col(4));
+	// arma::uvec uDAT = arma::zeros<arma::uvec>(DAT.n_rows);
+	// uDAT = DAT.col(4) == error_num;
+	// if( min_val != error_num ){
+		// DAT.col(4) = DAT.col(4) - std::abs(min_val) * arma::conv_to<arma::vec>::from(uDAT);
+	// }
 	
-	return Rcpp::List::create(
-		Rcpp::Named("PARS",Rcpp::NumericVector(fPARS.begin(),fPARS.end())),
-    Rcpp::Named("DAT",DAT));
-	
+	return DAT;
 }
 
 // [[Rcpp::export]]

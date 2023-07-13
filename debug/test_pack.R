@@ -214,9 +214,9 @@ if( TRUE ){ # Specify parameters/arguments
 
 COPULAS = c("Independent","Clayton","Gumbel")
 DISTs		= c("weibull","expweibull")
-COPULA 	= COPULAS[1]
+COPULA 	= COPULAS[3]
 dist1 	= DISTs[1]
-NN 			= 1e3
+NN 			= 5e3
 theta 	= ifelse(COPULA == "Independent",0,2)
 if( COPULA == "Clayton" && theta < 0 ) stop("theta issue")
 if( COPULA == "Gumbel" && theta < 1 ) stop("theta issue")
@@ -250,9 +250,9 @@ if( FALSE ){
 
 run_ana = run_analyses(
 	DATA = one_rep$DATA,
-	#COPULAS = COPULA,
-	upKAPPA = ifelse(dist1 == "weibull",0,1),
-	param_grid = seq(-2,4,0.35),
+	COPULAS = COPULA,
+	# upKAPPA = ifelse(dist1 == "weibull",0,1),
+	param_grid = seq(-2,4,0.4),
 	verb = TRUE)
 
 class(run_ana)
