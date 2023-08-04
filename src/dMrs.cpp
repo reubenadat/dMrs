@@ -50,11 +50,11 @@ double calc_copula(const double& F1,const double& F2,
 	
 	double F_T1_T2 = 0.0;
 	
-	if( F1 == 0.0 || F2 == 0.0 )
-		return 0.0;
+	// if( F1 == 0.0 || F2 == 0.0 )
+		// return 0.0;
 	
-	if( F1 == 1.0 && F2 == 1.0 )
-		return 1.0;
+	// if( F1 == 1.0 && F2 == 1.0 )
+		// return 1.0;
 	
 	if( copula == "Independent" ){
 		F_T1_T2 = F1 * F2;
@@ -62,10 +62,18 @@ double calc_copula(const double& F1,const double& F2,
 		F_T1_T2 = std::pow(F1,-THETA) + std::pow(F2,-THETA) - 1.0;
 		F_T1_T2 = std::pow(F_T1_T2,-1.0 / THETA);
 	} else if( copula == "Gumbel" ){
-		F_T1_T2 = std::pow(-std::log(F1),THETA) + 
-			std::pow(-std::log(F2),THETA);
-		F_T1_T2 = std::pow(F_T1_T2,1.0 / THETA);
+		arma::vec log_vec = arma::zeros<arma::vec>(2);
+		log_vec.at(0) = THETA * std::log(-std::log(F1));
+		log_vec.at(1) = THETA * std::log(-std::log(F2));
+		
+		F_T1_T2 = std::exp(1.0 / THETA * Rcpp_logSumExp(log_vec));
 		F_T1_T2 = std::exp(-F_T1_T2);
+		
+		
+		// F_T1_T2 = std::pow(-std::log(F1),THETA) + 
+			// std::pow(-std::log(F2),THETA);
+		// F_T1_T2 = std::pow(F_T1_T2,1.0 / THETA);
+		// F_T1_T2 = std::exp(-F_T1_T2);
 	} else {
 		Rcpp::stop("Not a valid copula!");
 	}
@@ -82,11 +90,13 @@ double calc_copula_dens(const double& D1,const double& D2,
 	const std::string& copula,const double& THETA,
 	const double& F_T1_T2){
 	
-	double f_T1_T2 = 0.0, nlog_F1, nlog_F2, log_sum,
+	double f_T1_T2 = 0.0, nlog_F1, nlog_F2,
 		log_TERM_1, log_TERM_2;
 	
+	/*
 	if( F_T1_T2 == 0.0 || F_T1_T2 == 1.0 )
 		return 0.0;
+	*/
 	
 	arma::vec log_vec = arma::zeros<arma::vec>(2);
 	
@@ -102,17 +112,24 @@ double calc_copula_dens(const double& D1,const double& D2,
 		f_T1_T2 = std::exp(log_TERM_1 + log_TERM_2);
 		
 	} else if( copula == "Gumbel" ){
-		f_T1_T2 = F_T1_T2;
+		// log first term
+		f_T1_T2 = std::log(F_T1_T2);
+		
 		nlog_F1 = -std::log(F1);
 		nlog_F2 = -std::log(F2);
-		f_T1_T2 *= std::pow(std::pow(nlog_F1,THETA) 
-			+ std::pow(nlog_F2,THETA),1.0 / THETA - 1.0);
 		
+		// plus log second term
+		log_vec.at(0) = THETA * std::log(nlog_F1);
+		log_vec.at(1) = THETA * std::log(nlog_F2);
+		f_T1_T2 += (1.0/THETA - 1) * Rcpp_logSumExp(log_vec);
+		
+		// plus log third term
 		log_vec.at(0) = (THETA - 1.0) * std::log(nlog_F1) + std::log(D1) + nlog_F1;
 		log_vec.at(1) = (THETA - 1.0) * std::log(nlog_F2) + std::log(D2) + nlog_F2;
-		log_sum = Rcpp_logSumExp(log_vec);
+		f_T1_T2 += Rcpp_logSumExp(log_vec);
 		
-		f_T1_T2 *= std::exp(log_sum);
+		// finally exponentiate
+		f_T1_T2 = std::exp(f_T1_T2);
 		
 	} else {
 		Rcpp::stop("Not a valid copula!");
@@ -132,10 +149,12 @@ arma::vec calc_copula_CDF_PDF(const double& D1,const double& D2,
 		log_P = out;
 	out.at(0) = F_T1_T2;
 	
+	/*
 	if( F_T1_T2 == 0.0 || F_T1_T2 == 1.0 ){
 		out.at(1) = 0.0;
 		return out;
 	}
+	*/
 	
 	f_T1_T2 = calc_copula_dens(D1,D2,F1,F2,copula,THETA,F_T1_T2);
 	
@@ -506,6 +525,123 @@ void dMrs_BFGS(const arma::vec& XX,const arma::uvec& DELTA,
 			<< "   NormIHessGrad = " << Rcpp_norm(inv_Bk * gr_k) << "\n"
 			<< "   NormIHessGrad2 = " << Rcpp_norm(ihh * gr_k) << "\n";
 		Rcpp::Rcout << "Var = " << ihh.diag().t();
+	}
+	
+}
+
+// [[Rcpp::export]]
+void dMrs_NR(const arma::vec& XX,const arma::uvec& DELTA,
+	const arma::vec& D2,const arma::vec& S2,arma::vec& PARS,
+	const std::string& copula,const arma::vec& upPARS,
+	const arma::uword& max_iter = 4e3,const double& eps = 1e-7,
+	const bool& verb = true){
+	
+	arma::uword iter = 0, jj, uu,
+		np = PARS.n_elem;
+	
+	// Initialize parameters
+	if( verb ) PARS.t().print("iPARS = "); // Rcpp::Rcout << "iPARS = " << PARS.t();
+	arma::mat I_np = arma::eye<arma::mat>(np,np),
+		HESS = I_np, iHESS = I_np;
+	arma::vec xk = PARS, curr_xk = arma::zeros<arma::vec>(np),
+		new_xk = curr_xk, GRAD = curr_xk, p_k = curr_xk;
+	double error_num = -999.0, diff_LL = 0.0, 
+		rcond_num, diff_PARS,
+		orig_LL = dMrs_cLL(XX,DELTA,D2,S2,xk,copula,false),
+		nGRAD, old_LL, new_LL;
+	arma::uvec chk = arma::zeros<arma::uvec>(np);
+	
+	old_LL = orig_LL;
+	while( iter < max_iter ){
+		GRAD = dMrs_cGRAD(XX,DELTA,D2,S2,xk,copula,upPARS);
+		HESS = dMrs_cHESS(XX,DELTA,D2,S2,xk,copula,upPARS);
+		chk.zeros();
+		chk(arma::find(upPARS == 1.0 && HESS.diag() == 0.0)).ones();
+		if( arma::any(chk == 1) ) Rcpp::stop("Variance issue");
+		arma::uvec nz = arma::find(HESS.diag() != 0.0);
+		rcond_num = arma::rcond(HESS.submat(nz,nz));
+		if( rcond_num == 0.0 ) Rcpp::stop("Variance issue, rcond");
+		iHESS.zeros();
+		iHESS.submat(nz,nz) = arma::inv(-1.0 * HESS.submat(nz,nz));
+		
+		p_k = iHESS * GRAD;
+		p_k /= std::max(1.0, Rcpp_norm(p_k));
+		
+		uu = 0;
+		for(jj = 0; jj <= 10; jj++){
+			new_xk = xk + p_k / std::pow(4.0,jj);
+			
+			new_LL = dMrs_cLL(XX,DELTA,D2,S2,new_xk,copula,false);
+			if( new_LL == error_num ) continue;
+			if( new_LL < old_LL ) continue;
+			
+			GRAD = dMrs_cGRAD(XX,DELTA,D2,S2,new_xk,copula,upPARS);
+			if( arma::any(GRAD == error_num) ) continue;
+			
+			HESS = dMrs_cHESS(XX,DELTA,D2,S2,new_xk,copula,upPARS);
+			if( HESS.at(0,0) == error_num ) continue;
+			
+			chk.zeros();
+			chk(arma::find(upPARS == 1.0 && HESS.diag() == 0.0)).ones();
+			if( arma::any(chk == 1) ) continue;
+			
+			arma::uvec nz = arma::find(HESS.diag() != 0.0);
+			rcond_num = arma::rcond(HESS.submat(nz,nz));
+			if( rcond_num == 0.0 ) continue;
+			iHESS.zeros();
+			iHESS.submat(nz,nz) = arma::inv(-1.0 * HESS.submat(nz,nz));
+			if( arma::any(iHESS.diag() < 0.0) ) continue;
+			
+			uu = 1;
+			break;
+			
+		}
+		
+		if( uu == 0 ){
+			if( verb ) Rcpp::Rcout << "No more update\n";
+			break;
+		}
+		
+		diff_LL = new_LL - old_LL;
+		diff_PARS = Rcpp_norm(xk - new_xk);
+		nGRAD = Rcpp_norm(GRAD);
+		if( diff_LL < 1e-4 && diff_PARS < 1e-4 ){
+			if( nGRAD < 1e-2 ){
+				if( verb ) Rcpp::Rcout << "Optimization criteria met\n";
+				break;
+			}
+		}
+		
+		if( verb ){
+			Rcpp::Rcout << "iter=" << iter + 1 << "; LL=" << old_LL
+				<< "; diff.LL=" << diff_LL << "; diff.PARS=" << diff_PARS
+				<< "; nGRAD=" << nGRAD << "; PARS = " << new_xk.t();
+		}
+		
+		xk = new_xk;
+		old_LL = new_LL;
+		iter++;
+		
+	}
+	
+	old_LL = dMrs_cLL(XX,DELTA,D2,S2,xk,copula,false);
+	if( old_LL > orig_LL ){ // Criteria for convergence
+		PARS = xk;
+	}
+
+	if( verb ){
+		Rcpp::Rcout << "####\nNum Iter = " << iter+1 << "\n";
+		Rcpp::Rcout << "Params = " << xk.t();
+		Rcpp::Rcout << "LL = " << old_LL << "\n";
+		GRAD = dMrs_cGRAD(XX,DELTA,D2,S2,xk,copula,upPARS);
+		HESS = dMrs_cHESS(XX,DELTA,D2,S2,PARS,copula,upPARS);
+		arma::uvec nz = arma::find(HESS.diag() != 0.0);
+		iHESS.submat(nz,nz) = arma::inv(-1.0 * HESS.submat(nz,nz));
+		Rcpp::Rcout << "GRAD = " << GRAD.t();
+		Rcpp::Rcout << "Convergence Indicators: \n"
+			<< "   NormGrad = " << Rcpp_norm(GRAD) << "\n"
+			<< "   NormIHessGrad = " << Rcpp_norm(iHESS * GRAD) << "\n";
+		Rcpp::Rcout << "Var = " << iHESS.diag().t();
 	}
 	
 }

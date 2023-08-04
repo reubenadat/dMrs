@@ -43,6 +43,7 @@ setdirs = function(){
 			source(file.path(pack_dir,"R/parameters.R"))
 			source(file.path(pack_dir,"R/plots.R"))
 			source(file.path(pack_dir,"R/optimize.R"))
+			source(file.path(pack_dir,"R/summary.R"))
 			source(file.path(pack_dir,"R/dMrs.R"))
 		} else {
 			install.packages(pack)
@@ -216,15 +217,15 @@ COPULAS = c("Independent","Clayton","Gumbel")
 DISTs		= c("weibull","expweibull")
 COPULA 	= COPULAS[3]
 dist1 	= DISTs[1]
-NN 			= 5e3
-theta 	= ifelse(COPULA == "Independent",0,2)
+NN 			= 2e3
+theta 	= ifelse(COPULA == "Independent",0,4)
 if( COPULA == "Clayton" && theta < 0 ) stop("theta issue")
 if( COPULA == "Gumbel" && theta < 1 ) stop("theta issue")
 alpha1 	= 1.2
 lambda1 = 20
 kappa1 	= ifelse(dist1 == "weibull",1,2)
-alpha2 	= 2.1
-lambda2 = 38
+alpha2 	= 1.5
+lambda2 = 28
 propC 	= 0.2
 true_PARS = log(c(alpha1,lambda1,kappa1,theta))
 if( COPULA == "Gumbel" ) true_PARS[4] = log(theta - 1)
@@ -245,18 +246,48 @@ one_rep$PARAMS
 table(one_rep$DATA$D) / NN
 table(one_rep$DATA$delta) / NN
 
+PARS = rep(NA,4)
+names(PARS) = c("log_alpha1","log_lambda1","log_kappa1","unc_theta")
+PARS[1] = log(one_rep$PARAMS$alpha1[1])
+PARS[2] = log(one_rep$PARAMS$lambda1[1])
+PARS[3] = ifelse(dist1 == "weibull",0,log(one_rep$PARAMS$kappa1[1]))
+PARS[4] = ifelse(COPULA == "Independent",-Inf,
+	ifelse(COPULA == "Clayton",log(one_rep$PARAMS$theta),
+	log(one_rep$PARAMS$theta-1)))
+PARS
+
+aa = calc_CDFs(DATA = one_rep$DATA,
+	PARS = PARS,COPULA = COPULA)
+
 }
 if( FALSE ){
 
 run_ana = run_analyses(
 	DATA = one_rep$DATA,
 	COPULAS = COPULA,
-	# upKAPPA = ifelse(dist1 == "weibull",0,1),
-	param_grid = seq(-2,4,0.4),
+	upKAPPA = ifelse(dist1 == "weibull",0,1),
+	param_grid = seq(-2,4,0.2),
 	verb = TRUE)
 
 class(run_ana)
 length(run_ana)
+
+opt_sum(OPT = run_ana)
+run_ana[[1]]$RES$GOPT
+
+out = chk_profile_LL(GRID = run_ana[[1]]$RES$GRID)
+out
+
+iPARS = out$VAL; iPARS
+
+DATA = one_rep$DATA; head(DATA)
+upPARS = c(1,1,0,1)
+dMrs_NR(XX = DATA$time,DELTA = DATA$delta,
+	D2 = DATA$dens_t2,S2 = DATA$surv_t2,PARS = iPARS,
+	copula = COPULA,upPARS = upPARS,max_iter = 1e2,
+	eps = 1e-7,verb = TRUE)
+
+
 
 plot_SURVs(run_ANA = run_ana,
 	MULTIPLE = TRUE,ALPHA = 0.4)
@@ -307,8 +338,8 @@ my_dirs$rep_dir = file.path(my_dirs$curr_dir,"REPS")
 my_dirs$opt_dir = file.path(my_dirs$curr_dir,"OPTS")
 
 COPULA 	= c("Independent","Clayton","Gumbel")[3]
-DIST		= c("weibull","expweibull")[2]
-rr 			= 7
+DIST		= c("weibull","expweibull")[1]
+rr 			= 49
 NN			= 5e3
 
 repCDN_dir = file.path(my_dirs$rep_dir,

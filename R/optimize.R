@@ -197,6 +197,54 @@ ref_LL_cpp = function(DATA,PARS,COPULA){
 	return(LL)
 }
 
+#' @title calc_CDFs
+#' @description Investigate the nature of the cumulative distribution 
+#'	and copula functions for simulated or real data sets
+#' @param DATA Dataframe containing observed time, second event time 
+#'	survival probability
+#' @param PARS Vector of parameter values
+#' @param COPULA The copula considered by the user.
+#' @export
+calc_CDFs = function(DATA,PARS,COPULA){
+	if(FALSE){
+		DATA = one_rep$DATA
+		PARS = iPARS
+		COPULA
+		
+	}
+	
+	ALPHA1 	= exp(PARS[1])
+	LAMBDA1 = exp(PARS[2])
+	KAPPA1 	= exp(PARS[3])
+	THETA 	= exp(PARS[4]) + ifelse(COPULA == "Clayton",0,1)
+	
+	TT_LL = DATA$time / LAMBDA1
+	TLA = (TT_LL)^ALPHA1
+	E_mTLA = exp(-TLA)
+	CDF_1 = (1 - E_mTLA)^KAPPA1
+	CDF_2 = 1 - DATA$surv_t2
+	
+	par(mfrow = c(3,2),mar = c(4,4,0.5,0.2))
+	smart_hist(CDF_1,breaks = 40)
+	
+	smart_hist(CDF_2,breaks = 40)
+	
+	plot(DATA$time,CDF_1,col = "red")
+		points(DATA$time,col = "blue")
+	
+	smoothScatter(CDF_1,CDF_2)
+	
+	F_T1_T2 = apply(smart_df(CDF_1,CDF_2),1,function(xx){
+		calc_copula(F1 = xx[1],F2 = xx[2],
+			copula = COPULA,THETA = THETA)
+	})
+	smart_hist(F_T1_T2,breaks = 40,xlab = "Joint CDF Copula")
+	
+	par(mfrow = c(1,1),mar = c(5,4,4,2)+0.1)
+	
+	return(NULL)
+}
+
 opt_replicate = function(REP,param_grid,theta,
 	upKAPPA,ncores = 1,gTHRES = 8e-2,verb,PLOT){
 
@@ -830,5 +878,84 @@ run_analyses = function(DATA,THETAs = NULL,upKAPPA,
 	
 }
 
+chk_profile_LL = function(GRID){
+	
+	if(FALSE){
+		GRID = OPT[[3]]$RES$GRID
+		
+	}
+	
+	GRID = smart_df(GRID)
+	# GRID = GRID[which(GRID$log_theta <= 1),]
+	pars = colnames(GRID)[1:4]; pars
+	
+	# Get profile likelihood per param
+	par(mfrow = c(2,2),mar = c(4.5,4,2,2))
+	out = sapply(pars,function(xx){
+		# xx = pars[1]; xx
+		x1 = sort(unique(GRID[,xx]))
+		y1 = sapply(x1,function(zz){
+			# zz = x1[3]; zz
+			max(GRID$LL[which(GRID[[xx]] == zz)],na.rm = TRUE)
+		})
+		
+		dat = smart_df(x1 = x1,y1 = y1)
+		plot(dat,xlab = xx,ylab = "Prof.LL",
+			type = "b",pch = 16)
+		abline(v = x1[which.max(y1)],lty = 2,lwd = 2,col = "red")
+		out = c(VAL = x1[which.max(y1)],LL = max(dat$y1))
+		out
+	})
+	out = smart_df(t(out))
+	par(mfrow = c(1,1),mar = c(5,4,4,2)+0.1)
+	
+	return(out)
+	
+	# EXP: Get bivariate profile likelihood
+	par_pair = pars[c(1,2)]; par_pair
+	head(GRID)
+	
+	uPARs_1 = sort(unique(GRID[[par_pair[1]]]))
+	uPARs_2 = sort(unique(GRID[[par_pair[2]]]))
+	DAT = c()
+	
+	for(uPAR_1 in uPARs_1){
+	for(uPAR_2 in uPARs_2){
+		idx = which(GRID[[par_pair[1]]] == uPAR_1
+			& GRID[[par_pair[2]]] == uPAR_2)
+		length(idx)
+		DAT = rbind(DAT,smart_df(uPAR_1 = uPAR_1,
+			uPAR_2 = uPAR_2,LL = max(GRID$LL[idx])))
+	}}
+	
+	names(DAT)[1:2] = c("xx","yy")
+	dim(DAT); head(DAT)
+	
+	my_stepsize = diff(sort(unique(DAT[,1])))[1]; my_stepsize
+	xrange = range(DAT[,1]); xrange
+	yrange = range(DAT[,2]); yrange
+	DAT = DAT[which(DAT[,1] >= xrange[1]
+		& DAT[,1] <= xrange[2]
+		& DAT[,2] >= yrange[1]
+		& DAT[,2] <= yrange[2]),]
+	# res$LL[is.na(res$LL)] = min(res$LL,na.rm = TRUE)
+	nBREAKs = 10
+	
+	xbreaks = round(seq(xrange[1],xrange[2],length.out = nBREAKs),1)
+	ybreaks = round(seq(yrange[1],yrange[2],length.out = nBREAKs),1)
+	
+	g1 = ggplot(data = DAT,mapping = aes(x = xx,
+		y = yy,fill = LL)) +
+		geom_tile(width = my_stepsize,height = my_stepsize) + 
+		coord_cartesian(expand = 0,xlim = xrange,ylim = yrange) +
+		scale_x_continuous(breaks = xbreaks) +
+		scale_y_continuous(breaks = ybreaks) +
+		labs(fill = "Profile LL") + xlab(par_pair[1]) +
+		ylab(par_pair[2]) +
+		scale_fill_viridis(discrete = FALSE)
+	g1
+	
+
+}
 
 ###
