@@ -116,6 +116,20 @@ sim_DATA = function(copula,dist1,n_obs,theta,
 	return(all_data)
 	
 }
+get_uPARS = function(PARAMS){
+	
+	uPARS = calc_uPARS(ALPHA1 = PARAMS$alpha1,
+		LAMBDA1 = PARAMS$lambda1,
+		KAPPA1 = PARAMS$kappa1,
+		THETA = PARAMS$theta,
+		DIST = ifelse(PARAMS$kappa1 == 1,"weibull","exp-weibull"),
+		COPULA = PARAMS$copula)
+	
+	names(uPARS) = sprintf("log_%s",c("A","L","K","T"))
+	
+	return(uPARS)
+	
+}
 get_PROFILE = function(GRID,PLOT = FALSE){
 	if(FALSE){
 		GRID = gout

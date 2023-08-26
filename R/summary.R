@@ -34,6 +34,9 @@ opt_sum = function(OPT){
 	res$LL = sapply(OPT,function(xx){
 		xx$RES$LL
 	})
+	res$NP = sapply(OPT,function(xx){
+		xx$RES$nparams
+	})
 	res$BIC = sapply(OPT,function(xx){
 		xx$RES$BIC
 	})

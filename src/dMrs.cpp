@@ -207,6 +207,10 @@ double dMrs_LL(const arma::vec& XX,const arma::uvec& DELTA,
 		
 		out = calc_copula_CDF_PDF(D1,D2.at(ii),
 			F1,F2,copula,THETA);
+		
+		if( out.has_nan() )
+			return error_num;
+		
 		F1_F2 = out.at(0);
 		D1_D2 = out.at(1);
 		
@@ -638,7 +642,7 @@ void dMrs_NR(const arma::vec& XX,const arma::uvec& DELTA,
 		diff_LL = new_LL - old_LL;
 		diff_PARS = Rcpp_norm(xk(idx_fin) - new_xk(idx_fin));
 		nGRAD = Rcpp_norm(GRAD);
-		if( diff_LL < 1e-4 && diff_PARS < 1e-4 ){
+		if( diff_LL < 5e-5 && diff_PARS < 5e-5 ){
 			if( nGRAD < 1e-2 ){
 				if( verb ) Rcpp::Rcout << "Optimization criteria met\n";
 				break;

@@ -215,16 +215,16 @@ if( TRUE ){ 	# Specify parameters/arguments
 
 COPULAS = c("Independent","Clayton","Gumbel")
 DISTs		= c("weibull","expweibull")
-COPULA 	= COPULAS[3]
+COPULA 	= COPULAS[1]
 dist1 	= DISTs[2]
-NN 			= 8e3
+NN 			= 2e3
 theta 	= ifelse(COPULA == "Independent",0,5)
 if( COPULA == "Clayton" && theta < 0 ) stop("theta issue")
 if( COPULA == "Gumbel" && theta < 1 ) stop("theta issue")
-alpha1 	= 1.5
-lambda1 = 5
-kappa1 	= ifelse(dist1 == "weibull",1,4/5)
-alpha2 	= 1.5
+alpha1 	= 1.2
+lambda1 = 4
+kappa1 	= ifelse(dist1 == "weibull",1,1/2)
+alpha2 	= 1.6
 lambda2 = 5
 propC 	= 0.2
 uPARS = log(c(alpha1,lambda1,kappa1,theta))
@@ -241,7 +241,7 @@ print(TRUTH)
 }
 if( TRUE ){ 	# Simulate dataset
 
-set.seed(1)
+set.seed(2)
 one_rep = sim_replicate(copula = TRUTH$COPULA,
 	dist1 = TRUTH$DIST,NN = NN,theta = theta,
 	alpha1 = alpha1,lambda1 = lambda1,
@@ -270,13 +270,17 @@ param_grid = list(
 	L = TRUTH$uPARS[2] + seq(-0.5,0.5,0.1),
 	K = TRUTH$uPARS[3] + seq(-0.5,0.5,0.1),
 	T = TRUTH$uPARS[4] + seq(-0.5,0.5,0.1))
+if( is.infinite(TRUTH$uPARS[4]) ){
+	param_grid$T = seq(-1,3,0.1)
+}
+param_grid
 
 nGRID = prod(sapply(param_grid,length)); nGRID
 
 run_ana = run_analyses(
 	DATA = one_rep$DATA,
 	# COPULAS = COPULA,
-	# upKAPPA = upKAPPA,
+	upKAPPA = upKAPPA,
 	param_grid = param_grid,
 	verb = TRUE)
 
@@ -284,12 +288,13 @@ class(run_ana)
 length(run_ana)
 
 OO = opt_sum(OPT = run_ana); OO
+print(TRUTH)
 
-solu = 4
-run_ana[[solu]]$RES$GOPT_PRE
-
-run_ana[[solu]]$RES$out
-
+solu = which(OO$COPULA == TRUTH$COPULA
+	& OO$DIST == TRUTH$DIST)
+solu
+# run_ana[[solu]]$RES$GOPT_PRE
+# run_ana[[solu]]$RES$out
 run_ana[[solu]]$RES$cout
 print(TRUTH)
 
@@ -321,35 +326,54 @@ if( TRUE ){ # Run analysis, estimate theta by default
 my_dirs$rep_dir = file.path(my_dirs$curr_dir,"REPS")
 my_dirs$opt_dir = file.path(my_dirs$curr_dir,"OPTS")
 
-COPULA 	= c("Independent","Clayton","Gumbel")[3]
+COPULA 	= c("Independent","Clayton","Gumbel")[2]
 DIST		= c("weibull","expweibull")[1]
-rr 			= 49
-NN			= 5e3
+rr 			= 1
+NN			= 2.5e3
 
 repCDN_dir = file.path(my_dirs$rep_dir,
 	sprintf("C.%s_D.%s",COPULA,DIST))
 
 rds_fn = file.path(repCDN_dir,sprintf("R.%s.rds",rr))
 one_rep = readRDS(rds_fn)
-
+one_rep$DATA = one_rep$DATA[seq(NN),]
 one_rep$PARAMS
+
+uPARS = get_uPARS(PARAMS = one_rep$PARAMS)
+uPARS
+
+aa = calc_CDFs(DATA = one_rep$DATA,
+	PARS = uPARS,COPULA = COPULA)
+
+stepsize = 0.1
+param_grid = list(
+	A = uPARS[1] + seq(-0.5,0.5,stepsize),
+	L = uPARS[2] + seq(-0.5,0.5,stepsize),
+	K = uPARS[3] + seq(-0.5,0.5,stepsize),
+	T = uPARS[4] + seq(-0.5,0.5,stepsize))
+
+if( is.infinite(uPARS[4]) ){
+	param_grid$T = seq(-1,3,0.1)
+}
+param_grid
 
 # Estimate assuming truth known
 run_ana = run_analyses(
 	DATA = one_rep$DATA,
 	upKAPPA = ifelse(DIST == "weibull",0,1),
-	COPULAS = COPULA,
-	param_grid = seq(-1,3,0.3),
+	param_grid = param_grid,
 	verb = TRUE)
 
 class(run_ana)
 length(run_ana)
 
-names(run_ana[[1]])
+OO = opt_sum(OPT = run_ana); OO
 
-sapply(run_ana,function(xx) xx$RES$LL)
-sapply(run_ana,function(xx) xx$RES$BIC)
-run_ana[[1]]$RES$out
+solu = 2
+GRID = smart_df(run_ana[[solu]]$RES$GRID); head(GRID)
+out = get_PROFILE(GRID = GRID,PLOT = TRUE)
+
+
 plot_SURVs(run_ANA = run_ana,
 	MULTIPLE = TRUE,ALPHA = 0.4)
 

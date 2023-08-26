@@ -23,7 +23,7 @@ ref_LL = function(DATA,PARS,COPULA){
 	KAL = KAPPA1 * ALPHA1 / LAMBDA1
 	
 	for(ii in seq(nn)){
-		# ii = 2071
+		# ii = 1
 		TT_LL = DATA$time[ii] / LAMBDA1
 		TLA = (TT_LL)^ALPHA1
 		E_mTLA = exp(-TLA)
@@ -208,7 +208,8 @@ ref_LL_cpp = function(DATA,PARS,COPULA){
 calc_CDFs = function(DATA,PARS,COPULA){
 	if(FALSE){
 		DATA = one_rep$DATA
-		PARS = iPARS
+		# PARS = iPARS
+		PARS = as.numeric(gout[1,1:4]); PARS
 		COPULA
 		
 	}
@@ -218,6 +219,7 @@ calc_CDFs = function(DATA,PARS,COPULA){
 	KAPPA1 	= exp(PARS[3])
 	THETA 	= exp(PARS[4]) + 
 							ifelse(COPULA %in% c("Independent","Clayton"),0,1)
+	KAL = KAPPA1 * ALPHA1 / LAMBDA1
 	
 	TT_LL = DATA$time / LAMBDA1
 	TLA = (TT_LL)^ALPHA1
@@ -230,8 +232,9 @@ calc_CDFs = function(DATA,PARS,COPULA){
 	
 	hist(CDF_2,breaks = 40,xlim = c(0,1))
 	
-	plot(DATA$time,CDF_1,col = "red")
-		points(DATA$time,col = "blue")
+	plot(DATA$time,CDF_1,col = "red",
+		xlab = "Obs Time",ylab = "CDF")
+	points(DATA$time,CDF_2,col = "blue")
 	
 	smoothScatter(CDF_1,CDF_2,
 		xlim = c(0,1),ylim = c(0,1))
@@ -253,8 +256,23 @@ calc_CDFs = function(DATA,PARS,COPULA){
 	
 	par(mfrow = c(1,1),mar = c(5,4,4,2)+0.1)
 	
+	# Calc densities
+	D1 = KAL * TLA^(ALPHA1 - 1) * E_mTLA
+	if( KAPPA1 != 1.0 ) D1 = D1 * CDF_1 / (1 - E_mTLA)
+	D2 = DATA$dens_t2
+	
 	out = smart_df(CDF_1 = CDF_1,
-		CDF_2 = CDF_2,F_T1_T2 = F_T1_T2)
+		CDF_2 = CDF_2,F_T1_T2 = F_T1_T2,
+		D1 = D1,D2 = D2)
+	
+	out$D1_D2 = apply(out[,c("D1","D2","CDF_1","CDF_2","F_T1_T2")],
+		1,function(xx){
+		calc_copula_dens(D1 = xx[1],D2 = xx[2],
+			F1 = xx[3],F2 = xx[4],copula = COPULA,
+			THETA = THETA,F_T1_T2 = xx[5])
+	})
+	
+	dim(out); head(out)
 	
 	return(out)
 	
@@ -365,7 +383,7 @@ opt_replicate = function(DATA,COPULA,param_grid,theta,
 	colnames(gout) = c("log_alpha1","log_lambda1",
 		"unc_kappa1","log_theta","LL")
 	gout = smart_df(gout)
-	dim(gout)
+	dim(gout); head(gout)
 	gout = gout[which(gout[,"LL"] != -999),,drop = FALSE]
 	dim(gout)
 	gout[1:5,]
@@ -400,8 +418,8 @@ opt_replicate = function(DATA,COPULA,param_grid,theta,
 	gopt$fin_LL = NA; gopt$nGRAD = NA; 
 	# gopt
 	
-	if( verb ) cat(sprintf("%s: NR optimization ...\n",date()))
 	nn = nrow(gopt)
+	if( verb ) cat(sprintf("%s: NR optimization w/ %s profile point(s) ...\n",date(),nn))
 	for(ii in seq(nn)){
 		# ii = 3
 		# if( verb ) cat(".")
@@ -558,12 +576,12 @@ opt_replicate = function(DATA,COPULA,param_grid,theta,
 	GRAD 	= wrap_GRAD(iPARS)
 	HESS 	= wrap_HESS(iPARS)
 	
-	nparams = 4 
-		# alpha,lambda, 
+	nparams = 2 
+		# alpha,lambda
+	nparams = nparams + upKAPPA	
 		# kappa(fixed or estimated)
-		# theta(fixed or estimated)
-	# nparams = nparams + upKAPPA	
-	# nparams = nparams + upTHETA
+	nparams = nparams + upTHETA
+		# theta(fixed at the boundary or estimated)
 	nparams
 	
 	NN = nrow(DATA)
