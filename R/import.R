@@ -2,7 +2,7 @@
 #' @importFrom stats median runif dweibull pweibull
 #'	quantile sd qweibull qnorm
 #' @importFrom graphics par hist abline mtext legend
-#'	image lines
+#'	image lines smoothScatter points
 #' @importFrom grDevices pdf dev.off
 #' @importFrom gplots colorpanel
 #' @importFrom ggplot2 ggplot aes geom_hline geom_vline

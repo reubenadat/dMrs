@@ -211,125 +211,109 @@ NN = c(500,1000,2000)
 # Running code example
 # ----------
 
-if( TRUE ){ # Specify parameters/arguments
+if( TRUE ){ 	# Specify parameters/arguments
 
 COPULAS = c("Independent","Clayton","Gumbel")
 DISTs		= c("weibull","expweibull")
 COPULA 	= COPULAS[3]
-dist1 	= DISTs[1]
-NN 			= 2e3
-theta 	= ifelse(COPULA == "Independent",0,4)
+dist1 	= DISTs[2]
+NN 			= 8e3
+theta 	= ifelse(COPULA == "Independent",0,5)
 if( COPULA == "Clayton" && theta < 0 ) stop("theta issue")
 if( COPULA == "Gumbel" && theta < 1 ) stop("theta issue")
-alpha1 	= 1.2
-lambda1 = 20
-kappa1 	= ifelse(dist1 == "weibull",1,2)
+alpha1 	= 1.5
+lambda1 = 5
+kappa1 	= ifelse(dist1 == "weibull",1,4/5)
 alpha2 	= 1.5
-lambda2 = 28
+lambda2 = 5
 propC 	= 0.2
-true_PARS = log(c(alpha1,lambda1,kappa1,theta))
-if( COPULA == "Gumbel" ) true_PARS[4] = log(theta - 1)
-names(true_PARS) = sprintf("log_%s",c("A","L","K","T"))
+uPARS = log(c(alpha1,lambda1,kappa1,theta))
+if( COPULA == "Gumbel" ) uPARS[4] = log(theta - 1)
+names(uPARS) = sprintf("log_%s",c("A","L","K","T"))
 # true_PARS
-TRUTH = list(COPULA = COPULA,PARS = true_PARS)
+
+cPARS = c(alpha1,lambda1,kappa1,theta)
+names(cPARS) = c("alpha1","lambda1","kappa1","theta")
+TRUTH = list(COPULA = COPULA,DIST = dist1,
+	uPARS = uPARS,cPARS = cPARS)
 print(TRUTH)
 
 }
-if( TRUE ){ # Simulate dataset
+if( TRUE ){ 	# Simulate dataset
 
 set.seed(1)
-one_rep = sim_replicate(copula = COPULA,dist1 = dist1,
-	NN = NN,theta = theta,alpha1 = alpha1,lambda1 = lambda1,
-	kappa1 = kappa1,alpha2 = alpha2,lambda2 = lambda2,
-	propC = propC,verb = TRUE)
-one_rep$PARAMS
-table(one_rep$DATA$D) / NN
-table(one_rep$DATA$delta) / NN
+one_rep = sim_replicate(copula = TRUTH$COPULA,
+	dist1 = TRUTH$DIST,NN = NN,theta = theta,
+	alpha1 = alpha1,lambda1 = lambda1,
+	kappa1 = kappa1,alpha2 = alpha2,
+	lambda2 = lambda2,propC = propC,
+	verb = TRUE)
+#one_rep$PARAMS
+#print(table(one_rep$DATA$D) / NN)
+#print(table(one_rep$DATA$delta) / NN)
 
-PARS = rep(NA,4)
-names(PARS) = c("log_alpha1","log_lambda1","log_kappa1","unc_theta")
-PARS[1] = log(one_rep$PARAMS$alpha1[1])
-PARS[2] = log(one_rep$PARAMS$lambda1[1])
-PARS[3] = ifelse(dist1 == "weibull",0,log(one_rep$PARAMS$kappa1[1]))
-PARS[4] = ifelse(COPULA == "Independent",-Inf,
-	ifelse(COPULA == "Clayton",log(one_rep$PARAMS$theta),
-	log(one_rep$PARAMS$theta-1)))
-PARS
+print(table(D = one_rep$DATA$D,
+	Delta = one_rep$DATA$delta))
+
+upKAPPA = ifelse(TRUTH$DIST == "weibull",0,1)
 
 aa = calc_CDFs(DATA = one_rep$DATA,
-	PARS = PARS,COPULA = COPULA)
+	PARS = TRUTH$uPARS,COPULA = TRUTH$COPULA)
 
 }
-if( FALSE ){
+if( FALSE ){ 	# Optimize
+
+print(TRUTH)
+
+param_grid = list(
+	A = TRUTH$uPARS[1] + seq(-0.5,0.5,0.1),
+	L = TRUTH$uPARS[2] + seq(-0.5,0.5,0.1),
+	K = TRUTH$uPARS[3] + seq(-0.5,0.5,0.1),
+	T = TRUTH$uPARS[4] + seq(-0.5,0.5,0.1))
+
+nGRID = prod(sapply(param_grid,length)); nGRID
 
 run_ana = run_analyses(
 	DATA = one_rep$DATA,
-	COPULAS = COPULA,
-	upKAPPA = ifelse(dist1 == "weibull",0,1),
-	param_grid = seq(-2,4,0.2),
+	# COPULAS = COPULA,
+	# upKAPPA = upKAPPA,
+	param_grid = param_grid,
 	verb = TRUE)
 
 class(run_ana)
 length(run_ana)
 
-opt_sum(OPT = run_ana)
-run_ana[[1]]$RES$GOPT
+OO = opt_sum(OPT = run_ana); OO
 
-out = chk_profile_LL(GRID = run_ana[[1]]$RES$GRID)
+solu = 4
+run_ana[[solu]]$RES$GOPT_PRE
+
+run_ana[[solu]]$RES$out
+
+run_ana[[solu]]$RES$cout
+print(TRUTH)
+
+GRID = smart_df(run_ana[[solu]]$RES$GRID)
+dim(GRID); head(GRID)
+
+out = get_PROFILE(GRID = GRID,PLOT = TRUE)
+# out = get_PROFILE(GRID = GRID[which(GRID$log_theta < 5),],PLOT = TRUE)
 out
 
-iPARS = out$VAL; iPARS
-
-DATA = one_rep$DATA; head(DATA)
+iPARS = out$VAL
+iPARS
 upPARS = c(1,1,0,1)
-dMrs_NR(XX = DATA$time,DELTA = DATA$delta,
-	D2 = DATA$dens_t2,S2 = DATA$surv_t2,PARS = iPARS,
-	copula = COPULA,upPARS = upPARS,max_iter = 1e2,
-	eps = 1e-7,verb = TRUE)
 
+wrap_NR(DATA = one_rep$DATA,
+	PARS = iPARS,
+	COPULA = COPULA,
+	upPARS = upPARS)
 
-
+# Check survival
 plot_SURVs(run_ANA = run_ana,
 	MULTIPLE = TRUE,ALPHA = 0.4)
 
-res = sapply(run_ana,function(xx){
-	BIC = xx$RES$BIC
-	COPU = xx$copula
-	DIST = ifelse(xx$RES$cout$EST[3] == 1,"Weibull","Exp-Weibull")
-	c(COPU = COPU,DIST = DIST,BIC = BIC)
-})
-res = smart_df(t(res))
-res$BIC = as.numeric(res$BIC)
-# str(res)
-res$POST = exp(res$BIC - Rcpp_logSumExp(res$BIC))
-res
 
-run_ana[[6]]$RES$cout
-
-
-# Test R vs Rcpp coding of LL
-idx = 2
-iPARS = run_ana[[idx]]$RES$out$EST; iPARS
-ref_LL(DATA = one_rep$DATA,PARS = iPARS,
-	COPULA = run_ana[[idx]]$copula)
-ref_LL_cpp(DATA = one_rep$DATA,PARS = iPARS,
-	COPULA = run_ana[[idx]]$copula)
-dMrs_cLL(XX = one_rep$DATA$time,
-	DELTA = one_rep$DATA$delta,
-	D2 = one_rep$DATA$dens_t2,
-	S2 = one_rep$DATA$surv_t2,
-	PARS = iPARS,
-	copula = run_ana[[idx]]$copula)
-
-
-ii = 1
-list(COPULA = run_ana[[ii]]$copula,
-	COUT = run_ana[[ii]]$RES$cout)
-
-ii = 3
-plot_LL(GPROF = run_ana[[ii]]$RES$GPROF,
-	GOPT = run_ana[[ii]]$RES$GOPT,
-	COPULA = run_ana[[ii]]$copula,HJUST = 0)
 
 }
 if( TRUE ){ # Run analysis, estimate theta by default

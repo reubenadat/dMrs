@@ -13,6 +13,10 @@ Rcpp_logSumExp <- function(log_x) {
     .Call('_dMrs_Rcpp_logSumExp', PACKAGE = 'dMrs', log_x)
 }
 
+prt_vec <- function(aa) {
+    invisible(.Call('_dMrs_prt_vec', PACKAGE = 'dMrs', aa))
+}
+
 calc_copula <- function(F1, F2, copula, THETA) {
     .Call('_dMrs_calc_copula', PACKAGE = 'dMrs', F1, F2, copula, THETA)
 }
@@ -39,6 +43,10 @@ dMrs_cHESS <- function(XX, DELTA, D2, S2, PARS, copula, upPARS) {
 
 dMrs_BFGS <- function(XX, DELTA, D2, S2, PARS, copula, upPARS, max_iter = 4e3L, eps = 1e-7, verb = TRUE) {
     invisible(.Call('_dMrs_dMrs_BFGS', PACKAGE = 'dMrs', XX, DELTA, D2, S2, PARS, copula, upPARS, max_iter, eps, verb))
+}
+
+dMrs_NR <- function(XX, DELTA, D2, S2, PARS, copula, upPARS, max_iter = 4e3L, eps = 1e-7, verb = TRUE) {
+    invisible(.Call('_dMrs_dMrs_NR', PACKAGE = 'dMrs', XX, DELTA, D2, S2, PARS, copula, upPARS, max_iter, eps, verb))
 }
 
 dMrs_GRID <- function(XX, DELTA, D2, S2, log_THETA, log_ALPHA, log_LAMBDA, unc_KAPPA, copula, verb = FALSE, ncores = 1L) {

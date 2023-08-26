@@ -30,6 +30,14 @@ smart_solve = function(MAT){
 	return(out)
 	
 }
+smart_rmcols = function(OBJ,rm_names){
+	rm_names = intersect(rm_names,colnames(OBJ))
+	if( length(rm_names) > 0 ){
+		OBJ[,!(colnames(OBJ) %in% rm_names),drop = FALSE]
+	} else {
+		OBJ
+	}
+}
 format_latex = function(INPUT){
 	# INPUT = "optE_AIC%"
 	

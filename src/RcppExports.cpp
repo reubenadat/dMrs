@@ -45,6 +45,16 @@ BEGIN_RCPP
     return rcpp_result_gen;
 END_RCPP
 }
+// prt_vec
+void prt_vec(const arma::vec& aa);
+RcppExport SEXP _dMrs_prt_vec(SEXP aaSEXP) {
+BEGIN_RCPP
+    Rcpp::RNGScope rcpp_rngScope_gen;
+    Rcpp::traits::input_parameter< const arma::vec& >::type aa(aaSEXP);
+    prt_vec(aa);
+    return R_NilValue;
+END_RCPP
+}
 // calc_copula
 double calc_copula(const double& F1, const double& F2, const std::string& copula, const double& THETA);
 RcppExport SEXP _dMrs_calc_copula(SEXP F1SEXP, SEXP F2SEXP, SEXP copulaSEXP, SEXP THETASEXP) {
@@ -162,6 +172,25 @@ BEGIN_RCPP
     return R_NilValue;
 END_RCPP
 }
+// dMrs_NR
+void dMrs_NR(const arma::vec& XX, const arma::uvec& DELTA, const arma::vec& D2, const arma::vec& S2, arma::vec& PARS, const std::string& copula, const arma::vec& upPARS, const arma::uword& max_iter, const double& eps, const bool& verb);
+RcppExport SEXP _dMrs_dMrs_NR(SEXP XXSEXP, SEXP DELTASEXP, SEXP D2SEXP, SEXP S2SEXP, SEXP PARSSEXP, SEXP copulaSEXP, SEXP upPARSSEXP, SEXP max_iterSEXP, SEXP epsSEXP, SEXP verbSEXP) {
+BEGIN_RCPP
+    Rcpp::RNGScope rcpp_rngScope_gen;
+    Rcpp::traits::input_parameter< const arma::vec& >::type XX(XXSEXP);
+    Rcpp::traits::input_parameter< const arma::uvec& >::type DELTA(DELTASEXP);
+    Rcpp::traits::input_parameter< const arma::vec& >::type D2(D2SEXP);
+    Rcpp::traits::input_parameter< const arma::vec& >::type S2(S2SEXP);
+    Rcpp::traits::input_parameter< arma::vec& >::type PARS(PARSSEXP);
+    Rcpp::traits::input_parameter< const std::string& >::type copula(copulaSEXP);
+    Rcpp::traits::input_parameter< const arma::vec& >::type upPARS(upPARSSEXP);
+    Rcpp::traits::input_parameter< const arma::uword& >::type max_iter(max_iterSEXP);
+    Rcpp::traits::input_parameter< const double& >::type eps(epsSEXP);
+    Rcpp::traits::input_parameter< const bool& >::type verb(verbSEXP);
+    dMrs_NR(XX, DELTA, D2, S2, PARS, copula, upPARS, max_iter, eps, verb);
+    return R_NilValue;
+END_RCPP
+}
 // dMrs_GRID
 arma::mat dMrs_GRID(const arma::vec& XX, const arma::uvec& DELTA, const arma::vec& D2, const arma::vec& S2, const arma::vec& log_THETA, const arma::vec& log_ALPHA, const arma::vec& log_LAMBDA, const arma::vec& unc_KAPPA, const std::string& copula, const bool& verb, const int& ncores);
 RcppExport SEXP _dMrs_dMrs_GRID(SEXP XXSEXP, SEXP DELTASEXP, SEXP D2SEXP, SEXP S2SEXP, SEXP log_THETASEXP, SEXP log_ALPHASEXP, SEXP log_LAMBDASEXP, SEXP unc_KAPPASEXP, SEXP copulaSEXP, SEXP verbSEXP, SEXP ncoresSEXP) {
@@ -202,6 +231,7 @@ static const R_CallMethodDef CallEntries[] = {
     {"_dMrs_Rcpp_norm", (DL_FUNC) &_dMrs_Rcpp_norm, 1},
     {"_dMrs_Rcpp_max_abs_diff", (DL_FUNC) &_dMrs_Rcpp_max_abs_diff, 2},
     {"_dMrs_Rcpp_logSumExp", (DL_FUNC) &_dMrs_Rcpp_logSumExp, 1},
+    {"_dMrs_prt_vec", (DL_FUNC) &_dMrs_prt_vec, 1},
     {"_dMrs_calc_copula", (DL_FUNC) &_dMrs_calc_copula, 4},
     {"_dMrs_calc_copula_dens", (DL_FUNC) &_dMrs_calc_copula_dens, 7},
     {"_dMrs_calc_copula_CDF_PDF", (DL_FUNC) &_dMrs_calc_copula_CDF_PDF, 6},
@@ -209,6 +239,7 @@ static const R_CallMethodDef CallEntries[] = {
     {"_dMrs_dMrs_cGRAD", (DL_FUNC) &_dMrs_dMrs_cGRAD, 7},
     {"_dMrs_dMrs_cHESS", (DL_FUNC) &_dMrs_dMrs_cHESS, 7},
     {"_dMrs_dMrs_BFGS", (DL_FUNC) &_dMrs_dMrs_BFGS, 10},
+    {"_dMrs_dMrs_NR", (DL_FUNC) &_dMrs_dMrs_NR, 10},
     {"_dMrs_dMrs_GRID", (DL_FUNC) &_dMrs_dMrs_GRID, 11},
     {"_dMrs_dMrs_MATCH", (DL_FUNC) &_dMrs_dMrs_MATCH, 4},
     {NULL, NULL, 0}

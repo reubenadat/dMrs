@@ -116,9 +116,10 @@ sim_DATA = function(copula,dist1,n_obs,theta,
 	return(all_data)
 	
 }
-get_PROFILE = function(GRID){
+get_PROFILE = function(GRID,PLOT = FALSE){
 	if(FALSE){
-		GRID = gout$DAT
+		GRID = gout
+		PLOT = TRUE
 		
 	}
 	
@@ -127,22 +128,132 @@ get_PROFILE = function(GRID){
 		"unc_kappa1","log_theta","LL")
 	GRID[1:5,]
 	
-	## New code, get profiled LL
-	u_logA = sort(unique(GRID$log_alpha1))
-	u_logL = sort(unique(GRID$log_lambda1))
-	res = c()
-	for(logA in u_logA){
-	for(logL in u_logL){
-		# logA = u_logA[1]; logL = u_logL[1]
-		idx = which(GRID$log_alpha1 == logA
-			& GRID$log_lambda1 == logL)
-		length(idx)
-		tmp_df = GRID[idx[which.max(GRID$LL[idx])],]
+	PARS = colnames(GRID)[1:4]; PARS
+	PROF = list()
+	for(PAR in PARS){
+		# PAR = PARS[1]; PAR
+		
+		xx = sort(unique(GRID[[PAR]])); xx
+		yy = sapply(xx,function(zz){
+			# zz = xx[1]; zz
+			if( is.infinite(zz) ){
+				idx = which(GRID[[PAR]] == zz); idx
+			} else {
+				idx = which(abs(GRID[[PAR]] - zz) < 1e-5)
+			}
+			max(GRID$LL[idx])
+		},USE.NAMES = FALSE)
+		tmp_df = smart_df(xx,yy)
+		names(tmp_df) = c(PAR,"LL")
 		tmp_df
-		res = rbind(res,tmp_df)
+		PROF[[PAR]] = tmp_df
+		rm(tmp_df)
+		
+	}
+	
+	if( PLOT ){
+		par(mfrow = c(2,2),mar = c(4.5,4,2,2))
+		for(PAR in PARS){
+			# PAR = PARS[2]; PAR
+			tmp_df = PROF[[PAR]]
+			# qnt = quantile(tmp_df$LL,0.15); qnt
+			# tmp_df = tmp_df[which(tmp_df$LL >= qnt),]
+			# tmp_df
+			
+			if( nrow(tmp_df) == 1 ){
+				plot(0,0,type = "n",xlab = PAR,
+					ylab = "Prof.LL")
+				next
+			}
+			
+			plot(tmp_df,xlab = PAR,
+				ylab = "Prof.LL",
+				type = "b",pch = 16)
+		}
+		par(mfrow = c(1,1),mar = c(5,4,4,2)+0.1)
+	}
+	
+	# Get local opts
+	LOCAL = list()
+	for(PAR in PARS){
+		# PAR = PARS[4]; PAR
+		
+		tmp_df = PROF[[PAR]]
+		tmp_df$maxLL = NA
+		nn = nrow(tmp_df)
+		
+		if( nn == 1 ){
+			tmp_df$maxLL = tmp_df$LL
+			tmp_df = smart_rmcols(tmp_df,"maxLL")
+			LOCAL[[PAR]] = tmp_df
+			next
+		}
+		
+		for(ii in seq(nn)){
+			# ii = 1
+			jj = ii
+			old_LL = tmp_df$LL[jj]
+			while(TRUE){
+				
+				# Shift
+				if( jj == 1 ){
+					kk = jj + 1
+				} else if( jj == nn ){
+					kk = jj - 1
+				} else {
+					kk = jj + c(-1,1)
+				}
+				
+				vec_LL = tmp_df$LL[kk]
+				tmp_LL = max(vec_LL)
+				idx = which(vec_LL == tmp_LL); idx
+				kk = kk[idx]
+				kk
+				
+				if( tmp_LL > old_LL ){
+					old_LL = tmp_LL
+					jj = kk
+					next
+				}
+				
+				break
+			}
+			
+			# idx = which(tmp_df$LL == old_LL)
+			tmp_df$maxLL[ii] = old_LL
+			
+		}
+		
+		tmp_df = tmp_df[which(tmp_df$LL == tmp_df$maxLL),]
+		tmp_df = smart_rmcols(tmp_df,"maxLL")
+		LOCAL[[PAR]] = tmp_df
+		
+	}
+	
+	LOCAL
+	
+	res = c()
+	for(PAR in PARS){
+		# PAR = PARS[4]; PAR
+		LOCAL[[PAR]]
+		nlocal = nrow(LOCAL[[PAR]]); nlocal
+	for(jj in seq(nlocal)){
+		# jj = 1
+		value = LOCAL[[PAR]][[PAR]][jj]; value
+		if( is.infinite(value) ){
+			idx = which(GRID[[PAR]] == value
+				& GRID$LL == LOCAL[[PAR]]$LL[jj])
+		} else {
+			idx = which(abs(GRID[[PAR]] - value) < 1e-5
+				& GRID$LL == LOCAL[[PAR]]$LL[jj])
+		}
+		length(idx)
+		# if( length(idx) != 1 ) stop("Check this")
+		res = rbind(res,GRID[idx,])
 	}}
+	res = res[!duplicated(res),,drop = FALSE]
 	rownames(res) = NULL
-	# dim(res); res[1:10,]
+	res
 	
 	return(res)
 }
@@ -167,7 +278,7 @@ get_LOCAL_OPTS = function(GPROF,verb){
 	for(ii in seq(nn)){
 		# ii = 84
 		# GPROF[ii,]
-		if( verb ) smart_progress(ii = ii,nn = nn,iter = 1e1,iter2 = 5e2)
+		if( verb ) smart_progress(ii = ii,nn = nn,iter = 5,iter2 = 2e2)
 		curr_PARS = as.numeric(GPROF[ii,c("log_alpha1","log_lambda1")])
 		# curr_PARS
 		curr_LL = GPROF$LL[ii]; # curr_LL

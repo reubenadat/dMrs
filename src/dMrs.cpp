@@ -41,6 +41,19 @@ double Rcpp_logSumExp(const arma::vec& log_x){
 	}
 }
 
+// [[Rcpp::export]]
+void prt_vec(const arma::vec& aa){
+	arma::uword ii, nn = aa.n_elem;
+	
+	Rcpp::Rcout << "(";
+	for(ii = 0; ii < nn; ii++){
+		Rcpp::Rcout << aa.at(ii);
+		if( ii < nn - 1 ) Rcpp::Rcout << ", ";
+	}
+	Rcpp::Rcout << ")\n";
+	
+}
+
 // --------------------
 // New Functions
 
@@ -540,7 +553,10 @@ void dMrs_NR(const arma::vec& XX,const arma::uvec& DELTA,
 		np = PARS.n_elem;
 	
 	// Initialize parameters
-	if( verb ) PARS.t().print("iPARS = "); // Rcpp::Rcout << "iPARS = " << PARS.t();
+	if( verb ){
+		Rcpp::Rcout << "iPARS = ";
+		prt_vec(PARS);
+	}
 	arma::mat I_np = arma::eye<arma::mat>(np,np),
 		HESS = I_np, iHESS = I_np;
 	arma::vec xk = PARS, curr_xk = arma::zeros<arma::vec>(np),
@@ -549,18 +565,35 @@ void dMrs_NR(const arma::vec& XX,const arma::uvec& DELTA,
 		rcond_num, diff_PARS,
 		orig_LL = dMrs_cLL(XX,DELTA,D2,S2,xk,copula,false),
 		nGRAD, old_LL, new_LL;
-	arma::uvec chk = arma::zeros<arma::uvec>(np);
+	arma::uvec chk = arma::zeros<arma::uvec>(np),
+		idx_fin = arma::find_finite(PARS);
 	
 	old_LL = orig_LL;
 	while( iter < max_iter ){
 		GRAD = dMrs_cGRAD(XX,DELTA,D2,S2,xk,copula,upPARS);
+		if( GRAD.at(0) == error_num ){
+			if( verb ) Rcpp::Rcout << "Invalid pars\n";
+			return;
+		}
+		
 		HESS = dMrs_cHESS(XX,DELTA,D2,S2,xk,copula,upPARS);
+		if( HESS.at(0,0) == error_num ){
+			if( verb ) Rcpp::Rcout << "Invalid pars\n";
+			return;
+		}
+		
 		chk.zeros();
 		chk(arma::find(upPARS == 1.0 && HESS.diag() == 0.0)).ones();
-		if( arma::any(chk == 1) ) Rcpp::stop("Variance issue");
+		if( arma::any(chk == 1) ){
+			if( verb ) Rcpp::Rcout << "Variance issue\n";
+			return;
+		}
 		arma::uvec nz = arma::find(HESS.diag() != 0.0);
 		rcond_num = arma::rcond(HESS.submat(nz,nz));
-		if( rcond_num == 0.0 ) Rcpp::stop("Variance issue, rcond");
+		if( rcond_num == 0.0 ){
+			if( verb ) Rcpp::Rcout << "Variance issue, rcond\n";
+			return;
+		}
 		iHESS.zeros();
 		iHESS.submat(nz,nz) = arma::inv(-1.0 * HESS.submat(nz,nz));
 		
@@ -568,7 +601,7 @@ void dMrs_NR(const arma::vec& XX,const arma::uvec& DELTA,
 		p_k /= std::max(1.0, Rcpp_norm(p_k));
 		
 		uu = 0;
-		for(jj = 0; jj <= 10; jj++){
+		for(jj = 0; jj <= 20; jj++){
 			new_xk = xk + p_k / std::pow(4.0,jj);
 			
 			new_LL = dMrs_cLL(XX,DELTA,D2,S2,new_xk,copula,false);
@@ -603,7 +636,7 @@ void dMrs_NR(const arma::vec& XX,const arma::uvec& DELTA,
 		}
 		
 		diff_LL = new_LL - old_LL;
-		diff_PARS = Rcpp_norm(xk - new_xk);
+		diff_PARS = Rcpp_norm(xk(idx_fin) - new_xk(idx_fin));
 		nGRAD = Rcpp_norm(GRAD);
 		if( diff_LL < 1e-4 && diff_PARS < 1e-4 ){
 			if( nGRAD < 1e-2 ){
@@ -615,7 +648,11 @@ void dMrs_NR(const arma::vec& XX,const arma::uvec& DELTA,
 		if( verb ){
 			Rcpp::Rcout << "iter=" << iter + 1 << "; LL=" << old_LL
 				<< "; diff.LL=" << diff_LL << "; diff.PARS=" << diff_PARS
-				<< "; nGRAD=" << nGRAD << "; PARS = " << new_xk.t();
+				<< "; nGRAD=" << nGRAD << "; PARS = ";
+			
+			// Rcpp::Rcout << new_xk.t();
+			prt_vec(new_xk);
+			
 		}
 		
 		xk = new_xk;
@@ -631,17 +668,17 @@ void dMrs_NR(const arma::vec& XX,const arma::uvec& DELTA,
 
 	if( verb ){
 		Rcpp::Rcout << "####\nNum Iter = " << iter+1 << "\n";
-		Rcpp::Rcout << "Params = " << xk.t();
+		Rcpp::Rcout << "Params = "; prt_vec(xk);
 		Rcpp::Rcout << "LL = " << old_LL << "\n";
 		GRAD = dMrs_cGRAD(XX,DELTA,D2,S2,xk,copula,upPARS);
 		HESS = dMrs_cHESS(XX,DELTA,D2,S2,PARS,copula,upPARS);
 		arma::uvec nz = arma::find(HESS.diag() != 0.0);
 		iHESS.submat(nz,nz) = arma::inv(-1.0 * HESS.submat(nz,nz));
-		Rcpp::Rcout << "GRAD = " << GRAD.t();
+		Rcpp::Rcout << "GRAD = "; prt_vec(GRAD);
 		Rcpp::Rcout << "Convergence Indicators: \n"
 			<< "   NormGrad = " << Rcpp_norm(GRAD) << "\n"
 			<< "   NormIHessGrad = " << Rcpp_norm(iHESS * GRAD) << "\n";
-		Rcpp::Rcout << "Var = " << iHESS.diag().t();
+		Rcpp::Rcout << "Var = "; prt_vec(iHESS.diag());
 	}
 	
 }

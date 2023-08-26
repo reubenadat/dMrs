@@ -216,7 +216,8 @@ calc_CDFs = function(DATA,PARS,COPULA){
 	ALPHA1 	= exp(PARS[1])
 	LAMBDA1 = exp(PARS[2])
 	KAPPA1 	= exp(PARS[3])
-	THETA 	= exp(PARS[4]) + ifelse(COPULA == "Clayton",0,1)
+	THETA 	= exp(PARS[4]) + 
+							ifelse(COPULA %in% c("Independent","Clayton"),0,1)
 	
 	TT_LL = DATA$time / LAMBDA1
 	TLA = (TT_LL)^ALPHA1
@@ -224,38 +225,73 @@ calc_CDFs = function(DATA,PARS,COPULA){
 	CDF_1 = (1 - E_mTLA)^KAPPA1
 	CDF_2 = 1 - DATA$surv_t2
 	
-	par(mfrow = c(3,2),mar = c(4,4,0.5,0.2))
-	smart_hist(CDF_1,breaks = 40)
+	par(mfrow = c(3,2),mar = c(4.4,4.4,1,0.2))
+	hist(CDF_1,breaks = 40,xlim = c(0,1))
 	
-	smart_hist(CDF_2,breaks = 40)
+	hist(CDF_2,breaks = 40,xlim = c(0,1))
 	
 	plot(DATA$time,CDF_1,col = "red")
 		points(DATA$time,col = "blue")
 	
-	smoothScatter(CDF_1,CDF_2)
+	smoothScatter(CDF_1,CDF_2,
+		xlim = c(0,1),ylim = c(0,1))
 	
 	F_T1_T2 = apply(smart_df(CDF_1,CDF_2),1,function(xx){
 		calc_copula(F1 = xx[1],F2 = xx[2],
 			copula = COPULA,THETA = THETA)
 	})
-	smart_hist(F_T1_T2,breaks = 40,xlab = "Joint CDF Copula")
+	hist(F_T1_T2,breaks = 40,
+		xlab = "Joint CDF Copula",
+		xlim = c(0,1))
+	
+	if( all(c("T1","T2") %in% names(DATA)) ){
+		smoothScatter(log(1 + DATA[,c("T1","T2")]),
+			xlab = "log(1 + Time1)",
+			ylab = "log(1 + Time2)",
+			main = sprintf("Copula=%s, Theta=%s",COPULA,THETA))
+	}
 	
 	par(mfrow = c(1,1),mar = c(5,4,4,2)+0.1)
 	
-	return(NULL)
+	out = smart_df(CDF_1 = CDF_1,
+		CDF_2 = CDF_2,F_T1_T2 = F_T1_T2)
+	
+	return(out)
+	
 }
 
-opt_replicate = function(REP,param_grid,theta,
+wrap_NR = function(DATA,PARS,COPULA,upPARS,verb = TRUE){
+	
+	dMrs_NR(XX = DATA$time,
+		DELTA = DATA$delta,
+		D2 = DATA$dens_t2,
+		S2 = DATA$surv_t2,
+		PARS = PARS,
+		copula = COPULA,
+		upPARS = upPARS,
+		max_iter = 2e2,
+		eps = 1e-7,
+		verb = verb)
+	
+	out_PARS = PARS
+	return(out_PARS)
+	
+}
+
+opt_replicate = function(DATA,COPULA,param_grid,theta,
 	upKAPPA,ncores = 1,gTHRES = 8e-2,verb,PLOT){
 
 	if(FALSE){
-		REP 				= REP
-		param_grid	= param_grid
-		theta 			= theta
+		DATA 				= one_rep$DATA
+		param_grid	= list(A = seq(0,1,0.05),
+										L = seq(1,2,0.05),
+										K = 0,
+										T = seq(1,3,0.1))
+		theta 			= ifelse(COPULA == "Independent",0,NA)
 		upKAPPA 		= upKAPPA
-		gTHRES 			= gTHRES
-		verb 				= verb
-		ncores 			= ncores
+		gTHRES 			= 8e-2
+		verb 				= TRUE
+		ncores 			= 1
 		PLOT				= TRUE
 		
 	}
@@ -263,28 +299,22 @@ opt_replicate = function(REP,param_grid,theta,
 	verb 		= get_verb(verb = verb)
 	PLOT		= get_PLOT(PLOT = PLOT)
 	upTHETA = ifelse(is.na(theta),1,0)
-	DATA 		= REP$DATA
-	PARAMS 	= REP$PARAMS
 	upPARS	= get_upPARS(upKAPPA = upKAPPA,
 							THETA = theta)
 	upTHETA	= upPARS[4]
-	# tmp_copula = ifelse(
-		# PARAMS$copula %in% c("Independent","Clayton"),
-		# "Clayton",PARAMS$copula)
-	tmp_copula = PARAMS$copula
 	
 	wrap_LL 	= function(PARS){
 		# PARS = iPARS
 		dMrs_cLL(XX = DATA$time,DELTA = DATA$delta,
 			D2 = DATA$dens_t2,S2 = DATA$surv_t2,
-			PARS = PARS,copula = tmp_copula,
+			PARS = PARS,copula = COPULA,
 			verb = !TRUE)
 	}
 	wrap_GRAD = function(PARS){
 		# PARS = iPARS
 		out = dMrs_cGRAD(XX = DATA$time,DELTA = DATA$delta,
 			D2 = DATA$dens_t2,S2 = DATA$surv_t2,PARS = PARS,
-			copula = tmp_copula,upPARS = upPARS)
+			copula = COPULA,upPARS = upPARS)
 		
 		# out = grad(wrap_LL,PARS)
 		c(out)
@@ -293,36 +323,51 @@ opt_replicate = function(REP,param_grid,theta,
 		# PARS = iPARS
 		dMrs_cHESS(XX = DATA$time,DELTA = DATA$delta,
 			D2 = DATA$dens_t2,S2 = DATA$surv_t2,PARS = PARS,
-			copula = tmp_copula,upPARS = upPARS)
+			copula = COPULA,upPARS = upPARS)
 	}
 	
 	# Estimate parameters
-	param_grid = sort(unique(c(0,param_grid)))
+	if( is(param_grid,"numeric") ){
+		tmp_list = list()
+		for(nm in c("A","L","K","T")){
+			tmp_list[[nm]] = param_grid
+		}
+		param_grid = tmp_list; rm(tmp_list)
+	}
+	for(nm in names(param_grid)){
+		tmp_vec = param_grid[[nm]]
+		if( min(tmp_vec) > 0 || max(tmp_vec) < 0 )
+			next
+		param_grid[[nm]] = sort(unique(c(0,param_grid[[nm]])))
+	}
 	if( verb ) cat(sprintf("%s: Grid search for initial parameters ...\n",date()))
 	if( upPARS[3] == 0 ){
 		unc_KAPPA = 0
 	} else {
-		unc_KAPPA = param_grid
+		unc_KAPPA = param_grid$K
 	}
 	if( upTHETA == 0 ){
-		if( tmp_copula == "Independent" ) 	log_THETA = log(theta)
-		if( tmp_copula == "Clayton" ) 			log_THETA = log(theta)
-		if( tmp_copula == "Gumbel" )				log_THETA = log(theta - 1)
+		if( COPULA == "Independent" ) 	log_THETA = log(theta)
+		if( COPULA == "Clayton" ) 			log_THETA = log(theta)
+		if( COPULA == "Gumbel" )				log_THETA = log(theta - 1)
 	} else if( upTHETA == 1 ){
 		# log_THETA = c(-Inf,param_grid)
-		log_THETA = param_grid
+		log_THETA = param_grid$T
 		log_THETA = sort(unique(log_THETA))
 	}
 	
 	gout = dMrs_GRID(XX = DATA$time,DELTA = DATA$delta,
 		D2 = DATA$dens_t2,S2 = DATA$surv_t2,
-		log_ALPHA = param_grid,log_LAMBDA = param_grid,
+		log_ALPHA = param_grid$A,log_LAMBDA = param_grid$L,
 		unc_KAPPA = unc_KAPPA,log_THETA = log_THETA,
-		copula = tmp_copula,verb = verb,ncores = ncores)
+		copula = COPULA,verb = verb,ncores = ncores)
 	# str(gout)
 	colnames(gout) = c("log_alpha1","log_lambda1",
 		"unc_kappa1","log_theta","LL")
+	gout = smart_df(gout)
+	dim(gout)
 	gout = gout[which(gout[,"LL"] != -999),,drop = FALSE]
+	dim(gout)
 	gout[1:5,]
 	chk_NA = any(is.na(gout[,"LL"])); chk_NA
 	if( chk_NA ){
@@ -335,103 +380,56 @@ opt_replicate = function(REP,param_grid,theta,
 		# Rcpp function
 		dMrs_cLL(XX = DATA$time,DELTA = DATA$delta,
 			D2 = DATA$dens_t2,S2 = DATA$surv_t2,
-			PARS = iPARS,copula = tmp_copula,
+			PARS = iPARS,copula = COPULA,
 			verb = TRUE)
 		
 		# R function
-		ref_LL_cpp(DATA = DATA,PARS = iPARS,COPULA = tmp_copula)
+		ref_LL_cpp(DATA = DATA,PARS = iPARS,COPULA = COPULA)
 		
-		ref_LL(DATA = DATA,PARS = iPARS,COPULA = tmp_copula)
-		
-	}
-	gprof = get_PROFILE(GRID = gout)
-	# dim(gprof); head(gprof)
-	
-	if(FALSE){
-		gopt = test_LOCAL_OPTS(GRID = gout,PLOT = TRUE)
+		ref_LL(DATA = DATA,PARS = iPARS,COPULA = COPULA)
 		
 	}
 	
-	gopt = get_LOCAL_OPTS(GPROF = gprof,verb = verb)
-	# dim(gopt); head(gopt)
+	gprof = get_PROFILE(GRID = gout,PLOT = PLOT)
+	# gprof = get_PROFILE(GRID = gout[which(gout$log_lambda1 > 2 & gout$log_theta > 1),],PLOT = verb)
+	gprof
 	
-	if( verb && PLOT ){
-		cat(sprintf("%s: Two-dimensional plot of the profile log likelihood ...\n",date()))
-		sub_gopt = gopt[order(-gopt$LL),]
-		sub_gopt = sub_gopt[seq(min(c(5,nrow(sub_gopt)))),,drop = FALSE]
-		print(plot_LL(GPROF = gprof,
-			GOPT = sub_gopt,
-			COPULA = PARAMS$copula))
-	}
-	
-	if(FALSE){ # Check profile LL
-		head(gout)
-		GRID = smart_df(gout)
-		nms = names(GRID)[1:4]; nms
-		
-		par(mfrow = c(2,2),mar = c(4,4,0.5,0.5))
-		for(nm in nms){
-			# nm = nms[1]; nm
-			
-			xx = sort(unique(GRID[[nm]]))
-			yy = sapply(xx,function(zz){
-				max(GRID$LL[which(GRID[[nm]] == zz)],na.rm = TRUE)
-			},USE.NAMES = FALSE)
-			plot(xx,yy,type = "b",xlab = nm,
-				ylab = "LL",pch = 16)
-			
-		}
-		par(mfrow = c(1,1),mar = c(5,4,4,2) + 0.1)
-		
-		# Check NA/NaN LL
-		miss_GR = GRID[is.na(GRID$LL),]; head(miss_GR)
-		iPARS = as.numeric(miss_GR[1,1:4])
-		iPARS
-		ref_LL_cpp(DATA = DATA,PARS = iPARS,COPULA = tmp_copula)
-		
-	}
-	
-	# gopt = gprof
-	gopt$fin_LL = NA; gopt$nGRAD = NA; gopt$fin_logA = NA
-	gopt$fin_logL = NA; gopt$fin_logK = NA; gopt$fin_logT = NA
+	gopt = gprof
+	gopt$fin_logA = NA; gopt$fin_logL = NA; 
+	gopt$fin_logK = NA; gopt$fin_logT = NA;
+	gopt$fin_LL = NA; gopt$nGRAD = NA; 
 	# gopt
 	
-	if( verb ) cat(sprintf("%s: BFGS optimization ...\n",date()))
+	if( verb ) cat(sprintf("%s: NR optimization ...\n",date()))
 	nn = nrow(gopt)
 	for(ii in seq(nn)){
-		# ii = 5
+		# ii = 3
 		# if( verb ) cat(".")
 		if( verb ) smart_progress(ii = ii,nn = nn,
 			iter = 5,iter2 = 2e2)
 		if( !is.na(gopt$fin_LL[ii]) ) next
 		
 		iPARS = as.numeric(gopt[ii,1:4]); iPARS
-		dMrs_BFGS(XX = DATA$time,DELTA = DATA$delta,
+		dMrs_NR(XX = DATA$time,DELTA = DATA$delta,
 			D2 = DATA$dens_t2,S2 = DATA$surv_t2,
-			PARS = iPARS,copula = tmp_copula,upPARS = upPARS,
-			max_iter = 2e2,eps = 1e-6,verb = FALSE)
-		if(FALSE){
+			PARS = iPARS,copula = COPULA,upPARS = upPARS,
+			max_iter = 2e2,eps = 1e-6,verb = verb)
 		
-			dMrs_BFGS(XX = DATA$time,DELTA = DATA$delta,
-				D2 = DATA$dens_t2,S2 = DATA$surv_t2,
-				PARS = iPARS,copula = tmp_copula,upPARS = upPARS,
-				max_iter = 2e2,eps = 1e-5,verb = TRUE)
-			
-			old_LL = wrap_LL(PARS = iPARS); old_LL
-			shift = 1e-2
-			test_GRAD = rep(0,4)
-			for(jj in seq(4)){
-				upVEC = rep(0,4); upVEC[jj] = 1
-				new_LL = wrap_LL(PARS = iPARS + upVEC * shift)
-				print(new_LL)
-				test_GRAD[jj] = (new_LL - old_LL) / shift
-			}
-			test_GRAD
-		
-		
-		}
 		tmp_LL = wrap_LL(PARS = iPARS)
 		tmp_GR = wrap_GRAD(PARS = iPARS)
+		if(FALSE){
+			tmp_LL
+			tmp_GR
+			tmp_HE = wrap_HESS(PARS = iPARS)
+			tmp_HE
+			
+			covar = matrix(0,4,4)
+			nz = which(diag(tmp_HE) != 0); nz
+			smart_solve(tmp_HE[nz,nz])
+			covar[nz,nz] = solve(-tmp_HE[nz,nz])
+			covar
+			
+		}
 		
 		gopt$nGRAD[ii] = Rcpp_norm(tmp_GR)
 		gopt$fin_logA[ii] = iPARS[1]
@@ -440,42 +438,15 @@ opt_replicate = function(REP,param_grid,theta,
 		gopt$fin_logT[ii] = iPARS[4]
 		gopt$fin_LL[ii] = round(tmp_LL,3)
 	}
+	gopt = gopt[order(-gopt$fin_LL),]
 	if( verb ){
-		cat("\n")
+		# cat("\n")
 		print(head(gopt))
 	}
 	gopt = gopt[gopt$fin_LL != -999 & gopt$nGRAD > 0,,drop = FALSE]
 	rownames(gopt) = NULL
 	gopt_pre = gopt
-	
-	# if(FALSE){ # Debug LL/gradient
-		# library(numDeriv)
-		# iPARS = gopt[1,c(1:4)]
-		# iPARS = gopt[1,c(8:11)]
-		# iPARS = as.numeric(iPARS)
-		# # iPARS[3] = 1e-1
-		# iPARS
-		
-		# wrap_LL(iPARS)
-		# ref_LL(DATA = DATA,PARS = iPARS,COPULA = PARAMS$copula)
-		# ref_LL_cpp(DATA = DATA,PARS = iPARS,COPULA = PARAMS$copula)
-		# ref_LL_2 = function(PARS){
-			# ref_LL(DATA = DATA,PARS = PARS,
-				# COPULA = PARAMS$copula)
-		# }
-		
-		# grad(wrap_LL,iPARS)
-		# grad(ref_LL_2,iPARS)
-		# wrap_GRAD(iPARS)
-		
-		# ii = 1; shift = 1e-6
-		# new_PARS = iPARS
-		# new_PARS[ii] = new_PARS[ii] + shift
-		# old_LL = ref_LL(DATA = DATA,PARS = iPARS,COPULA = PARAMS$copula); old_LL
-		# new_LL = ref_LL(DATA = DATA,PARS = new_PARS,COPULA = PARAMS$copula); new_LL
-		# (new_LL - old_LL)/shift
-	
-	# }
+	gopt_pre
 	
 	# Remove non-local optimum solutions
 	gopt = gopt[which(gopt$nGRAD < gTHRES),]
@@ -491,9 +462,9 @@ opt_replicate = function(REP,param_grid,theta,
 	gopt = gopt[order(-gopt$fin_LL),]
 	gopt = gopt[!duplicated(round(gopt[,
 		sprintf("fin_%s",c("LL","logA",
-		"logL","logK","logT"))],3)),]
+		"logL","logK","logT"))],2)),]
 	rownames(gopt) = NULL
-	# gopt
+	gopt
 	
 	# Estimate covariance
 	if( verb ) cat(sprintf("%s: Get covariance ...\n",date()))
@@ -523,16 +494,15 @@ opt_replicate = function(REP,param_grid,theta,
 			out = NULL,cout = NULL,LL = NULL,GRAD = NULL,
 			HESS = NULL,COVAR = NULL))
 	}
+	
+	if( verb ) print(gopt)
+	
+	# Grab best solution
 	gopt = gopt[which.max(gopt$fin_LL),]
 	
-	gopt$log_alpha1 = gopt$fin_logA
-	gopt$log_lambda1 = gopt$fin_logL
-	gopt$unc_kappa1 = gopt$fin_logK
-	gopt$log_theta = gopt$fin_logT
-	gopt
-	
-	iPARS = as.numeric(gopt[1,
-		paste0("fin_log",c("A","L","K","T"))]); iPARS
+	iPARS = as.numeric(gopt[1,paste0("fin_log",c("A","L","K","T"))])
+	# iPARS = as.numeric(gopt[2,paste0("fin_log",c("A","L","K","T"))])
+	iPARS
 	if(FALSE){
 		iPARS = true_PARS
 	}
@@ -559,7 +529,7 @@ opt_replicate = function(REP,param_grid,theta,
 	out
 	
 	EST = exp(out$EST)
-	if( PARAMS$copula == "Gumbel" ) EST[4] = EST[4] + 1
+	if( COPULA == "Gumbel" ) EST[4] = EST[4] + 1
 	
 	cout = smart_df(PARS = c("alpha1","lambda1","kappa1","theta"),
 		EST = EST,SE = NA)
@@ -567,7 +537,7 @@ opt_replicate = function(REP,param_grid,theta,
 	# Delta method: Calculate nabla g()
 	nab_par	= rep(NA,4)
 	nab_par[1:3] = cout$EST[1:3] # alpha, lambda, kappa
-	nab_par[4] = ifelse(tmp_copula == "Clayton",
+	nab_par[4] = ifelse(COPULA == "Clayton",
 		cout$EST[4],exp(out$EST[4]))
 	nab_par = diag(nab_par)
 	
@@ -577,28 +547,23 @@ opt_replicate = function(REP,param_grid,theta,
 	cout$lowCI_2 	= cout$EST * exp(-z_alpha * out$SE)
 	cout$highCI_2 = cout$EST * exp(z_alpha * out$SE)
 	
-	if( tmp_copula == "Gumbel" ){
+	if( COPULA == "Gumbel" ){
 		cout$lowCI_2[4] 	= exp(out$EST[4]) * exp(-z_alpha * out$SE[4]) + 1
 		cout$highCI_2[4] 	= exp(out$EST[4]) * exp(z_alpha * out$SE[4]) + 1
 	}
 	
-	cout
+	if( verb ) print(cout)
 	
 	LL 		= wrap_LL(iPARS)
 	GRAD 	= wrap_GRAD(iPARS)
 	HESS 	= wrap_HESS(iPARS)
 	
-	# est. alpha1 + lambda1
-	nparams = 2 								
-	# est. kappa
-	nparams = nparams + upKAPPA	
-	# est. theta
-	# nparams = nparams + ifelse(
-		# ( tmp_copula == "Independent" )
-		# | ( tmp_copula == "Clayton" & cout$EST[4] == 0 )
-		# | ( PARAMS$copula == "Gumbel" & cout$EST[4] == 1 ),
-		# 0,1)
-	nparams = nparams + upTHETA
+	nparams = 4 
+		# alpha,lambda, 
+		# kappa(fixed or estimated)
+		# theta(fixed or estimated)
+	# nparams = nparams + upKAPPA	
+	# nparams = nparams + upTHETA
 	nparams
 	
 	NN = nrow(DATA)
@@ -641,9 +606,10 @@ run_analysis = function(DATA,theta,upKAPPA,
 			paste(miss_names,collapse = ", ")))
 	}
 	
-	REP = list(DATA = DATA,PARAMS = smart_df(copula = copula))
-	opt_out = opt_replicate(REP = REP,param_grid = param_grid,
-		theta = theta,upKAPPA = upKAPPA,gTHRES = gTHRES,
+	# REP = list(DATA = DATA,PARAMS = smart_df(copula = copula))
+	opt_out = opt_replicate(DATA = DATA,COPULA = copula,
+		param_grid = param_grid,theta = theta,
+		upKAPPA = upKAPPA,gTHRES = gTHRES,
 		verb = verb,PLOT = PLOT,ncores = ncores)
 	if( is.null(opt_out$out) ){
 		return(list(upKAPPA = upKAPPA,
@@ -798,7 +764,7 @@ run_analyses = function(DATA,THETAs = NULL,upKAPPA,
 		cnt = 1
 		for(copula in COPULAS){
 		for(up_kappa in upKAPPA){
-			if( verb ) cat(sprintf("%s: Try copula = %s, dist = %s, ...\n",
+			if( verb ) cat(sprintf("\n####\n%s: Try copula = %s, dist = %s, ...\n",
 				date(),copula,ifelse(up_kappa == 0,"Weibull","Exp-Weibull")))
 			
 			tmp_out = run_analyses(DATA = DATA,THETAs = THETAs,
@@ -944,6 +910,7 @@ chk_profile_LL = function(GRID){
 	xbreaks = round(seq(xrange[1],xrange[2],length.out = nBREAKs),1)
 	ybreaks = round(seq(yrange[1],yrange[2],length.out = nBREAKs),1)
 	
+	xx = yy = LL = NULL
 	g1 = ggplot(data = DAT,mapping = aes(x = xx,
 		y = yy,fill = LL)) +
 		geom_tile(width = my_stepsize,height = my_stepsize) + 

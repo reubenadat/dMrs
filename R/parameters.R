@@ -156,6 +156,20 @@ get_THETAs = function(THETAs,COPULA){
 	return(THETAs)
 	
 }
+calc_uPARS = function(ALPHA1,LAMBDA1,KAPPA1,THETA,DIST,COPULA){
+	
+	PARS = rep(NA,4)
+	names(PARS) = c("log_alpha1","log_lambda1","log_kappa1","unc_theta")
+	
+	PARS[1] = log(ALPHA1)
+	PARS[2] = log(LAMBDA1)
+	PARS[3] = ifelse(DIST == "weibull",0,log(KAPPA1))
+	PARS[4] = ifelse(COPULA == "Independent",-Inf,
+		ifelse(COPULA == "Clayton",log(THETA),
+		log(THETA-1)))
+	PARS
+	
+}
 
 ### EOF
 
