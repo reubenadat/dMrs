@@ -176,7 +176,6 @@ arma::vec calc_copula_CDF_PDF(const double& D1,const double& D2,
 	return out;
 }
 
-
 double dMrs_LL(const arma::vec& XX,const arma::uvec& DELTA,
 	const arma::vec& D2,const arma::vec& S2,const double& THETA,
 	const double& ALPHA,const double& LAMBDA,const double& KAPPA,
@@ -650,13 +649,12 @@ void dMrs_NR(const arma::vec& XX,const arma::uvec& DELTA,
 		}
 		
 		if( verb ){
-			Rcpp::Rcout << "iter=" << iter + 1 << "; LL=" << old_LL
-				<< "; diff.LL=" << diff_LL << "; diff.PARS=" << diff_PARS
-				<< "; nGRAD=" << nGRAD << "; PARS = ";
-			
-			// Rcpp::Rcout << new_xk.t();
-			prt_vec(new_xk);
-			
+			if( (iter + 1) % 5 == 0 ){
+				Rcpp::Rcout << "iter=" << iter + 1 << "; LL=" << old_LL
+					<< "; diff.LL=" << diff_LL << "; diff.PARS=" << diff_PARS
+					<< "; nGRAD=" << nGRAD << "; PARS = ";
+					prt_vec(new_xk);
+			}
 		}
 		
 		xk = new_xk;
@@ -729,7 +727,7 @@ arma::mat dMrs_GRID(const arma::vec& XX,const arma::uvec& DELTA,
 			if( (cnt2 + 1) % 500 == 0 )
 				Rcpp::Rcout << ".";
 			if( (cnt2 + 1) % 5000 == 0 || (cnt2 + 1) == tot )
-				Rcpp::Rcout << (cnt2 + 1);
+				Rcpp::Rcout << " " << (cnt2 + 1);
 			if( (cnt2 + 1) % 10000 == 0 || (cnt2 + 1) == tot )
 				Rcpp::Rcout << " out of " << tot << " done\n";
 		}

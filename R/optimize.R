@@ -305,8 +305,8 @@ opt_replicate = function(DATA,COPULA,param_grid,theta,
 										L = seq(1,2,0.05),
 										K = 0,
 										T = seq(1,3,0.1))
-		theta 			= ifelse(COPULA == "Independent",0,NA)
-		upKAPPA 		= upKAPPA
+		theta 			= ifelse(COPULA_2 == "Independent",0,NA)
+		upKAPPA 		= ifelse(DIST_2 == "weibull",0,1)
 		gTHRES 			= 8e-2
 		verb 				= TRUE
 		ncores 			= 1

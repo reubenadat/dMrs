@@ -326,10 +326,10 @@ if( TRUE ){ # Run analysis, estimate theta by default
 my_dirs$rep_dir = file.path(my_dirs$curr_dir,"REPS")
 my_dirs$opt_dir = file.path(my_dirs$curr_dir,"OPTS")
 
-COPULA 	= c("Independent","Clayton","Gumbel")[2]
-DIST		= c("weibull","expweibull")[1]
-rr 			= 1
-NN			= 2.5e3
+COPULA 	= c("Independent","Clayton","Gumbel")[1]
+DIST		= c("weibull","expweibull")[2]
+rr 			= 353
+NN			= 5e3
 
 repCDN_dir = file.path(my_dirs$rep_dir,
 	sprintf("C.%s_D.%s",COPULA,DIST))
@@ -358,9 +358,13 @@ if( is.infinite(uPARS[4]) ){
 param_grid
 
 # Estimate assuming truth known
+DIST_2 		= c(DIST,"weibull")[2]
+COPULA_2 	= c(COPULA,"Clayton")[2]
+
 run_ana = run_analyses(
 	DATA = one_rep$DATA,
-	upKAPPA = ifelse(DIST == "weibull",0,1),
+	COPULAS = COPULA_2,
+	upKAPPA = ifelse(DIST_2 == "weibull",0,1),
 	param_grid = param_grid,
 	verb = TRUE)
 
