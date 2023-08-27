@@ -145,7 +145,7 @@ get_PROFILE = function(GRID,PLOT = FALSE){
 	PARS = colnames(GRID)[1:4]; PARS
 	PROF = list()
 	for(PAR in PARS){
-		# PAR = PARS[1]; PAR
+		# PAR = PARS[4]; PAR
 		
 		xx = sort(unique(GRID[[PAR]])); xx
 		yy = sapply(xx,function(zz){

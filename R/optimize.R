@@ -310,7 +310,7 @@ opt_replicate = function(DATA,COPULA,param_grid,theta,
 		gTHRES 			= 8e-2
 		verb 				= TRUE
 		ncores 			= 1
-		PLOT				= TRUE
+		PLOT				= !TRUE
 		
 	}
 	
@@ -406,6 +406,13 @@ opt_replicate = function(DATA,COPULA,param_grid,theta,
 		
 		ref_LL(DATA = DATA,PARS = iPARS,COPULA = COPULA)
 		
+	}
+	
+	if( nrow(gout) == 0 ){
+		if( verb ) cat(sprintf("%s: No valid grid points! ...\n",date()))
+		return(list(GRID = gout,GPROF = NULL,GOPT = NULL,
+			GOPT_PRE = NULL,out = NULL,cout = NULL,
+			LL = NULL,GRAD = NULL,HESS = NULL,COVAR = NULL))
 	}
 	
 	gprof = get_PROFILE(GRID = gout,PLOT = PLOT)

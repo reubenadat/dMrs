@@ -345,7 +345,7 @@ uPARS
 aa = calc_CDFs(DATA = one_rep$DATA,
 	PARS = uPARS,COPULA = COPULA)
 
-stepsize = 0.1
+stepsize = 0.05
 param_grid = list(
 	A = uPARS[1] + seq(-0.5,0.5,stepsize),
 	L = uPARS[2] + seq(-0.5,0.5,stepsize),
@@ -353,18 +353,18 @@ param_grid = list(
 	T = uPARS[4] + seq(-0.5,0.5,stepsize))
 
 if( is.infinite(uPARS[4]) ){
-	param_grid$T = seq(-1,3,0.1)
+	param_grid$T = seq(-1,1,stepsize)
 }
 param_grid
 
 # Estimate assuming truth known
 DIST_2 		= c(DIST,"weibull")[2]
-COPULA_2 	= c(COPULA,"Clayton")[2]
+COPULA_2 	= c(COPULA,"Clayton")[1]
 
 run_ana = run_analyses(
 	DATA = one_rep$DATA,
 	COPULAS = COPULA_2,
-	upKAPPA = ifelse(DIST_2 == "weibull",0,1),
+	# upKAPPA = ifelse(DIST_2 == "weibull",0,1),
 	param_grid = param_grid,
 	verb = TRUE)
 
