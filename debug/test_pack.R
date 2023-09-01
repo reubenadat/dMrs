@@ -215,9 +215,9 @@ if( TRUE ){ 	# Specify parameters/arguments
 
 COPULAS = c("Independent","Clayton","Gumbel")
 DISTs		= c("weibull","expweibull")
-COPULA 	= COPULAS[1]
-dist1 	= DISTs[2]
-NN 			= 2e3
+COPULA 	= COPULAS[3]
+dist1 	= DISTs[1]
+NN 			= 4e3
 theta 	= ifelse(COPULA == "Independent",0,5)
 if( COPULA == "Clayton" && theta < 0 ) stop("theta issue")
 if( COPULA == "Gumbel" && theta < 1 ) stop("theta issue")
@@ -265,24 +265,40 @@ if( FALSE ){ 	# Optimize
 
 print(TRUTH)
 
+DATA = one_rep$DATA
+log_time75 = as.numeric(log(quantile(DATA$time[DATA$delta == 1],0.75)))
+log_time75
+
+# Agnostic
 param_grid = list(
-	A = TRUTH$uPARS[1] + seq(-0.5,0.5,0.1),
-	L = TRUTH$uPARS[2] + seq(-0.5,0.5,0.1),
-	K = TRUTH$uPARS[3] + seq(-0.5,0.5,0.1),
-	T = TRUTH$uPARS[4] + seq(-0.5,0.5,0.1))
+	A = seq(-1,2,0.1),
+	L = log_time75 + seq(-1,1,0.1),
+	K = seq(-0.5,0.5,0.1),
+	T = seq(-1,3,0.25)
+	)
+param_grid
+
+# If we have the truth ...
+ss = 0.1
+param_grid = list(
+	A = TRUTH$uPARS[1] + seq(-0.5,0.5,ss),
+	L = TRUTH$uPARS[2] + seq(-0.5,0.5,ss),
+	K = TRUTH$uPARS[3] + seq(-0.5,0.5,ss),
+	T = TRUTH$uPARS[4] + seq(-0.5,0.5,ss))
 if( is.infinite(TRUTH$uPARS[4]) ){
-	param_grid$T = seq(-1,3,0.1)
+	param_grid$T = seq(-1,3,ss)
 }
 param_grid
 
+sapply(param_grid,length)
 nGRID = prod(sapply(param_grid,length)); nGRID
 
 run_ana = run_analyses(
 	DATA = one_rep$DATA,
-	# COPULAS = COPULA,
-	upKAPPA = upKAPPA,
+	COPULAS = COPULA,
+	# upKAPPA = upKAPPA,
 	param_grid = param_grid,
-	verb = TRUE)
+	verb = TRUE,PLOT = TRUE)
 
 class(run_ana)
 length(run_ana)
@@ -321,15 +337,14 @@ plot_SURVs(run_ANA = run_ana,
 
 
 }
-if( TRUE ){ # Run analysis, estimate theta by default
+if( TRUE ){ 	# Test optimization
 
 my_dirs$rep_dir = file.path(my_dirs$curr_dir,"REPS")
-my_dirs$opt_dir = file.path(my_dirs$curr_dir,"OPTS")
 
 COPULA 	= c("Independent","Clayton","Gumbel")[1]
-DIST		= c("weibull","expweibull")[2]
-rr 			= 353
-NN			= 5e3
+DIST		= c("weibull","expweibull")[1]
+rr 			= 189
+NN			= 20e3
 
 repCDN_dir = file.path(my_dirs$rep_dir,
 	sprintf("C.%s_D.%s",COPULA,DIST))
@@ -337,6 +352,7 @@ repCDN_dir = file.path(my_dirs$rep_dir,
 rds_fn = file.path(repCDN_dir,sprintf("R.%s.rds",rr))
 one_rep = readRDS(rds_fn)
 one_rep$DATA = one_rep$DATA[seq(NN),]
+smart_table(D = one_rep$DATA$D,Delta = one_rep$DATA$delta)
 one_rep$PARAMS
 
 uPARS = get_uPARS(PARAMS = one_rep$PARAMS)
@@ -345,7 +361,7 @@ uPARS
 aa = calc_CDFs(DATA = one_rep$DATA,
 	PARS = uPARS,COPULA = COPULA)
 
-stepsize = 0.05
+stepsize = 0.1
 param_grid = list(
 	A = uPARS[1] + seq(-0.5,0.5,stepsize),
 	L = uPARS[2] + seq(-0.5,0.5,stepsize),
@@ -358,14 +374,15 @@ if( is.infinite(uPARS[4]) ){
 param_grid
 
 # Estimate assuming truth known
-DIST_2 		= c(DIST,"weibull")[2]
+DIST_2 		= c(DIST,"weibull")[1]
 COPULA_2 	= c(COPULA,"Clayton")[1]
 
 run_ana = run_analyses(
 	DATA = one_rep$DATA,
-	COPULAS = COPULA_2,
-	# upKAPPA = ifelse(DIST_2 == "weibull",0,1),
+	# COPULAS = COPULA_2,
+	upKAPPA = ifelse(DIST_2 == "weibull",0,1),
 	param_grid = param_grid,
+	# param_grid = seq(-1,3,0.05),
 	verb = TRUE)
 
 class(run_ana)
@@ -381,37 +398,85 @@ out = get_PROFILE(GRID = GRID,PLOT = TRUE)
 plot_SURVs(run_ANA = run_ana,
 	MULTIPLE = TRUE,ALPHA = 0.4)
 
-idx = 1
-GPROF 	= run_ana[[idx]]$RES$GPROF
-GOPT 		= run_ana[[idx]]$RES$GOPT; GOPT
-COPULA 	= run_ana[[idx]]$copula
-
-plot_LL(GPROF = GPROF,GOPT = GOPT[order(-GOPT$LL),][1:10,],
-	COPULA = COPULA,HJUST = 0)
 
 
-# Get profile likelihood per param
-GR = smart_df(run_ana[[1]]$RES$GRID)
-pars = colnames(GR)[1:4]; pars
+}
+if( FALSE ){ 	# Debug optimization
 
-par(mfrow = c(2,2),mar = c(4.5,4,2,2))
-sapply(pars,function(xx){
-	# xx = pars[1]; xx
-	x1 = sort(unique(GR[,xx]))
-	y1 = sapply(x1,function(zz){
-		# zz = x1[3]; zz
-		max(GR$LL[which(GR[[xx]] == zz)],na.rm = TRUE)
-	})
+my_dirs$rep_dir = file.path(my_dirs$curr_dir,"REPS")
+my_dirs$opt_dir = file.path(my_dirs$curr_dir,"OPTS")
+
+COPULA 	= c("Independent","Clayton","Gumbel")[1]
+DIST		= c("weibull","expweibull")[1]
+rr 			= 189
+NN			= 20e3
+
+# Import rep
+repCDN_dir = file.path(my_dirs$rep_dir,
+	sprintf("C.%s_D.%s",COPULA,DIST))
+rds_fn = file.path(repCDN_dir,sprintf("R.%s.rds",rr))
+one_rep = readRDS(rds_fn)
+one_rep$DATA = one_rep$DATA[seq(NN),]
+
+# Import opt
+tmp_name = sprintf("C.%s_D.%s_N.%s",COPULA,DIST,NN)
+opt_fn = file.path(my_dirs$opt_dir,tmp_name,sprintf("R.%s.rds",rr))
+run_ana = readRDS(opt_fn)
+
+OO = opt_sum(OPT = run_ana); OO
+	solu = 3
+	names(run_ana[[solu]]$RES)
+	GRID = smart_df(run_ana[[solu]]$RES$GRID); head(GRID)
+	out = get_PROFILE(GRID = GRID,PLOT = TRUE)
+	run_ana[[solu]]$RES$GOPT_PRE
+	run_ana[[solu]]$RES$GOPT
+	run_ana[[solu]]$RES$GRAD
+	run_ana[[solu]]$RES$out
+	run_ana[[solu]]$RES$cout
+
+# Check gradient
+COPULA_2 = run_ana[[solu]]$copula
+wrap_LL = function(PARS){
+	# PARS = iPARS
+	dMrs_cLL(XX = one_rep$DATA$time,
+		DELTA = one_rep$DATA$delta,
+		D2 = one_rep$DATA$dens_t2,
+		S2 = one_rep$DATA$surv_t2,
+		PARS = PARS,
+		copula = COPULA_2,
+		verb = FALSE)
+}
+wrap_GRAD = function(PARS){
+	# PARS = iPARS
+	out = dMrs_cGRAD(XX = one_rep$DATA$time,
+		DELTA = one_rep$DATA$delta,
+		D2 = one_rep$DATA$dens_t2,
+		S2 = one_rep$DATA$surv_t2,
+		PARS = PARS,
+		copula = COPULA_2,
+		upPARS = upPARS)
 	
-	dat = smart_df(x1 = x1,y1 = y1)
-	plot(dat,xlab = xx,ylab = "Prof.LL",
-		type = "b",pch = 16)
-	abline(v = x1[which.max(y1)],lty = 2,lwd = 2,col = "red")
-	max(dat$y1)
-	
-})
-par(mfrow = c(1,1),mar = c(5,4,4,2)+0.1)
+	# out = grad(wrap_LL,PARS)
+	c(out)
+}
 
+upPARS = rep(1,4)
+iPARS = run_ana[[solu]]$RES$out$EST
+iPARS
+old_LL = wrap_LL(PARS = iPARS); old_LL
+eps = 1e-7
+test_GRAD = rep(NA,4)
+for(idx in seq(4)){
+	# idx = 3
+	shift = rep(0,4); shift[idx] = eps
+	new_LL = wrap_LL(PARS = iPARS + shift); # new_LL
+	diff_LL = new_LL - old_LL; # diff_LL
+	test_GRAD[idx] = diff_LL / eps
+}
+test_GRAD
+nGRAD = sqrt(sum(test_GRAD^2)); nGRAD
+
+sqrt(sum(wrap_GRAD(PARS = iPARS)^2))
 
 
 }

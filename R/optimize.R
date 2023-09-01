@@ -431,7 +431,7 @@ opt_replicate = function(DATA,COPULA,param_grid,theta,
 		# ii = 3
 		# if( verb ) cat(".")
 		if( verb ) smart_progress(ii = ii,nn = nn,
-			iter = 5,iter2 = 2e2)
+			iter = 1,iter2 = 5)
 		if( !is.na(gopt$fin_LL[ii]) ) next
 		
 		iPARS = as.numeric(gopt[ii,1:4]); iPARS
