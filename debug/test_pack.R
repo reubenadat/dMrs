@@ -343,8 +343,8 @@ my_dirs$rep_dir = file.path(my_dirs$curr_dir,"REPS")
 
 COPULA 	= c("Independent","Clayton","Gumbel")[1]
 DIST		= c("weibull","expweibull")[1]
-rr 			= 189
-NN			= 20e3
+rr 			= 4
+NN			= 5e3
 
 repCDN_dir = file.path(my_dirs$rep_dir,
 	sprintf("C.%s_D.%s",COPULA,DIST))
@@ -408,8 +408,8 @@ my_dirs$opt_dir = file.path(my_dirs$curr_dir,"OPTS")
 
 COPULA 	= c("Independent","Clayton","Gumbel")[1]
 DIST		= c("weibull","expweibull")[1]
-rr 			= 189
-NN			= 20e3
+rr 			= 4
+NN			= 5e3
 
 # Import rep
 repCDN_dir = file.path(my_dirs$rep_dir,
@@ -424,7 +424,7 @@ opt_fn = file.path(my_dirs$opt_dir,tmp_name,sprintf("R.%s.rds",rr))
 run_ana = readRDS(opt_fn)
 
 OO = opt_sum(OPT = run_ana); OO
-	solu = 3
+	solu = 4
 	names(run_ana[[solu]]$RES)
 	GRID = smart_df(run_ana[[solu]]$RES$GRID); head(GRID)
 	out = get_PROFILE(GRID = GRID,PLOT = TRUE)
@@ -435,7 +435,7 @@ OO = opt_sum(OPT = run_ana); OO
 	run_ana[[solu]]$RES$cout
 
 # Check gradient
-COPULA_2 = run_ana[[solu]]$copula
+COPULA_2 = run_ana[[solu]]$copula; COPULA_2
 wrap_LL = function(PARS){
 	# PARS = iPARS
 	dMrs_cLL(XX = one_rep$DATA$time,
@@ -460,18 +460,22 @@ wrap_GRAD = function(PARS){
 	c(out)
 }
 
-upPARS = rep(1,4)
 iPARS = run_ana[[solu]]$RES$out$EST
 iPARS
+upPARS = rep(1,4)
+upPARS[3] = ifelse(iPARS[3] == 0,0,1)
+upPARS[4] = ifelse(iPARS[4] == -Inf,0,1)
+upPARS
 old_LL = wrap_LL(PARS = iPARS); old_LL
-eps = 1e-7
-test_GRAD = rep(NA,4)
+eps = 1e-10
+test_GRAD = rep(0,4)
 for(idx in seq(4)){
 	# idx = 3
+	if( upPARS[idx] == 0 ) next
 	shift = rep(0,4); shift[idx] = eps
-	new_LL = wrap_LL(PARS = iPARS + shift); # new_LL
-	diff_LL = new_LL - old_LL; # diff_LL
-	test_GRAD[idx] = diff_LL / eps
+	new_LL = wrap_LL(PARS = iPARS + shift); new_LL
+	diff_LL = new_LL - old_LL; diff_LL
+	test_GRAD[idx] = diff_LL / eps; test_GRAD[idx]
 }
 test_GRAD
 nGRAD = sqrt(sum(test_GRAD^2)); nGRAD
