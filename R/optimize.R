@@ -327,7 +327,7 @@ wrap_GD = function(DATA,PARS,COPULA,upPARS,verb = TRUE){
 }
 
 opt_replicate = function(DATA,COPULA,param_grid,theta,
-	upKAPPA,ncores = 1,gTHRES = 8e-2,verb,PLOT){
+	upKAPPA,ncores = 1,gTHRES = 8e-2,max_iter = 2e2,verb,PLOT){
 
 	if(FALSE){
 		DATA 				= one_rep$DATA
@@ -471,13 +471,13 @@ opt_replicate = function(DATA,COPULA,param_grid,theta,
 		dMrs_NR(XX = DATA$time,DELTA = DATA$delta,
 			D2 = DATA$dens_t2,S2 = DATA$surv_t2,
 			PARS = iPARS,copula = COPULA,upPARS = upPARS,
-			max_iter = 5e1,eps = 1e-6,verb = verb)
+			max_iter = max_iter,eps = 1e-6,verb = verb)
 		
 		# Run Gradient Descent
 		dMrs_GD(XX = DATA$time,DELTA = DATA$delta,
 			D2 = DATA$dens_t2,S2 = DATA$surv_t2,
 			PARS = iPARS,copula = COPULA,upPARS = upPARS,
-			max_iter = 5e1,eps = 1e-6,verb = verb)
+			max_iter = max_iter,eps = 1e-6,verb = verb)
 		
 		tmp_LL = wrap_LL(PARS = iPARS)
 		tmp_GR = wrap_GRAD(PARS = iPARS)
@@ -645,8 +645,9 @@ opt_replicate = function(DATA,COPULA,param_grid,theta,
 	
 }
 
-run_analysis = function(DATA,theta,upKAPPA,
-	gTHRES,copula,param_grid,vec_time,verb,PLOT,ncores = 1){
+run_analysis = function(DATA,theta,upKAPPA,gTHRES,
+	copula,param_grid,vec_time,max_iter = 2e2,verb,PLOT,
+	ncores = 1){
 	
 	if(FALSE){
 		DATA 				= one_rep$DATA
@@ -672,9 +673,9 @@ run_analysis = function(DATA,theta,upKAPPA,
 	
 	# REP = list(DATA = DATA,PARAMS = smart_df(copula = copula))
 	opt_out = opt_replicate(DATA = DATA,COPULA = copula,
-		param_grid = param_grid,theta = theta,
-		upKAPPA = upKAPPA,gTHRES = gTHRES,
-		verb = verb,PLOT = PLOT,ncores = ncores)
+		param_grid = param_grid,theta = theta,upKAPPA = upKAPPA,
+		gTHRES = gTHRES,max_iter = max_iter,verb = verb,
+		PLOT = PLOT,ncores = ncores)
 	if( is.null(opt_out$out) ){
 		return(list(upKAPPA = upKAPPA,
 			copula = copula,RES = opt_out,
@@ -789,6 +790,8 @@ run_analysis = function(DATA,theta,upKAPPA,
 #'	Otherwise set to 'Independent', 'Clayton' or 'Gumbel'
 #' @param vec_time Vector of times to calculate predicted survival
 #'	on the same scale as times provided in the \code{DATA} data.frame.
+#' @param max_iter Maximum Newton Raphson and Gradient Descent iterations
+#'	to set.
 #' @param ncores An integer for the number of threads
 #' @param PLOT A logical variable, set to \code{TRUE} by default to
 #'	show the two-dimensional heatmap of the profile likelihood if 
@@ -796,7 +799,7 @@ run_analysis = function(DATA,theta,upKAPPA,
 #' @export
 run_analyses = function(DATA,THETAs = NULL,upKAPPA,
 	gTHRES = 8e-2,COPULAS,param_grid,vec_time,ncores = 1,
-	verb,PLOT){
+	max_iter = 2e2,verb,PLOT){
 	
 	if(FALSE){
 		
@@ -834,7 +837,8 @@ run_analyses = function(DATA,THETAs = NULL,upKAPPA,
 			tmp_out = run_analyses(DATA = DATA,THETAs = THETAs,
 				upKAPPA = up_kappa,gTHRES = gTHRES,COPULAS = copula,
 				param_grid = param_grid,vec_time = vec_time,
-				ncores = ncores,verb = verb,PLOT = PLOT)
+				ncores = ncores,max_iter = max_iter,verb = verb,
+				PLOT = PLOT)
 			
 			nn_tmp_out = length(tmp_out)
 			
@@ -879,8 +883,8 @@ run_analyses = function(DATA,THETAs = NULL,upKAPPA,
 		tmp_out = run_analysis(DATA = DATA,
 			theta = NA,upKAPPA = upKAPPA,gTHRES = gTHRES,
 			copula = COPULAS,param_grid = param_grid,
-			vec_time = vec_time,verb = verb,PLOT = PLOT,
-			ncores = ncores)
+			vec_time = vec_time,max_iter = max_iter,
+			verb = verb,PLOT = PLOT,ncores = ncores)
 		if( !is.null(tmp_out$RES$cout) )
 			out[[length(out) + 1]] = tmp_out
 		
@@ -898,7 +902,8 @@ run_analyses = function(DATA,THETAs = NULL,upKAPPA,
 			theta = theta,upKAPPA = upKAPPA,
 			gTHRES = gTHRES,copula = COPULAS,
 			param_grid = param_grid,
-			vec_time = vec_time,verb = verb,
+			vec_time = vec_time,
+			max_iter = max_iter,verb = verb,
 			PLOT = PLOT,ncores = ncores)
 		out[[cnt]] = tmp_out
 		cnt = cnt + 1

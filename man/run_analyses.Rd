@@ -13,6 +13,7 @@ run_analyses(
   param_grid,
   vec_time,
   ncores = 1,
+  max_iter = 200,
   verb,
   PLOT
 )
@@ -42,6 +43,9 @@ theta parameters}
 on the same scale as times provided in the \code{DATA} data.frame.}
 
 \item{ncores}{An integer for the number of threads}
+
+\item{max_iter}{Maximum Newton Raphson and Gradient Descent iterations
+to set.}
 
 \item{verb}{Boolean, set to TRUE for verbose output.}
 
