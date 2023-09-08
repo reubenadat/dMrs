@@ -341,13 +341,13 @@ if( TRUE ){ 	# Test optimization
 
 my_dirs$rep_dir = file.path(my_dirs$curr_dir,"REPS")
 
-COPULA 	= c("Independent","Clayton","Gumbel")[1]
-DIST		= c("weibull","expweibull")[1]
-rr 			= 4
-NN			= 5e3
+tCOPULA = c("Independent","Clayton","Gumbel")[2]
+tDIST		= c("weibull","expweibull")[2]
+rr 			= 215
+NN			= 2e4
 
 repCDN_dir = file.path(my_dirs$rep_dir,
-	sprintf("C.%s_D.%s",COPULA,DIST))
+	sprintf("C.%s_D.%s",tCOPULA,tDIST))
 
 rds_fn = file.path(repCDN_dir,sprintf("R.%s.rds",rr))
 one_rep = readRDS(rds_fn)
@@ -359,9 +359,9 @@ uPARS = get_uPARS(PARAMS = one_rep$PARAMS)
 uPARS
 
 aa = calc_CDFs(DATA = one_rep$DATA,
-	PARS = uPARS,COPULA = COPULA)
+	PARS = uPARS,COPULA = tCOPULA)
 
-stepsize = 0.1
+stepsize = 0.25
 param_grid = list(
 	A = uPARS[1] + seq(-0.5,0.5,stepsize),
 	L = uPARS[2] + seq(-0.5,0.5,stepsize),
@@ -374,16 +374,17 @@ if( is.infinite(uPARS[4]) ){
 param_grid
 
 # Estimate assuming truth known
-DIST_2 		= c(DIST,"weibull")[1]
-COPULA_2 	= c(COPULA,"Clayton")[1]
+DIST 		= c(tDIST,"weibull")[1]
+COPULA	= c(tCOPULA,"Clayton")[1]
 
 run_ana = run_analyses(
 	DATA = one_rep$DATA,
-	# COPULAS = COPULA_2,
-	upKAPPA = ifelse(DIST_2 == "weibull",0,1),
+	COPULAS = COPULA,
+	upKAPPA = ifelse(DIST == "weibull",0,1),
 	param_grid = param_grid,
 	# param_grid = seq(-1,3,0.05),
 	verb = TRUE)
+
 
 class(run_ana)
 length(run_ana)
@@ -394,10 +395,49 @@ solu = 2
 GRID = smart_df(run_ana[[solu]]$RES$GRID); head(GRID)
 out = get_PROFILE(GRID = GRID,PLOT = TRUE)
 
-
+# Plot survival curves
 plot_SURVs(run_ANA = run_ana,
 	MULTIPLE = TRUE,ALPHA = 0.4)
 
+# Check why no valid grid points
+ref_LL(DATA = one_rep$DATA,
+	PARS = uPARS,
+	COPULA = COPULA)
+
+ref_LL_cpp(DATA = one_rep$DATA,
+	PARS = uPARS,
+	COPULA = COPULA)
+
+wrap_LL(DATA = one_rep$DATA,
+	PARS = uPARS,verb = TRUE)
+
+# Calculate subject's values
+one_rep$PARAMS
+KAPPA = one_rep$PARAMS$kappa1
+ALPHA = one_rep$PARAMS$alpha1
+LAMBDA = one_rep$PARAMS$lambda1
+THETA = one_rep$PARAMS$theta
+KAL = KAPPA * ALPHA / LAMBDA; KAL
+ii = 2145
+
+XDL = one_rep$DATA$time[ii] / LAMBDA
+enXDLa = exp(-XDL^ALPHA)
+
+F1 = 1.0 - enXDLa
+if( KAPPA != 1.0 ) F1 = F1^KAPPA;
+S1 = 1.0 - F1
+D1 = KAL * XDL^(ALPHA - 1.0) * enXDLa
+if( KAPPA != 1.0 ) D1 = D1 * F1 / ( 1.0 - enXDLa );
+D2 = one_rep$DATA$dens_t2[ii]
+F2 = 1 - one_rep$DATA$surv_t2[ii]
+F_T1_T2 = calc_copula(F1 = F1,F2 = F2,
+	copula = COPULA,THETA = THETA)
+f_T1_T2 = calc_copula_dens(D1 = D1,D2 = D2,
+	F1 = F1,F2 = F2,copula = COPULA,
+	THETA = THETA,F_T1_T2 = F_T1_T2)
+D1; D2; F1; F2; F_T1_T2; f_T1_T2
+
+(F1^(-THETA) + F2^(-THETA) - 1)^(-1/THETA) * (D1/F1^(THETA+1) + D2/F2^(THETA+1))
 
 
 }

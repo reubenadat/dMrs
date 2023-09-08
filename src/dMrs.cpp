@@ -63,18 +63,28 @@ double calc_copula(const double& F1,const double& F2,
 	
 	double F_T1_T2 = 0.0;
 	
-	// if( F1 == 0.0 || F2 == 0.0 )
-		// return 0.0;
+	// A general property of copulas
+	if( F1 == 0.0 || F2 == 0.0 )
+		return 0.0;
+	
+	// A general property of copulas
+	if( F1 == 1.0 ) return F2;
+	if( F2 == 1.0 ) return F1;
 	
 	// if( F1 == 1.0 && F2 == 1.0 )
 		// return 1.0;
 	
 	if( copula == "Independent" ){
+		
 		F_T1_T2 = F1 * F2;
+		
 	} else if( copula == "Clayton" ){
+		
 		F_T1_T2 = std::pow(F1,-THETA) + std::pow(F2,-THETA) - 1.0;
 		F_T1_T2 = std::pow(F_T1_T2,-1.0 / THETA);
+		
 	} else if( copula == "Gumbel" ){
+		
 		arma::vec log_vec = arma::zeros<arma::vec>(2);
 		log_vec.at(0) = THETA * std::log(-std::log(F1));
 		log_vec.at(1) = THETA * std::log(-std::log(F2));
@@ -82,11 +92,6 @@ double calc_copula(const double& F1,const double& F2,
 		F_T1_T2 = std::exp(1.0 / THETA * Rcpp_logSumExp(log_vec));
 		F_T1_T2 = std::exp(-F_T1_T2);
 		
-		
-		// F_T1_T2 = std::pow(-std::log(F1),THETA) + 
-			// std::pow(-std::log(F2),THETA);
-		// F_T1_T2 = std::pow(F_T1_T2,1.0 / THETA);
-		// F_T1_T2 = std::exp(-F_T1_T2);
 	} else {
 		Rcpp::stop("Not a valid copula!");
 	}
@@ -106,16 +111,16 @@ double calc_copula_dens(const double& D1,const double& D2,
 	double f_T1_T2 = 0.0, nlog_F1, nlog_F2,
 		log_TERM_1, log_TERM_2;
 	
-	/*
-	if( F_T1_T2 == 0.0 || F_T1_T2 == 1.0 )
-		return 0.0;
-	*/
-	
 	arma::vec log_vec = arma::zeros<arma::vec>(2);
 	
 	if( copula == "Independent" ){
+		
 		f_T1_T2 = D1 * F2 + D2 * F1;
+	
 	} else if( copula == "Clayton" ){
+		
+		if( F_T1_T2 == 0.0 ) return 0.0;
+		
 		log_TERM_1 = (-1.0 / THETA - 1.0) * 
 			std::log( std::pow(F1,-THETA) + std::pow(F2,-THETA) - 1.0 );
 		log_vec.at(0) = std::log(D1) - (THETA + 1.0) * std::log(F1);
@@ -125,6 +130,9 @@ double calc_copula_dens(const double& D1,const double& D2,
 		f_T1_T2 = std::exp(log_TERM_1 + log_TERM_2);
 		
 	} else if( copula == "Gumbel" ){
+		
+		if( F_T1_T2 == 0.0 ) return 0.0;
+		
 		// log first term
 		f_T1_T2 = std::log(F_T1_T2);
 		
@@ -207,8 +215,19 @@ double dMrs_LL(const arma::vec& XX,const arma::uvec& DELTA,
 		out = calc_copula_CDF_PDF(D1,D2.at(ii),
 			F1,F2,copula,THETA);
 		
-		if( out.has_nan() )
+		if( out.has_nan() ){
+			if( verb ){
+				Rcpp::Rcout << "ii = " << ii + 1 << "; ";
+				Rcpp::Rcout << "Delta = " << DELTA.at(ii) << "; ";
+				Rcpp::Rcout << "D1 = " << D1 << "; ";
+				Rcpp::Rcout << "D2 = " << D2.at(ii) << "; ";
+				Rcpp::Rcout << "F1 = " << F1 << "; ";
+				Rcpp::Rcout << "F2 = " << F2 << "; ";
+				Rcpp::Rcout << "F1_F2 = " << out.at(0) << "; ";
+				Rcpp::Rcout << "D1_D2 = " << out.at(1) << "\n";
+			}
 			return error_num;
+		}
 		
 		F1_F2 = out.at(0);
 		D1_D2 = out.at(1);

@@ -5,8 +5,9 @@
 ref_LL = function(DATA,PARS,COPULA){
 	# PARS = (ALPHA1,LAMBDA1,KAPPA1,THETA)
 	if(FALSE){
-		PARS = iPARS
-		COPULA = PARAMS$copula; COPULA
+		DATA = one_rep$DATA
+		PARS = uPARS
+		# COPULA = PARAMS$copula; COPULA
 		
 	}
 	
@@ -62,8 +63,9 @@ ref_LL = function(DATA,PARS,COPULA){
 		if( DATA$delta[ii] == 1 ){
 			tmp_num = f1 + f2 - f_T1_T2
 			if( is.na(tmp_num) ){
-				cat(sprintf("ii = %s, f1 = %s, f2 = %s, F_T1_T2 = %s\n",ii,f1,f2,F_T1_T2))
-				break
+				cat(sprintf("ii = %s, f1 = %s, f2 = %s, F_T1_T2 = %s, f_T1_T2 = %s\n",
+					ii,f1,f2,F_T1_T2,f_T1_T2))
+				return(NULL)
 			}
 			
 			if( tmp_num <= 0 ){
@@ -196,6 +198,13 @@ ref_LL_cpp = function(DATA,PARS,COPULA){
 	
 	return(LL)
 }
+wrapper_LL = function(DATA,PARS,COPULA,verb = TRUE){
+	# PARS = iPARS
+	dMrs_cLL(XX = DATA$time,DELTA = DATA$delta,
+		D2 = DATA$dens_t2,S2 = DATA$surv_t2,
+		PARS = PARS,copula = COPULA,
+		verb = verb)
+}
 
 #' @title calc_CDFs
 #' @description Investigate the nature of the cumulative distribution 
@@ -305,12 +314,12 @@ opt_replicate = function(DATA,COPULA,param_grid,theta,
 										L = seq(1,2,0.05),
 										K = 0,
 										T = seq(1,3,0.1))
-		theta 			= ifelse(COPULA_2 == "Independent",0,NA)
-		upKAPPA 		= ifelse(DIST_2 == "weibull",0,1)
+		theta 			= ifelse(COPULA == "Independent",0,NA)
+		upKAPPA 		= ifelse(DIST == "weibull",0,1)
 		gTHRES 			= 8e-2
 		verb 				= TRUE
 		ncores 			= 1
-		PLOT				= !TRUE
+		PLOT				= TRUE
 		
 	}
 	
