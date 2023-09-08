@@ -341,10 +341,10 @@ if( TRUE ){ 	# Test optimization
 
 my_dirs$rep_dir = file.path(my_dirs$curr_dir,"REPS")
 
-tCOPULA = c("Independent","Clayton","Gumbel")[1]
+tCOPULA = c("Independent","Clayton","Gumbel")[2]
 tDIST		= c("weibull","expweibull")[1]
-rr 			= 249
-NN			= 2e4
+rr 			= 1
+NN			= 1e4
 
 repCDN_dir = file.path(my_dirs$rep_dir,
 	sprintf("C.%s_D.%s",tCOPULA,tDIST))
@@ -393,14 +393,15 @@ length(run_ana)
 
 OO = opt_sum(OPT = run_ana); OO
 
-solu = 1
-GRID = smart_df(run_ana[[solu]]$RES$GRID); head(GRID)
+solu = which(OO$COPULA == tCOPULA & OO$DIST == tDIST); solu
+solu = 2
+GRID = smart_df(run_ana[[solu]]$RES$GRID); # head(GRID)
 out = get_PROFILE(GRID = GRID,PLOT = TRUE)
 run_ana[[solu]]$RES$cout
 
 # Plot survival curves
 plot_SURVs(run_ANA = run_ana,
-	MULTIPLE = TRUE,ALPHA = 0.4)
+	MULTIPLE = !TRUE,ALPHA = 0.4)
 
 # Check why no valid grid points
 uPARS = c(0.186962, 1.38275, 0, -Inf)
