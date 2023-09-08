@@ -341,9 +341,9 @@ if( TRUE ){ 	# Test optimization
 
 my_dirs$rep_dir = file.path(my_dirs$curr_dir,"REPS")
 
-tCOPULA = c("Independent","Clayton","Gumbel")[2]
-tDIST		= c("weibull","expweibull")[2]
-rr 			= 215
+tCOPULA = c("Independent","Clayton","Gumbel")[1]
+tDIST		= c("weibull","expweibull")[1]
+rr 			= 249
 NN			= 2e4
 
 repCDN_dir = file.path(my_dirs$rep_dir,
@@ -361,17 +361,19 @@ uPARS
 aa = calc_CDFs(DATA = one_rep$DATA,
 	PARS = uPARS,COPULA = tCOPULA)
 
-stepsize = 0.25
+stepsize = 0.1
+bound = 0.5
 param_grid = list(
-	A = uPARS[1] + seq(-0.5,0.5,stepsize),
-	L = uPARS[2] + seq(-0.5,0.5,stepsize),
-	K = uPARS[3] + seq(-0.5,0.5,stepsize),
-	T = uPARS[4] + seq(-0.5,0.5,stepsize))
+	A = uPARS[1] + seq(-bound,bound,stepsize),
+	L = uPARS[2] + seq(-bound,bound,stepsize),
+	K = uPARS[3] + seq(-bound,bound,stepsize),
+	T = uPARS[4] + seq(-bound,bound,stepsize))
 
 if( is.infinite(uPARS[4]) ){
-	param_grid$T = seq(-1,1,stepsize)
+	param_grid$T = seq(-bound,bound,stepsize)
 }
 param_grid
+prod(sapply(param_grid,length))
 
 # Estimate assuming truth known
 DIST 		= c(tDIST,"weibull")[1]
@@ -379,10 +381,10 @@ COPULA	= c(tCOPULA,"Clayton")[1]
 
 run_ana = run_analyses(
 	DATA = one_rep$DATA,
-	COPULAS = COPULA,
+	# COPULAS = COPULA,
 	upKAPPA = ifelse(DIST == "weibull",0,1),
 	param_grid = param_grid,
-	# param_grid = seq(-1,3,0.05),
+	# param_grid = seq(-1,3,0.1),
 	verb = TRUE)
 
 
@@ -391,54 +393,63 @@ length(run_ana)
 
 OO = opt_sum(OPT = run_ana); OO
 
-solu = 2
+solu = 1
 GRID = smart_df(run_ana[[solu]]$RES$GRID); head(GRID)
 out = get_PROFILE(GRID = GRID,PLOT = TRUE)
+run_ana[[solu]]$RES$cout
 
 # Plot survival curves
 plot_SURVs(run_ANA = run_ana,
 	MULTIPLE = TRUE,ALPHA = 0.4)
 
 # Check why no valid grid points
-ref_LL(DATA = one_rep$DATA,
-	PARS = uPARS,
-	COPULA = COPULA)
+uPARS = c(0.186962, 1.38275, 0, -Inf)
+error_num = -999
+upPARS = c(1,1,0,0)
 
-ref_LL_cpp(DATA = one_rep$DATA,
-	PARS = uPARS,
-	COPULA = COPULA)
+old_LL = wrapper_LL(DATA = one_rep$DATA,PARS = uPARS,COPULA = COPULA,verb = TRUE)
+old_GRAD = wrapper_GRAD(DATA = one_rep$DATA,PARS = uPARS,COPULA = COPULA,upPARS = upPARS)
+norm_GRAD = Rcpp_norm(old_GRAD); norm_GRAD
+old_GRAD = old_GRAD / max(c(1,old_GRAD))
+uu = 0
 
-wrap_LL(DATA = one_rep$DATA,
-	PARS = uPARS,verb = TRUE)
+for(jj in seq(0,20)){
+	
+	new_uPARS = uPARS + 1/4^jj * old_GRAD; # new_uPARS
+	new_LL = wrapper_LL(DATA = one_rep$DATA,PARS = new_uPARS,COPULA = COPULA,verb = TRUE)
+	
+	if( new_LL == error_num ) next
+	if( new_LL <= old_LL ) next
+	new_LL
+	new_LL - old_LL
+	
+	new_GRAD = wrapper_GRAD(DATA = one_rep$DATA,PARS = new_uPARS,COPULA = COPULA,upPARS = upPARS)
+	if( new_GRAD[1] == error_num ) next
+	new_GRAD
+	Rcpp_norm(new_GRAD)
+	
+	new_HESS = wrapper_HESS(DATA = one_rep$DATA,PARS = new_uPARS,COPULA = COPULA,upPARS = upPARS)
+	if( new_HESS[1,1] == error_num ) next
+	new_HESS
+	
+	new_COV = matrix(0,4,4)
+	nz = which(diag(new_HESS) != 0)
+	new_COV[nz,nz] = solve(-new_HESS[nz,nz])
+	if( any(diag(new_COV[nz,nz]) < 0) ) next
+	new_COV
+	
+	print("update!")
+	uu = 1
+	break
+	
+}
+jj
 
-# Calculate subject's values
-one_rep$PARAMS
-KAPPA = one_rep$PARAMS$kappa1
-ALPHA = one_rep$PARAMS$alpha1
-LAMBDA = one_rep$PARAMS$lambda1
-THETA = one_rep$PARAMS$theta
-KAL = KAPPA * ALPHA / LAMBDA; KAL
-ii = 2145
+if( uu == 1 ) uPARS = new_uPARS
+uPARS
 
-XDL = one_rep$DATA$time[ii] / LAMBDA
-enXDLa = exp(-XDL^ALPHA)
-
-F1 = 1.0 - enXDLa
-if( KAPPA != 1.0 ) F1 = F1^KAPPA;
-S1 = 1.0 - F1
-D1 = KAL * XDL^(ALPHA - 1.0) * enXDLa
-if( KAPPA != 1.0 ) D1 = D1 * F1 / ( 1.0 - enXDLa );
-D2 = one_rep$DATA$dens_t2[ii]
-F2 = 1 - one_rep$DATA$surv_t2[ii]
-F_T1_T2 = calc_copula(F1 = F1,F2 = F2,
-	copula = COPULA,THETA = THETA)
-f_T1_T2 = calc_copula_dens(D1 = D1,D2 = D2,
-	F1 = F1,F2 = F2,copula = COPULA,
-	THETA = THETA,F_T1_T2 = F_T1_T2)
-D1; D2; F1; F2; F_T1_T2; f_T1_T2
-
-(F1^(-THETA) + F2^(-THETA) - 1)^(-1/THETA) * (D1/F1^(THETA+1) + D2/F2^(THETA+1))
-
+wrap_NR(DATA = one_rep$DATA,PARS = uPARS,COPULA = COPULA,upPARS = upPARS,verb = TRUE)
+wrap_GD(DATA = one_rep$DATA,PARS = uPARS,COPULA = COPULA,upPARS = upPARS,verb = TRUE)
 
 }
 if( FALSE ){ 	# Debug optimization

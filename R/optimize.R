@@ -205,6 +205,22 @@ wrapper_LL = function(DATA,PARS,COPULA,verb = TRUE){
 		PARS = PARS,copula = COPULA,
 		verb = verb)
 }
+wrapper_GRAD = function(DATA,PARS,COPULA,upPARS){
+	# PARS = iPARS
+	out = dMrs_cGRAD(XX = DATA$time,DELTA = DATA$delta,
+		D2 = DATA$dens_t2,S2 = DATA$surv_t2,PARS = PARS,
+		copula = COPULA,upPARS = upPARS)
+	
+	# out = grad(wrap_LL,PARS)
+	c(out)
+}
+wrapper_HESS = function(DATA,PARS,COPULA,upPARS){
+	# PARS = iPARS
+	dMrs_cHESS(XX = DATA$time,DELTA = DATA$delta,
+		D2 = DATA$dens_t2,S2 = DATA$surv_t2,PARS = PARS,
+		copula = COPULA,upPARS = upPARS)
+}
+	
 
 #' @title calc_CDFs
 #' @description Investigate the nature of the cumulative distribution 
@@ -289,16 +305,21 @@ calc_CDFs = function(DATA,PARS,COPULA){
 
 wrap_NR = function(DATA,PARS,COPULA,upPARS,verb = TRUE){
 	
-	dMrs_NR(XX = DATA$time,
-		DELTA = DATA$delta,
-		D2 = DATA$dens_t2,
-		S2 = DATA$surv_t2,
-		PARS = PARS,
-		copula = COPULA,
-		upPARS = upPARS,
-		max_iter = 2e2,
-		eps = 1e-7,
-		verb = verb)
+	dMrs_NR(XX = DATA$time,DELTA = DATA$delta,
+		D2 = DATA$dens_t2,S2 = DATA$surv_t2,
+		PARS = PARS,copula = COPULA,upPARS = upPARS,
+		max_iter = 2e2,eps = 1e-7,verb = verb)
+	
+	out_PARS = PARS
+	return(out_PARS)
+	
+}
+wrap_GD = function(DATA,PARS,COPULA,upPARS,verb = TRUE){
+	
+	dMrs_GD(XX = DATA$time,DELTA = DATA$delta,
+		D2 = DATA$dens_t2,S2 = DATA$surv_t2,
+		PARS = PARS,copula = COPULA,upPARS = upPARS,
+		max_iter = 2e2,eps = 1e-7,verb = verb)
 	
 	out_PARS = PARS
 	return(out_PARS)
@@ -310,7 +331,7 @@ opt_replicate = function(DATA,COPULA,param_grid,theta,
 
 	if(FALSE){
 		DATA 				= one_rep$DATA
-		param_grid	= list(A = seq(0,1,0.05),
+		param_grid	= list(A = seq(0,0.3,0.02),
 										L = seq(1,2,0.05),
 										K = 0,
 										T = seq(1,3,0.1))
@@ -443,11 +464,20 @@ opt_replicate = function(DATA,COPULA,param_grid,theta,
 			iter = 1,iter2 = 5)
 		if( !is.na(gopt$fin_LL[ii]) ) next
 		
+		# Init pars
 		iPARS = as.numeric(gopt[ii,1:4]); iPARS
+		
+		# Run Newton Raphson
 		dMrs_NR(XX = DATA$time,DELTA = DATA$delta,
 			D2 = DATA$dens_t2,S2 = DATA$surv_t2,
 			PARS = iPARS,copula = COPULA,upPARS = upPARS,
-			max_iter = 2e2,eps = 1e-6,verb = verb)
+			max_iter = 5e1,eps = 1e-6,verb = verb)
+		
+		# Run Gradient Descent
+		dMrs_GD(XX = DATA$time,DELTA = DATA$delta,
+			D2 = DATA$dens_t2,S2 = DATA$surv_t2,
+			PARS = iPARS,copula = COPULA,upPARS = upPARS,
+			max_iter = 5e1,eps = 1e-6,verb = verb)
 		
 		tmp_LL = wrap_LL(PARS = iPARS)
 		tmp_GR = wrap_GRAD(PARS = iPARS)
@@ -619,9 +649,9 @@ run_analysis = function(DATA,theta,upKAPPA,
 	gTHRES,copula,param_grid,vec_time,verb,PLOT,ncores = 1){
 	
 	if(FALSE){
-		DATA 				= DATA
+		DATA 				= one_rep$DATA
 		theta 			= NA
-		upKAPPA 		= upKAPPA
+		upKAPPA 		= ifelse(DIST == "weibull",0,1)
 		gTHRES 			= 8e-2
 		copula 			= c(COPULA,"Clayton","Gumbel")[1]
 		param_grid 	= param_grid
@@ -666,7 +696,7 @@ run_analysis = function(DATA,theta,upKAPPA,
 	
 	est_SE = function(tt){
 		if(FALSE){
-			ii = 2; tt = pred$time[ii]
+			ii = 15; tt = pred$time[ii]
 		}
 		
 		if( tt == 0 ) return(0)

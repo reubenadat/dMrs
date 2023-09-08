@@ -216,16 +216,16 @@ double dMrs_LL(const arma::vec& XX,const arma::uvec& DELTA,
 			F1,F2,copula,THETA);
 		
 		if( out.has_nan() ){
-			if( verb ){
-				Rcpp::Rcout << "ii = " << ii + 1 << "; ";
-				Rcpp::Rcout << "Delta = " << DELTA.at(ii) << "; ";
-				Rcpp::Rcout << "D1 = " << D1 << "; ";
-				Rcpp::Rcout << "D2 = " << D2.at(ii) << "; ";
-				Rcpp::Rcout << "F1 = " << F1 << "; ";
-				Rcpp::Rcout << "F2 = " << F2 << "; ";
-				Rcpp::Rcout << "F1_F2 = " << out.at(0) << "; ";
-				Rcpp::Rcout << "D1_D2 = " << out.at(1) << "\n";
-			}
+			// if( verb ){
+				// Rcpp::Rcout << "ii = " << ii + 1 << "; ";
+				// Rcpp::Rcout << "Delta = " << DELTA.at(ii) << "; ";
+				// Rcpp::Rcout << "D1 = " << D1 << "; ";
+				// Rcpp::Rcout << "D2 = " << D2.at(ii) << "; ";
+				// Rcpp::Rcout << "F1 = " << F1 << "; ";
+				// Rcpp::Rcout << "F2 = " << F2 << "; ";
+				// Rcpp::Rcout << "F1_F2 = " << out.at(0) << "; ";
+				// Rcpp::Rcout << "D1_D2 = " << out.at(1) << "\n";
+			// }
 			return error_num;
 		}
 		
@@ -628,7 +628,7 @@ void dMrs_NR(const arma::vec& XX,const arma::uvec& DELTA,
 			
 			new_LL = dMrs_cLL(XX,DELTA,D2,S2,new_xk,copula,false);
 			if( new_LL == error_num ) continue;
-			if( new_LL < old_LL ) continue;
+			if( new_LL <= old_LL ) continue;
 			
 			GRAD = dMrs_cGRAD(XX,DELTA,D2,S2,new_xk,copula,upPARS);
 			if( arma::any(GRAD == error_num) ) continue;
@@ -660,6 +660,8 @@ void dMrs_NR(const arma::vec& XX,const arma::uvec& DELTA,
 		diff_LL = new_LL - old_LL;
 		diff_PARS = Rcpp_norm(xk(idx_fin) - new_xk(idx_fin));
 		nGRAD = Rcpp_norm(GRAD);
+		if( diff_LL == 0.0 || diff_PARS == 0.0 ) break;
+		
 		if( diff_LL < 5e-5 && diff_PARS < 5e-5 ){
 			if( nGRAD < 1e-2 ){
 				if( verb ) Rcpp::Rcout << "Optimization criteria met\n";
@@ -703,6 +705,129 @@ void dMrs_NR(const arma::vec& XX,const arma::uvec& DELTA,
 	}
 	
 }
+
+// [[Rcpp::export]]
+void dMrs_GD(const arma::vec& XX,const arma::uvec& DELTA,
+	const arma::vec& D2,const arma::vec& S2,arma::vec& PARS,
+	const std::string& copula,const arma::vec& upPARS,
+	const arma::uword& max_iter = 4e3,const double& eps = 1e-7,
+	const bool& verb = true){
+	
+	arma::uword iter = 0, jj, uu,
+		np = PARS.n_elem;
+	
+	// Initialize parameters
+	if( verb ){
+		Rcpp::Rcout << "iPARS = ";
+		prt_vec(PARS);
+	}
+	arma::mat I_np = arma::eye<arma::mat>(np,np),
+		HESS = I_np, iHESS = I_np;
+	arma::vec xk = PARS, curr_xk = arma::zeros<arma::vec>(np),
+		new_xk = curr_xk, GRAD = curr_xk, p_k = curr_xk;
+	double error_num = -999.0, diff_LL = 0.0, 
+		rcond_num, diff_PARS,
+		orig_LL = dMrs_cLL(XX,DELTA,D2,S2,xk,copula,false),
+		nGRAD, old_LL, new_LL;
+	arma::uvec chk = arma::zeros<arma::uvec>(np),
+		idx_fin = arma::find_finite(PARS);
+	
+	old_LL = orig_LL;
+	while( iter < max_iter ){
+		GRAD = dMrs_cGRAD(XX,DELTA,D2,S2,xk,copula,upPARS);
+		if( GRAD.at(0) == error_num ){
+			if( verb ) Rcpp::Rcout << "Invalid pars\n";
+			return;
+		}
+		
+		p_k = GRAD;
+		p_k /= std::max(1.0, Rcpp_norm(p_k));
+		
+		uu = 0;
+		for(jj = 0; jj <= 20; jj++){
+			new_xk = xk + p_k / std::pow(4.0,jj);
+			
+			new_LL = dMrs_cLL(XX,DELTA,D2,S2,new_xk,copula,false);
+			if( new_LL == error_num ) continue;
+			if( new_LL <= old_LL ) continue;
+			
+			GRAD = dMrs_cGRAD(XX,DELTA,D2,S2,new_xk,copula,upPARS);
+			if( arma::any(GRAD == error_num) ) continue;
+			
+			HESS = dMrs_cHESS(XX,DELTA,D2,S2,new_xk,copula,upPARS);
+			if( HESS.at(0,0) == error_num ) continue;
+			
+			chk.zeros();
+			chk(arma::find(upPARS == 1.0 && HESS.diag() == 0.0)).ones();
+			if( arma::any(chk == 1) ) continue;
+			
+			arma::uvec nz = arma::find(HESS.diag() != 0.0);
+			rcond_num = arma::rcond(HESS.submat(nz,nz));
+			if( rcond_num == 0.0 ) continue;
+			iHESS.zeros();
+			iHESS.submat(nz,nz) = arma::inv(-1.0 * HESS.submat(nz,nz));
+			if( arma::any(iHESS.diag() < 0.0) ) continue;
+			
+			uu = 1;
+			break;
+			
+		}
+		
+		if( uu == 0 ){
+			if( verb ) Rcpp::Rcout << "No more update\n";
+			break;
+		}
+		
+		diff_LL = new_LL - old_LL;
+		diff_PARS = Rcpp_norm(xk(idx_fin) - new_xk(idx_fin));
+		nGRAD = Rcpp_norm(GRAD);
+		if( diff_LL == 0.0 || diff_PARS == 0.0 ) break;
+		
+		if( diff_LL < 5e-5 && diff_PARS < 5e-5 ){
+			if( nGRAD < 1e-2 ){
+				if( verb ) Rcpp::Rcout << "Optimization criteria met\n";
+				break;
+			}
+		}
+		
+		if( verb ){
+			if( (iter + 1) % 5 == 0 ){
+				Rcpp::Rcout << "iter=" << iter + 1 << "; LL=" << old_LL
+					<< "; diff.LL=" << diff_LL << "; diff.PARS=" << diff_PARS
+					<< "; nGRAD=" << nGRAD << "; PARS = ";
+					prt_vec(new_xk);
+			}
+		}
+		
+		xk = new_xk;
+		old_LL = new_LL;
+		iter++;
+		
+	}
+	
+	old_LL = dMrs_cLL(XX,DELTA,D2,S2,xk,copula,false);
+	if( old_LL > orig_LL ){ // Criteria for convergence
+		PARS = xk;
+	}
+
+	if( verb ){
+		Rcpp::Rcout << "####\nNum Iter = " << iter+1 << "\n";
+		Rcpp::Rcout << "Params = "; prt_vec(xk);
+		Rcpp::Rcout << "LL = " << old_LL << "\n";
+		GRAD = dMrs_cGRAD(XX,DELTA,D2,S2,xk,copula,upPARS);
+		HESS = dMrs_cHESS(XX,DELTA,D2,S2,PARS,copula,upPARS);
+		arma::uvec nz = arma::find(HESS.diag() != 0.0);
+		iHESS.submat(nz,nz) = arma::inv(-1.0 * HESS.submat(nz,nz));
+		Rcpp::Rcout << "GRAD = "; prt_vec(GRAD);
+		Rcpp::Rcout << "Convergence Indicators: \n"
+			<< "   NormGrad = " << Rcpp_norm(GRAD) << "\n"
+			<< "   NormIHessGrad = " << Rcpp_norm(iHESS * GRAD) << "\n";
+		Rcpp::Rcout << "Var = "; prt_vec(iHESS.diag());
+	}
+	
+}
+
+
 
 // [[Rcpp::export]]
 arma::mat dMrs_GRID(const arma::vec& XX,const arma::uvec& DELTA,

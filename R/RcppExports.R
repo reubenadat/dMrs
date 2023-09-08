@@ -49,6 +49,10 @@ dMrs_NR <- function(XX, DELTA, D2, S2, PARS, copula, upPARS, max_iter = 4e3L, ep
     invisible(.Call('_dMrs_dMrs_NR', PACKAGE = 'dMrs', XX, DELTA, D2, S2, PARS, copula, upPARS, max_iter, eps, verb))
 }
 
+dMrs_GD <- function(XX, DELTA, D2, S2, PARS, copula, upPARS, max_iter = 4e3L, eps = 1e-7, verb = TRUE) {
+    invisible(.Call('_dMrs_dMrs_GD', PACKAGE = 'dMrs', XX, DELTA, D2, S2, PARS, copula, upPARS, max_iter, eps, verb))
+}
+
 dMrs_GRID <- function(XX, DELTA, D2, S2, log_THETA, log_ALPHA, log_LAMBDA, unc_KAPPA, copula, verb = FALSE, ncores = 1L) {
     .Call('_dMrs_dMrs_GRID', PACKAGE = 'dMrs', XX, DELTA, D2, S2, log_THETA, log_ALPHA, log_LAMBDA, unc_KAPPA, copula, verb, ncores)
 }
