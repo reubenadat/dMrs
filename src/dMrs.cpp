@@ -715,6 +715,8 @@ void dMrs_NR(const arma::vec& XX,const arma::uvec& DELTA,
 				break;
 			}
 			
+		} else {
+			reach = 0;
 		}
 		
 		if( verb ){
