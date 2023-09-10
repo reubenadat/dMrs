@@ -54,6 +54,28 @@ void prt_vec(const arma::vec& aa){
 	
 }
 
+// [[Rcpp::export]]
+arma::vec calc_expweibull_CDF_PDF(const double& XX,
+	const double& LAM,const double& ALP,const double& KAP){
+	
+	double log_cdf_weibull = R::pweibull(XX,ALP,LAM,1,1);
+	double log_cdf_expweibull = log_cdf_weibull;
+	double log_pdf_expweibull = R::dweibull(XX,ALP,LAM,1);
+	
+	if( KAP != 1.0 ){
+		log_cdf_expweibull *= KAP;
+		log_pdf_expweibull += std::log(KAP) + (KAP - 1.0) * log_cdf_weibull;
+	}
+	
+	arma::vec out = arma::zeros<arma::vec>(2);
+	out.at(0) = std::exp(log_cdf_expweibull);
+	out.at(1) = std::exp(log_pdf_expweibull);
+	
+	return out;
+	
+}
+
+
 // --------------------
 // New Functions
 
@@ -192,23 +214,31 @@ double dMrs_LL(const arma::vec& XX,const arma::uvec& DELTA,
 	arma::uword ii, NN = XX.n_elem;
 	double LL = 0.0, LL_ii, D1, S1, F1, F2,
 		// log_F1, log_F2, 
-		D1_D2, XDL, enXDLa, 
+		D1_D2, 
+		// XDL, enXDLa, 
 		// U1T_U2T, U1T1, U2T1,
-		F1_F2, AA, BB, error_num = -999.0,
-		KAL = KAPPA * ALPHA / LAMBDA;
-	arma::vec out = arma::zeros<arma::vec>(2);
+		F1_F2, AA, BB, error_num = -999.0;
+		// KAL = KAPPA * ALPHA / LAMBDA
+	arma::vec out = arma::zeros<arma::vec>(2), 
+		vEW = out;
 	
 	for(ii = 0; ii < NN; ii++){
-		XDL = XX.at(ii) / LAMBDA;
-		enXDLa = std::exp(-std::pow(XDL,ALPHA));
 		
-		F1 = 1.0 - enXDLa;
-		if( KAPPA != 1.0 ) F1 = std::pow(F1,KAPPA);
+		vEW = calc_expweibull_CDF_PDF(XX.at(ii),LAMBDA,ALPHA,KAPPA);
 		
+		// XDL = XX.at(ii) / LAMBDA;
+		// enXDLa = std::exp(-std::pow(XDL,ALPHA));
+		
+		// F1 = 1.0 - enXDLa;
+		// if( KAPPA != 1.0 ) F1 = std::pow(F1,KAPPA);
+		
+		F1 = vEW.at(0);
+		D1 = vEW.at(1);
 		S1 = 1.0 - F1;
 		
-		D1 = KAL * std::pow(XDL,ALPHA - 1.0) * enXDLa;
-		if( KAPPA != 1.0 ) D1 *= F1 / ( 1.0 - enXDLa );
+		// D1 = KAL * std::pow(XDL,ALPHA - 1.0) * enXDLa;
+		// if( KAPPA != 1.0 ) D1 *= F1 / ( 1.0 - enXDLa );
+		// if( F1 == 0.0 ) D1 = 0.0;
 		
 		F2 = 1.0 - S2.at(ii);
 		
@@ -571,7 +601,7 @@ void dMrs_NR(const arma::vec& XX,const arma::uvec& DELTA,
 	const arma::uword& max_iter = 4e3,const double& eps = 1e-7,
 	const bool& verb = true){
 	
-	arma::uword iter = 0, jj, uu,
+	arma::uword iter = 0, jj, kk, uu,
 		np = PARS.n_elem;
 	
 	// Initialize parameters
@@ -582,7 +612,8 @@ void dMrs_NR(const arma::vec& XX,const arma::uvec& DELTA,
 	arma::mat I_np = arma::eye<arma::mat>(np,np),
 		HESS = I_np, iHESS = I_np;
 	arma::vec xk = PARS, curr_xk = arma::zeros<arma::vec>(np),
-		new_xk = curr_xk, GRAD = curr_xk, p_k = curr_xk;
+		new_xk = curr_xk, GRAD = curr_xk, pk_NR = curr_xk,
+		pk_GD = curr_xk;
 	double error_num = -999.0, diff_LL = 0.0, 
 		rcond_num, diff_PARS,
 		orig_LL = dMrs_cLL(XX,DELTA,D2,S2,xk,copula,false),
@@ -619,12 +650,18 @@ void dMrs_NR(const arma::vec& XX,const arma::uvec& DELTA,
 		iHESS.zeros();
 		iHESS.submat(nz,nz) = arma::inv(-1.0 * HESS.submat(nz,nz));
 		
-		p_k = iHESS * GRAD;
-		p_k /= std::max(1.0, Rcpp_norm(p_k));
+		pk_NR = iHESS * GRAD;
+		pk_NR /= std::max(1.0, Rcpp_norm(pk_NR));
+		
+		pk_GD = GRAD;
+		pk_GD /= std::max(1.0, Rcpp_norm(pk_GD));
 		
 		uu = 0;
-		for(jj = 0; jj <= 20; jj++){
-			new_xk = xk + p_k / std::pow(4.0,jj);
+		for(kk = 0; kk < 1; kk++){
+		for(jj = 0; jj <= 30; jj++){
+			
+			if( kk == 0 ) new_xk = xk + pk_NR / std::pow(4.0,jj);
+			if( kk == 1 ) new_xk = xk + pk_GD / std::pow(4.0,jj);
 			
 			new_LL = dMrs_cLL(XX,DELTA,D2,S2,new_xk,copula,false);
 			if( new_LL == error_num ) continue;
@@ -651,6 +688,10 @@ void dMrs_NR(const arma::vec& XX,const arma::uvec& DELTA,
 			break;
 			
 		}
+			
+			if( uu == 1 ) break;
+			
+		}
 		
 		if( uu == 0 ){
 			if( verb ) Rcpp::Rcout << "No more update\n";
@@ -673,7 +714,7 @@ void dMrs_NR(const arma::vec& XX,const arma::uvec& DELTA,
 			if( (iter + 1) % 5 == 0 ){
 				Rcpp::Rcout << "iter=" << iter + 1 << "; LL=" << old_LL
 					<< "; diff.LL=" << diff_LL << "; diff.PARS=" << diff_PARS
-					<< "; nGRAD=" << nGRAD << "; PARS = ";
+					<< "; nGRAD=" << nGRAD << "; meth=" << kk << "; PARS = ";
 					prt_vec(new_xk);
 			}
 		}

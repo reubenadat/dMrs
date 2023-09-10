@@ -17,6 +17,10 @@ prt_vec <- function(aa) {
     invisible(.Call('_dMrs_prt_vec', PACKAGE = 'dMrs', aa))
 }
 
+calc_expweibull_CDF_PDF <- function(XX, LAM, ALP, KAP) {
+    .Call('_dMrs_calc_expweibull_CDF_PDF', PACKAGE = 'dMrs', XX, LAM, ALP, KAP)
+}
+
 calc_copula <- function(F1, F2, copula, THETA) {
     .Call('_dMrs_calc_copula', PACKAGE = 'dMrs', F1, F2, copula, THETA)
 }

@@ -24,20 +24,21 @@ ref_LL = function(DATA,PARS,COPULA){
 	KAL = KAPPA1 * ALPHA1 / LAMBDA1
 	
 	for(ii in seq(nn)){
-		# ii = 1
+		# ii = 405
 		TT_LL = DATA$time[ii] / LAMBDA1
 		TLA = (TT_LL)^ALPHA1
 		E_mTLA = exp(-TLA)
 		CDF = (1 - E_mTLA)^KAPPA1
 		PDF = KAL * (TT_LL)^(ALPHA1 - 1) * 
 			(1 - E_mTLA)^(KAPPA1 - 1) * E_mTLA
+		if( CDF == 0 ) PDF = 0
 		f1 = PDF
 		f2 = DATA$dens_t2[ii]
 		F1 = CDF
-		if(F1 <= 0){
-			print(sprintf("ii = %s: error1",ii))
-			return(error_num)
-		}
+		# if(F1 <= 0){
+			# print(sprintf("ii = %s: error1",ii))
+			# return(error_num)
+		# }
 		F2 = 1 - DATA$surv_t2[ii]
 		
 		if( COPULA == "Independent" ){
@@ -46,18 +47,24 @@ ref_LL = function(DATA,PARS,COPULA){
 		} else if( COPULA == "Clayton" ){
 			F_T1_T2 = calc_copula(F1 = F1,F2 = F2,
 				copula = COPULA,THETA = THETA)
-			f_T1_T2 = ( (F1)^(-THETA) + (F2)^(-THETA) - 1 )^(-1/THETA - 1) *
-				(f1 / F1^(THETA + 1) + f2 / F2^(THETA + 1))
-			f_T1_T2 = calc_copula_dens(D1 = f1,D2 = f2,
-				F1 = F1,F2 = F2,copula = COPULA,THETA = THETA,
-				F_T1_T2 = F_T1_T2)
+			if( F_T1_T2 == 0 ){
+				f_T1_T2 = 0
+			} else {
+				f_T1_T2 = ( (F1)^(-THETA) + (F2)^(-THETA) - 1 )^(-1/THETA - 1) *
+					(f1 / F1^(THETA + 1) + f2 / F2^(THETA + 1))
+			}
+			
 		} else if( COPULA == "Gumbel" ){
 			nlog_u1 = -log(F1)
 			nlog_u2 = -log(F2)
 			F_T1_T2 = exp(-(nlog_u1^THETA + nlog_u2^THETA)^(1/THETA))
-			f_T1_T2 = F_T1_T2 *
-				( nlog_u1^THETA + nlog_u2^THETA )^(1 / THETA - 1) *
-				( nlog_u1^(THETA-1) * f1 / F1 + nlog_u2^(THETA-1) * f2 / F2 )
+			if( F_T1_T2 == 0 ){
+				f_T1_T2 = 0
+			} else {
+				f_T1_T2 = F_T1_T2 *
+					( nlog_u1^THETA + nlog_u2^THETA )^(1 / THETA - 1) *
+					( nlog_u1^(THETA-1) * f1 / F1 + nlog_u2^(THETA-1) * f2 / F2 )
+			}
 		}
 		
 		if( DATA$delta[ii] == 1 ){
@@ -93,8 +100,8 @@ ref_LL = function(DATA,PARS,COPULA){
 }
 ref_LL_cpp = function(DATA,PARS,COPULA){
 	if(FALSE){
-		DATA 		= DATA
-		PARS 		= iPARS
+		DATA 		= one_rep$DATA
+		PARS 		= uPARS
 		COPULA 	= tmp_copula
 		
 	}
@@ -115,15 +122,28 @@ ref_LL_cpp = function(DATA,PARS,COPULA){
 	PART1 = 0; PART2 = 0;
 	
 	for(ii in seq(nn)){
-		# ii = 3623
+		# ii = 405
 		XDL = DATA$time[ii] / LAMBDA1
-		enXDLa = exp(-(XDL)^ALPHA1)
+		enXDLa = exp(-(XDL)^ALPHA1); enXDLa
 		
-		F1 = 1 - enXDLa
-		if( KAPPA1 != 1.0 ) F1 = F1^KAPPA1
-		S1 = 1.0 - F1
+		F1 = 1 - enXDLa; F1
+		if( KAPPA1 != 1.0 ) F1 = F1^KAPPA1; F1
+		S1 = 1.0 - F1; S1
 		D1 = KAL * (XDL)^(ALPHA1 - 1) * enXDLa
 		if( KAPPA1 != 1.0 ) D1 = D1 * F1 / ( 1.0 - enXDLa )
+		D1
+		
+		if( F1 == 0 ) D1 = 0
+		
+		if(FALSE){
+			# log(F1)
+			log(F1)
+			
+			
+			ALPHA1 * log(XDL)
+			D1 = KAL * (XDL)^(ALPHA1 - 1) * (1 - enXDLa)^(KAPPA1 - 1) * enXDLa; D1
+			
+		}
 		
 		D2 = DATA$dens_t2[ii]
 		S2 = DATA$surv_t2[ii]
@@ -172,9 +192,10 @@ ref_LL_cpp = function(DATA,PARS,COPULA){
 		D1_D2 = tmp_vec[2]
 		
 		if( DATA$delta[ii] == 1 ){
+			D1; D2; D1_D2
 			tmp_num = D1 + D2 - D1_D2
 			
-			if( tmp_num <= 0 ){
+			if( is.na(tmp_num) || tmp_num <= 0 ){
 				print(sprintf("ii = %s: D1=%s, D2=%s, D1_D2=%s, F1=%s, F2=%s, T1=%s, T2=%s",
 					ii,D1,D2,D1_D2,F1,F2,PART1,PART2))
 				# print(sprintf("ii = %s",ii))
@@ -183,7 +204,7 @@ ref_LL_cpp = function(DATA,PARS,COPULA){
 			tmp_LL = log(tmp_num)
 		} else {
 			tmp_num = S1 + S2 - 1 + F1_F2
-			if( tmp_num <= 0 ){
+			if( is.na(tmp_num) || tmp_num <= 0 ){
 				print(sprintf("ii = %s",ii))
 				return(error_num)
 			}
@@ -474,10 +495,10 @@ opt_replicate = function(DATA,COPULA,param_grid,theta,
 			max_iter = max_iter,eps = 1e-6,verb = verb)
 		
 		# Run Gradient Descent
-		dMrs_GD(XX = DATA$time,DELTA = DATA$delta,
-			D2 = DATA$dens_t2,S2 = DATA$surv_t2,
-			PARS = iPARS,copula = COPULA,upPARS = upPARS,
-			max_iter = max_iter,eps = 1e-6,verb = verb)
+		# dMrs_GD(XX = DATA$time,DELTA = DATA$delta,
+			# D2 = DATA$dens_t2,S2 = DATA$surv_t2,
+			# PARS = iPARS,copula = COPULA,upPARS = upPARS,
+			# max_iter = max_iter,eps = 1e-6,verb = verb)
 		
 		tmp_LL = wrap_LL(PARS = iPARS)
 		tmp_GR = wrap_GRAD(PARS = iPARS)
