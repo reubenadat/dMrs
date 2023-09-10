@@ -598,11 +598,11 @@ void dMrs_BFGS(const arma::vec& XX,const arma::uvec& DELTA,
 void dMrs_NR(const arma::vec& XX,const arma::uvec& DELTA,
 	const arma::vec& D2,const arma::vec& S2,arma::vec& PARS,
 	const std::string& copula,const arma::vec& upPARS,
-	const arma::uword& max_iter = 4e3,const double& eps = 1e-7,
+	const arma::uword& max_iter = 4e3,const double& eps = 5e-2,
 	const bool& verb = true){
 	
 	arma::uword iter = 0, jj, kk, uu,
-		np = PARS.n_elem;
+		np = PARS.n_elem, reach = 0;
 	
 	// Initialize parameters
 	if( verb ){
@@ -657,7 +657,7 @@ void dMrs_NR(const arma::vec& XX,const arma::uvec& DELTA,
 		pk_GD /= std::max(1.0, Rcpp_norm(pk_GD));
 		
 		uu = 0;
-		for(kk = 0; kk < 1; kk++){
+		for(kk = 0; kk < 2; kk++){
 		for(jj = 0; jj <= 30; jj++){
 			
 			if( kk == 0 ) new_xk = xk + pk_NR / std::pow(4.0,jj);
@@ -703,18 +703,26 @@ void dMrs_NR(const arma::vec& XX,const arma::uvec& DELTA,
 		nGRAD = Rcpp_norm(GRAD);
 		if( diff_LL == 0.0 || diff_PARS == 0.0 ) break;
 		
-		if( diff_LL < 5e-5 && diff_PARS < 5e-5 ){
-			if( nGRAD < 1e-2 ){
+		if( diff_LL < eps * 1e-1 && diff_PARS < eps * 1e-1 ){
+			if( nGRAD < eps ){
+				reach++;
+			} else {
+				reach = 0; // resets if conditions not met
+			}
+			
+			if( reach >= 25 ){
 				if( verb ) Rcpp::Rcout << "Optimization criteria met\n";
 				break;
 			}
+			
 		}
 		
 		if( verb ){
 			if( (iter + 1) % 5 == 0 ){
 				Rcpp::Rcout << "iter=" << iter + 1 << "; LL=" << old_LL
 					<< "; diff.LL=" << diff_LL << "; diff.PARS=" << diff_PARS
-					<< "; nGRAD=" << nGRAD << "; meth=" << kk << "; PARS = ";
+					<< "; nGRAD=" << nGRAD << "; meth=" << kk 
+					<< "; reach=" << reach << "; PARS = ";
 					prt_vec(new_xk);
 			}
 		}

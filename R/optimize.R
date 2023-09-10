@@ -329,7 +329,7 @@ wrap_NR = function(DATA,PARS,COPULA,upPARS,verb = TRUE){
 	dMrs_NR(XX = DATA$time,DELTA = DATA$delta,
 		D2 = DATA$dens_t2,S2 = DATA$surv_t2,
 		PARS = PARS,copula = COPULA,upPARS = upPARS,
-		max_iter = 2e2,eps = 1e-7,verb = verb)
+		max_iter = 2e2,eps = 5e-2,verb = verb)
 	
 	out_PARS = PARS
 	return(out_PARS)
@@ -481,8 +481,8 @@ opt_replicate = function(DATA,COPULA,param_grid,theta,
 	for(ii in seq(nn)){
 		# ii = 3
 		# if( verb ) cat(".")
-		if( verb ) smart_progress(ii = ii,nn = nn,
-			iter = 1,iter2 = 5)
+		# if( verb ) smart_progress(ii = ii,nn = nn,
+			# iter = 1,iter2 = 5)
 		if( !is.na(gopt$fin_LL[ii]) ) next
 		
 		# Init pars
@@ -492,7 +492,7 @@ opt_replicate = function(DATA,COPULA,param_grid,theta,
 		dMrs_NR(XX = DATA$time,DELTA = DATA$delta,
 			D2 = DATA$dens_t2,S2 = DATA$surv_t2,
 			PARS = iPARS,copula = COPULA,upPARS = upPARS,
-			max_iter = max_iter,eps = 1e-6,verb = verb)
+			max_iter = max_iter,eps = 5e-2,verb = verb)
 		
 		# Run Gradient Descent
 		# dMrs_GD(XX = DATA$time,DELTA = DATA$delta,

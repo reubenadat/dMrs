@@ -341,9 +341,9 @@ if( TRUE ){ 	# Test optimization
 
 my_dirs$rep_dir = file.path(my_dirs$curr_dir,"REPS")
 
-tCOPULA = c("Independent","Clayton","Gumbel")[2]
-tDIST		= c("weibull","expweibull")[2]
-rr 			= 1
+tCOPULA = c("Independent","Clayton","Gumbel")[1]
+tDIST		= c("weibull","expweibull")[1]
+rr 			= 3
 NN			= 2e4
 
 repCDN_dir = file.path(my_dirs$rep_dir,
@@ -362,7 +362,7 @@ aa = calc_CDFs(DATA = one_rep$DATA,
 	PARS = uPARS,COPULA = tCOPULA)
 
 stepsize = 0.05
-bound = 0.2
+bound = 0.5
 param_grid = list(
 	A = uPARS[1] + seq(-bound,bound,stepsize),
 	L = uPARS[2] + seq(-bound,bound,stepsize),
@@ -381,147 +381,78 @@ DIST 		= c(tDIST,"weibull","expweibull")[1]
 
 run_ana = run_analyses(
 	DATA = one_rep$DATA,
-	COPULAS = COPULA,
+	# COPULAS = COPULA,
 	upKAPPA = ifelse(DIST == "weibull",0,1),
 	param_grid = param_grid,
 	# param_grid = seq(-1,3,0.1),
 	verb = TRUE)
+if( length(run_ana) > 0 ){
+	OO = opt_sum(OPT = run_ana)
+	print(OO)
+}
 
 
 class(run_ana)
 length(run_ana)
 
-OO = opt_sum(OPT = run_ana); OO
 
 solu = which(OO$COPULA == tCOPULA & OO$DIST == tDIST); solu
-solu = 2
+solu = 1
 GRID = smart_df(run_ana[[solu]]$RES$GRID); # head(GRID)
 out = get_PROFILE(GRID = GRID,PLOT = TRUE)
 run_ana[[solu]]$RES$cout
 
 # Plot survival curves
 plot_SURVs(run_ANA = run_ana,
-	MULTIPLE = !TRUE,ALPHA = 0.4)
+	MULTIPLE = TRUE,ALPHA = 0.4)
 
-# Check why no valid grid points
-uPARS = c(0.181713, 1.38887, -0.698191, 1.64479)
-error_num = -999
-upPARS = c(1,1,1,1)
+# Check gradient
+uPARS = c(0.211749, 1.17674, 0, -0.247436)
+upPARS = c(1,1,0,1)
+shift = c(1e-5,1e-7,1e-9,1e-11)[1]
+tGRAD = rep(NA,4)
 
-while(TRUE){
+for(ij in seq(4)){
+	# ij = 1
+	if( upPARS[ij] == 0 ){
+		tGRAD[ij] = 0
+		next
+	}
+	new_PARS = uPARS
+	new_PARS[ij] = uPARS[ij] + shift
+	old_LL = wrapper_LL(DATA = one_rep$DATA,
+		PARS = uPARS,COPULA = COPULA,verb = TRUE)
+	new_LL = wrapper_LL(DATA = one_rep$DATA,
+		PARS = new_PARS,COPULA = COPULA,verb = TRUE)
+	tGRAD[ij] = (new_LL - old_LL) / shift
+}
+tGRAD
+Rcpp_norm(tGRAD)
 
-old_LL = wrapper_LL(DATA = one_rep$DATA,PARS = uPARS,COPULA = COPULA,verb = TRUE); old_LL
-	# ref_LL(DATA = one_rep$DATA,PARS = uPARS,COPULA = COPULA)
-	# ref_LL_cpp(DATA = one_rep$DATA,PARS = uPARS,COPULA = COPULA)
-old_GRAD = wrapper_GRAD(DATA = one_rep$DATA,PARS = uPARS,COPULA = COPULA,upPARS = upPARS); old_GRAD
-norm_GRAD = Rcpp_norm(old_GRAD); norm_GRAD
+# Precision problem
+XX = 1e-3
+LAM = 5
+ALP = 3
 
-HESS = wrapper_HESS(DATA = one_rep$DATA,PARS = uPARS,COPULA = COPULA,upPARS = upPARS)
-COVAR = matrix(0,4,4)
-nz = which(diag(HESS) != 0)
-COVAR[nz,nz] = solve(-HESS[nz,nz]); COVAR
-# smart_df(EST = uPARS,SE = sqrt(diag(COVAR)))
-pk_GD = old_GRAD / max(c(1,old_GRAD))
-pk_NR = as.numeric(COVAR %*% old_GRAD)
-pk_NR = pk_NR / max(c(1,Rcpp_norm(pk_NR)))
-
-uu = 0
-
-for(kk in seq(0,1)){
-	# kk = 1
-for(jj in seq(0,40)){
+PL_log_CDF = function(XX,LAM,ALP){
 	
-	if( kk == 0 ) new_uPARS = uPARS + 1/4^jj * pk_NR; # new_uPARS
-	if( kk == 1 ) new_uPARS = uPARS + 1/4^jj * pk_GD; # new_uPARS
-	new_LL = wrapper_LL(DATA = one_rep$DATA,PARS = new_uPARS,COPULA = COPULA,verb = TRUE)
+	XDL = XX / LAM; XDL
+	# exp(XDL^ALP)
+	F1 = 1 - exp(-XDL^ALP); F1
 	
-	if( new_LL == error_num ) next
-	if( new_LL <= old_LL ) next
-	new_LL
-	new_LL - old_LL
+	if( F1 <= 1e-10 ){
+		log_F1 = ALP * log(XDL) + log(1 - 0.5 * XDL^ALP)
+	} else {
+		log_F1 = log(F1)
+	}
 	
-	new_GRAD = wrapper_GRAD(DATA = one_rep$DATA,PARS = new_uPARS,COPULA = COPULA,upPARS = upPARS)
-	if( new_GRAD[1] == error_num ) next
-	new_GRAD
-	Rcpp_norm(new_GRAD)
-	
-	new_HESS = wrapper_HESS(DATA = one_rep$DATA,PARS = new_uPARS,COPULA = COPULA,upPARS = upPARS)
-	if( new_HESS[1,1] == error_num ) next
-	new_HESS
-	
-	new_COV = matrix(0,4,4)
-	nz = which(diag(new_HESS) != 0)
-	new_COV[nz,nz] = solve(-new_HESS[nz,nz])
-	if( any(diag(new_COV[nz,nz]) < 0) ) next
-	new_COV
-	
-	print("update!")
-	uu = 1
-	break
+	log_F1
+	return(log_F1)
 	
 }
-	if( uu == 1 ) break;
-}
-kk; jj; uu
 
-if( uu == 1 ){
-	diff_PARS = sqrt(sum((uPARS - new_uPARS)^2))
-	cat(sprintf("diff_PARS = %s\n",diff_PARS))
-	diff_LL = new_LL - old_LL
-	cat(sprintf("diff_LL = %s\n",diff_LL))
-	uPARS = new_uPARS
-	cat(sprintf("nGRAD = %s\n",Rcpp_norm(new_GRAD)))
-	cat(sprintf("PARS = (%s)\n",paste(uPARS,collapse=", ")))
-	next
-}
-
-break
-
-}
-
-uPARS = wrap_NR(DATA = one_rep$DATA,PARS = uPARS,
-	COPULA = COPULA,upPARS = upPARS,verb = TRUE)
-uPARS = wrap_GD(DATA = one_rep$DATA,PARS = uPARS,
-	COPULA = COPULA,upPARS = upPARS,verb = TRUE)
-
-# Test gradient
-old_LL = wrapper_LL(DATA = one_rep$DATA,PARS = uPARS,COPULA = COPULA,verb = TRUE); #old_LL
-ij = 3
-shift = c(1e-5,1e-7,1e-9,1e-11,1e-13)[1]
-new_uPARS = uPARS; new_uPARS[ij] = uPARS[ij] + shift
-new_LL = wrapper_LL(DATA = one_rep$DATA,PARS = new_uPARS,COPULA = COPULA,verb = TRUE); #new_LL
-diff_LL = new_LL - old_LL; # diff_LL
-diff_LL / shift
-
-# Check local LL for one parameter
-ij = 4
-AA = 1; BB = 0.1
-GRID = uPARS[ij] + seq(-1,1,BB) * AA; GRID
-vec_LL = sapply(GRID,function(xx){
-	tmp_uPARS = uPARS
-	tmp_uPARS[ij] = xx
-	wrapper_LL(DATA = one_rep$DATA,PARS = tmp_uPARS,COPULA = COPULA,verb = TRUE)
-})
-# vec_LL
-plot(GRID,vec_LL)
-
-# Test calling R functions in Rcpp
-XX = 10
-LAM = 2
-ALP = 2.5
-KAP = 1.2
-LOGP = FALSE
-# pweibull(q = XX,shape = ALP,scale = LAM,lower.tail = TRUE,log.p = LOGP)
-pexpweibull(q = XX,lambda = LAM,alpha = ALP,kappa = KAP,log.p = LOGP)
-dexpweibull(x = XX,lambda = LAM,alpha = ALP,kappa = KAP,log = LOGP)
-calc_expweibull_CDF_PDF(XX = XX,LAM = LAM,ALP = ALP,KAP = KAP)
-
-XDL = XX / LAM
-enXDLa = exp(-(XDL)^ALP); # enXDLa
-F1 = 1 - enXDLa
-if( KAP != 1 ) F1 = F1^KAP
-# F1
-ifelse(LOGP,log(F1),F1)
+pweibull(q = XX,shape = ALP,scale = LAM,log.p = TRUE)
+PL_log_CDF(XX = XX,LAM = LAM,ALP = ALP)
 
 
 }

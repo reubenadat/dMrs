@@ -49,7 +49,7 @@ dMrs_BFGS <- function(XX, DELTA, D2, S2, PARS, copula, upPARS, max_iter = 4e3L, 
     invisible(.Call('_dMrs_dMrs_BFGS', PACKAGE = 'dMrs', XX, DELTA, D2, S2, PARS, copula, upPARS, max_iter, eps, verb))
 }
 
-dMrs_NR <- function(XX, DELTA, D2, S2, PARS, copula, upPARS, max_iter = 4e3L, eps = 1e-7, verb = TRUE) {
+dMrs_NR <- function(XX, DELTA, D2, S2, PARS, copula, upPARS, max_iter = 4e3L, eps = 5e-2, verb = TRUE) {
     invisible(.Call('_dMrs_dMrs_NR', PACKAGE = 'dMrs', XX, DELTA, D2, S2, PARS, copula, upPARS, max_iter, eps, verb))
 }
 
