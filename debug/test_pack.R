@@ -343,8 +343,8 @@ my_dirs$rep_dir = file.path(my_dirs$curr_dir,"REPS")
 
 tCOPULA = c("Independent","Clayton","Gumbel")[1]
 tDIST		= c("weibull","expweibull")[1]
-rr 			= 93
-NN			= 2e4
+rr 			= 4
+NN			= 5e3
 
 repCDN_dir = file.path(my_dirs$rep_dir,
 	sprintf("C.%s_D.%s",tCOPULA,tDIST))
@@ -360,6 +360,7 @@ uPARS
 
 aa = calc_CDFs(DATA = one_rep$DATA,
 	PARS = uPARS,COPULA = tCOPULA)
+smart_hist(aa$D1_D2)
 
 if(FALSE){
 
@@ -403,18 +404,19 @@ param_grid = list(
 	T = uPARS[4] + seq(-bound,bound,stepsize))
 
 if( is.infinite(uPARS[4]) ){
-	param_grid$T = seq(-bound,bound,stepsize)
+	# param_grid$T = seq(-bound,bound,stepsize)
+	param_grid$T = seq(-1,3,stepsize)
 }
 param_grid
 prod(sapply(param_grid,length))
 
 # Estimate assuming truth known
 COPULA	= c(tCOPULA,"Independent","Clayton","Gumbel")[3]
-DIST 		= c(tDIST,"weibull","expweibull")[2]
+DIST 		= c(tDIST,"weibull","expweibull")[1]
 
 run_ana = run_analyses(
 	DATA = one_rep$DATA,
-	# COPULAS = COPULA,
+	COPULAS = COPULA,
 	upKAPPA = ifelse(DIST == "weibull",0,1),
 	param_grid = param_grid,
 	# param_grid = seq(-1,3,0.1),
@@ -429,6 +431,15 @@ solu = 1
 GRID = smart_df(run_ana[[solu]]$RES$GRID); # head(GRID)
 out = get_PROFILE(GRID = GRID,PLOT = TRUE)
 run_ana[[solu]]$RES$cout
+
+# Check distribution of copula, any precision problems
+aa = calc_CDFs(DATA = one_rep$DATA,
+	PARS = run_ana[[solu]]$RES$out$EST,
+	COPULA = COPULA)
+head(aa)
+smart_table(aa$F_T1_T2 == 0)
+smart_table(aa$D1_D2 == 0)
+smart_hist(aa$D1_D2)
 
 # Plot survival curves
 plot_SURVs(run_ANA = run_ana,
@@ -575,43 +586,70 @@ sqrt(sum(wrap_GRAD(PARS = iPARS)^2))
 }
 if(FALSE){		# Test precision copula
 
-F1 			= 0.3984
-F2 			= 0.196028
-THETA 	= c(462.69,10)[1]
+aa = calc_CDFs(DATA = one_rep$DATA,
+	PARS = run_ana[[solu]]$RES$out$EST,
+	COPULA = COPULA)
+head(aa)
+
+idx 		= 1; aa[idx,]
+F1 			= aa$CDF_1[idx]
+F2 			= aa$CDF_2[idx]
+ALPHA		= run_ana[[solu]]$RES$cout$EST[1]
+LAMBDA	= run_ana[[solu]]$RES$cout$EST[2]
+KAPPA		= run_ana[[solu]]$RES$cout$EST[3]
+THETA 	= c(run_ana[[solu]]$RES$cout$EST[4],10)[1]
 COPULA 	= "Clayton"
 
 # Current Rcpp
-calc_copula(F1 = F1,F2 = F2,
-	copula = COPULA,THETA = THETA)
+F_T1_T2 = calc_copula(F1 = F1,F2 = F2,
+	copula = COPULA,THETA = THETA); F_T1_T2
 
-test_copula = function(F1,F2,COPULA,THETA){
+D1 = dexpweibull(x = one_rep$DATA$time[idx],
+	lambda = LAMBDA,alpha = ALPHA,
+	kappa = KAPPA); D1
+D2 = one_rep$DATA$dens_t2[idx]; D2
+
+calc_copula_dens(D1 = D1,D2 = D2,F1 = F1,F2 = F2,
+	copula = COPULA,THETA = THETA,F_T1_T2 = F_T1_T2)
+
+test_PDF = function(F1,F2,D1,D2,THETA,COPULA){
 	
 	if( COPULA == "Clayton" ){
-		F_T1_T2 = (F1^(-THETA) + F2^(-THETA) - 1)^(-1/THETA)
+		PDF_1 = (F1^(-THETA) + F2^(-THETA) - 1)^(-1/THETA-1)
+		PDF_2 = (D1/F1^(THETA+1) + D2/F2^(THETA+1))
+		PDF = PDF_1 * PDF_2
 		
-		if( F_T1_T2 == 0 ){
-			print("Precision problems")
+		if( PDF_1 == 0 || is.infinite(PDF_1) 
+			|| PDF_2 == 0 || is.infinite(PDF_2) ){
+			
+			# stop("PDF_1 precision issue")
 			log_CDFs = -THETA * log(c(F1,F2))
 			log_mm = max(log_CDFs)
+			log_PDF_1 = (-1/THETA - 1) *
+				( log_mm + 
+				log( sum(exp(log_CDFs - log_mm)) - 1 / exp(log_mm) ) )
 			
-			log_COP = -1 / THETA *
-				( log_mm +
-				log( sum(exp(log_CDFs - log_mm)) - 1/exp(log_mm) ) )
-			log_COP
-			F_T1_T2 = exp(log_COP)
-			F_T1_T2
+			log_vec = rep(NA,2)
+			log_vec[1] = log(D1) - (THETA+1)*log(F1)
+			log_vec[2] = log(D2) - (THETA+1)*log(F2)
+			log_PDF_2 = logSumExp(log_vec)
+			
+			log_PDF = log_PDF_1 + log_PDF_2
+			log_PDF
+			
+			PDF = exp(log_PDF)
+			PDF
 		}
 		
 	} else if( COPULA == "Gumbel" ){
-		print("No code yet")
+		stop("no code yet")
 	}
 	
-	return(F_T1_T2)
-	
+	return(PDF)
 }
 
-test_copula(F1 = F1,F2 = F2,
-	COPULA = COPULA,THETA = THETA)
+test_PDF(F1 = F1,F2 = F2,D1 = D1,D2 = D2,
+	THETA = THETA,COPULA = COPULA)
 
 }
 

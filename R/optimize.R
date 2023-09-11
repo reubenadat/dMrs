@@ -255,7 +255,9 @@ calc_CDFs = function(DATA,PARS,COPULA){
 	if(FALSE){
 		DATA = one_rep$DATA
 		# PARS = iPARS
-		PARS = as.numeric(gout[1,1:4]); PARS
+		# PARS = as.numeric(uPARS[1,1:4]); PARS
+		PARS = run_ana[[solu]]$RES$out$EST;
+		PARS
 		COPULA
 		
 	}
@@ -273,38 +275,16 @@ calc_CDFs = function(DATA,PARS,COPULA){
 	CDF_1 = (1 - E_mTLA)^KAPPA1
 	CDF_2 = 1 - DATA$surv_t2
 	
-	par(mfrow = c(3,2),mar = c(4.4,4.4,1,0.2))
-	hist(CDF_1,breaks = 40,xlim = c(0,1))
-	
-	hist(CDF_2,breaks = 40,xlim = c(0,1))
-	
-	plot(DATA$time,CDF_1,col = "red",
-		xlab = "Obs Time",ylab = "CDF")
-	points(DATA$time,CDF_2,col = "blue")
-	
-	smoothScatter(CDF_1,CDF_2,
-		xlim = c(0,1),ylim = c(0,1))
-	
 	F_T1_T2 = apply(smart_df(CDF_1,CDF_2),1,function(xx){
 		calc_copula(F1 = xx[1],F2 = xx[2],
 			copula = COPULA,THETA = THETA)
 	})
-	hist(F_T1_T2,breaks = 40,
-		xlab = "Joint CDF Copula",
-		xlim = c(0,1))
-	
-	if( all(c("T1","T2") %in% names(DATA)) ){
-		smoothScatter(log(1 + DATA[,c("T1","T2")]),
-			xlab = "log(1 + Time1)",
-			ylab = "log(1 + Time2)",
-			main = sprintf("Copula=%s, Theta=%s",COPULA,round(THETA,3)))
-	}
-	
-	par(mfrow = c(1,1),mar = c(5,4,4,2)+0.1)
 	
 	# Calc densities
-	D1 = KAL * TLA^(ALPHA1 - 1) * E_mTLA
-	if( KAPPA1 != 1.0 ) D1 = D1 * CDF_1 / (1 - E_mTLA)
+	# D1 = KAL * TLA^(ALPHA1 - 1) * E_mTLA
+	# if( KAPPA1 != 1.0 ) D1 = D1 * CDF_1 / (1 - E_mTLA)
+	D1 = dexpweibull(x = DATA$time,lambda = LAMBDA1,
+		alpha = ALPHA1,kappa = KAPPA1,log = FALSE)
 	D2 = DATA$dens_t2
 	
 	out = smart_df(CDF_1 = CDF_1,
@@ -319,6 +299,39 @@ calc_CDFs = function(DATA,PARS,COPULA){
 	})
 	
 	dim(out); head(out)
+	
+	# Plot
+	par(mfrow = c(3,3),mar = c(4.4,4.4,2,0.5))
+	hist(out$CDF_1,main = "",xlab = "F1",
+		breaks = 40,xlim = c(0,1))
+	
+	hist(out$CDF_2,main = "",xlab = "F2",
+		breaks = 40,xlim = c(0,1))
+	
+	plot(DATA$time,out$CDF_1,col = "red",
+		xlab = "Obs Time",ylab = "CDF")
+	points(DATA$time,out$CDF_2,col = "blue")
+	
+	smoothScatter(out$CDF_1,out$CDF_2,
+		xlim = c(0,1),ylim = c(0,1),
+		xlab = "F1",ylab = "F2")
+	
+	hist(out$F_T1_T2,breaks = 40,
+		xlab = "Joint CDF Copula",
+		xlim = c(0,1),main = "")
+	
+	hist(out$D1_D2,breaks = 40,
+		xlab = "Joint PDF Copula",
+		main = "")
+	
+	if( all(c("T1","T2") %in% names(DATA)) ){
+		smoothScatter(log(1 + DATA[,c("T1","T2")]),
+			xlab = "log(1 + Time1)",
+			ylab = "log(1 + Time2)",
+			main = sprintf("Copula=%s,\nTheta=%s",COPULA,round(THETA,3)))
+	}
+	
+	par(mfrow = c(1,1),mar = c(5,4,4,2)+0.1)
 	
 	return(out)
 	

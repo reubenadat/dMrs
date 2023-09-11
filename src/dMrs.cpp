@@ -106,7 +106,7 @@ double calc_copula(const double& F1,const double& F2,
 		arma::vec log_CDFs = { std::log(F1), std::log(F2) };
 		log_CDFs *= -1.0 * THETA;
 		double log_mm = arma::max(log_CDFs), log_COP;
-		log_COP = -1 / THETA *
+		log_COP = -1.0 / THETA *
 			( log_mm + 
 			std::log( arma::sum(arma::exp(log_CDFs - log_mm)) - 
 			1.0 / std::exp(log_mm)) );
@@ -142,7 +142,7 @@ double calc_copula_dens(const double& D1,const double& D2,
 	const double& F_T1_T2){
 	
 	double f_T1_T2 = 0.0, nlog_F1, nlog_F2,
-		log_TERM_1, log_TERM_2;
+		log_PDF_1, log_PDF_2;
 	
 	arma::vec log_vec = arma::zeros<arma::vec>(2);
 	
@@ -154,13 +154,19 @@ double calc_copula_dens(const double& D1,const double& D2,
 		
 		if( F_T1_T2 == 0.0 ) return 0.0;
 		
-		log_TERM_1 = (-1.0 / THETA - 1.0) * 
-			std::log( std::pow(F1,-THETA) + std::pow(F2,-THETA) - 1.0 );
+		arma::vec log_CDFs = { std::log(F1), std::log(F2) };
+		log_CDFs *= -1.0 * THETA;
+		double log_mm = arma::max(log_CDFs);
+		log_PDF_1 = (-1.0 / THETA - 1.0) *
+			( log_mm + 
+			std::log( arma::sum(arma::exp(log_CDFs - log_mm)) - 
+			1.0 / std::exp(log_mm)) );
+		
 		log_vec.at(0) = std::log(D1) - (THETA + 1.0) * std::log(F1);
 		log_vec.at(1) = std::log(D2) - (THETA + 1.0) * std::log(F2);
-		log_TERM_2 = Rcpp_logSumExp(log_vec);
+		log_PDF_2 = Rcpp_logSumExp(log_vec);
 		
-		f_T1_T2 = std::exp(log_TERM_1 + log_TERM_2);
+		f_T1_T2 = std::exp(log_PDF_1 + log_PDF_2);
 		
 	} else if( copula == "Gumbel" ){
 		
