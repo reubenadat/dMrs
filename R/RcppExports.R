@@ -49,12 +49,8 @@ dMrs_BFGS <- function(XX, DELTA, D2, S2, PARS, copula, upPARS, max_iter = 4e3L, 
     invisible(.Call('_dMrs_dMrs_BFGS', PACKAGE = 'dMrs', XX, DELTA, D2, S2, PARS, copula, upPARS, max_iter, eps, verb))
 }
 
-dMrs_NR <- function(XX, DELTA, D2, S2, PARS, copula, upPARS, max_iter = 4e3L, eps = 5e-2, verb = TRUE) {
-    invisible(.Call('_dMrs_dMrs_NR', PACKAGE = 'dMrs', XX, DELTA, D2, S2, PARS, copula, upPARS, max_iter, eps, verb))
-}
-
-dMrs_GD <- function(XX, DELTA, D2, S2, PARS, copula, upPARS, max_iter = 4e3L, eps = 1e-7, verb = TRUE) {
-    invisible(.Call('_dMrs_dMrs_GD', PACKAGE = 'dMrs', XX, DELTA, D2, S2, PARS, copula, upPARS, max_iter, eps, verb))
+dMrs_NR <- function(XX, DELTA, D2, S2, PARS, copula, upPARS, max_iter = 2e2L, eps = 5e-2, mult = 5L, verb = TRUE) {
+    invisible(.Call('_dMrs_dMrs_NR', PACKAGE = 'dMrs', XX, DELTA, D2, S2, PARS, copula, upPARS, max_iter, eps, mult, verb))
 }
 
 dMrs_GRID <- function(XX, DELTA, D2, S2, log_THETA, log_ALPHA, log_LAMBDA, unc_KAPPA, copula, verb = FALSE, ncores = 1L) {

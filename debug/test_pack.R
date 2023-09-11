@@ -343,7 +343,7 @@ my_dirs$rep_dir = file.path(my_dirs$curr_dir,"REPS")
 
 tCOPULA = c("Independent","Clayton","Gumbel")[1]
 tDIST		= c("weibull","expweibull")[1]
-rr 			= 3
+rr 			= 93
 NN			= 2e4
 
 repCDN_dir = file.path(my_dirs$rep_dir,
@@ -361,7 +361,40 @@ uPARS
 aa = calc_CDFs(DATA = one_rep$DATA,
 	PARS = uPARS,COPULA = tCOPULA)
 
-stepsize = 0.05
+if(FALSE){
+
+test_PARS = c(0.1141122, 1.3135781, 0.1113452, -6.4135131)
+COPULA = "Clayton"
+upPARS = rep(1,4)
+
+aa1 = calc_CDFs(DATA = one_rep$DATA,
+	PARS = test_PARS,COPULA = COPULA)
+aa2 = calc_CDFs(DATA = one_rep$DATA,
+	PARS = iPARS,COPULA = COPULA)
+
+# Compare grads
+wrapper_GRAD(DATA = one_rep$DATA,
+	PARS = test_PARS,COPULA = COPULA,
+	upPARS = upPARS)
+
+wrapper_GRAD(DATA = one_rep$DATA,
+	PARS = iPARS,COPULA = COPULA,
+	upPARS = upPARS)
+
+# Chk NR
+test_PARS = wrap_NR(DATA = one_rep$DATA,
+	PARS = test_PARS,COPULA = COPULA,
+	upPARS = upPARS,mult = 5,verb = TRUE)
+test_PARS
+
+wrap_NR(DATA = one_rep$DATA,PARS = iPARS,
+	COPULA = COPULA,upPARS = upPARS,
+	mult = 5,verb = TRUE)
+
+
+}
+
+stepsize = 0.1
 bound = 0.5
 param_grid = list(
 	A = uPARS[1] + seq(-bound,bound,stepsize),
@@ -376,8 +409,8 @@ param_grid
 prod(sapply(param_grid,length))
 
 # Estimate assuming truth known
-COPULA	= c(tCOPULA,"Independent","Clayton","Gumbel")[1]
-DIST 		= c(tDIST,"weibull","expweibull")[1]
+COPULA	= c(tCOPULA,"Independent","Clayton","Gumbel")[3]
+DIST 		= c(tDIST,"weibull","expweibull")[2]
 
 run_ana = run_analyses(
 	DATA = one_rep$DATA,
@@ -391,11 +424,6 @@ if( length(run_ana) > 0 ){
 	print(OO)
 }
 
-
-class(run_ana)
-length(run_ana)
-
-
 solu = which(OO$COPULA == tCOPULA & OO$DIST == tDIST); solu
 solu = 1
 GRID = smart_df(run_ana[[solu]]$RES$GRID); # head(GRID)
@@ -407,9 +435,9 @@ plot_SURVs(run_ANA = run_ana,
 	MULTIPLE = TRUE,ALPHA = 0.4)
 
 # Check gradient
-uPARS = c(0.211749, 1.17674, 0, -0.247436)
-upPARS = c(1,1,0,1)
-shift = c(1e-5,1e-7,1e-9,1e-11)[1]
+# uPARS = c(0.211749, 1.17674, 0, -0.247436)
+upPARS = c(1,1,1,1)
+shift = c(1e-5,5e-6,1e-9,1e-11)[2]
 tGRAD = rep(NA,4)
 
 for(ij in seq(4)){
@@ -463,8 +491,8 @@ my_dirs$opt_dir = file.path(my_dirs$curr_dir,"OPTS")
 
 COPULA 	= c("Independent","Clayton","Gumbel")[1]
 DIST		= c("weibull","expweibull")[1]
-rr 			= 4
-NN			= 5e3
+rr 			= 93
+NN			= 2e4
 
 # Import rep
 repCDN_dir = file.path(my_dirs$rep_dir,
@@ -491,6 +519,13 @@ OO = opt_sum(OPT = run_ana); OO
 
 # Check gradient
 COPULA_2 = run_ana[[solu]]$copula; COPULA_2
+iPARS = run_ana[[solu]]$RES$out$EST
+iPARS
+
+wrapper_GRAD(DATA = one_rep$DATA,
+	PARS = iPARS,COPULA = COPULA_2,
+	upPARS = rep(1,4))
+
 wrap_LL = function(PARS){
 	# PARS = iPARS
 	dMrs_cLL(XX = one_rep$DATA$time,
@@ -515,8 +550,7 @@ wrap_GRAD = function(PARS){
 	c(out)
 }
 
-iPARS = run_ana[[solu]]$RES$out$EST
-iPARS
+
 upPARS = rep(1,4)
 upPARS[3] = ifelse(iPARS[3] == 0,0,1)
 upPARS[4] = ifelse(iPARS[4] == -Inf,0,1)
@@ -539,6 +573,48 @@ sqrt(sum(wrap_GRAD(PARS = iPARS)^2))
 
 
 }
+if(FALSE){		# Test precision copula
+
+F1 			= 0.3984
+F2 			= 0.196028
+THETA 	= c(462.69,10)[1]
+COPULA 	= "Clayton"
+
+# Current Rcpp
+calc_copula(F1 = F1,F2 = F2,
+	copula = COPULA,THETA = THETA)
+
+test_copula = function(F1,F2,COPULA,THETA){
+	
+	if( COPULA == "Clayton" ){
+		F_T1_T2 = (F1^(-THETA) + F2^(-THETA) - 1)^(-1/THETA)
+		
+		if( F_T1_T2 == 0 ){
+			print("Precision problems")
+			log_CDFs = -THETA * log(c(F1,F2))
+			log_mm = max(log_CDFs)
+			
+			log_COP = -1 / THETA *
+				( log_mm +
+				log( sum(exp(log_CDFs - log_mm)) - 1/exp(log_mm) ) )
+			log_COP
+			F_T1_T2 = exp(log_COP)
+			F_T1_T2
+		}
+		
+	} else if( COPULA == "Gumbel" ){
+		print("No code yet")
+	}
+	
+	return(F_T1_T2)
+	
+}
+
+test_copula(F1 = F1,F2 = F2,
+	COPULA = COPULA,THETA = THETA)
+
+}
+
 
 # Run full simulation
 # fsim = full_sim(copula = copula,dist1 = dist1,NN = NN,theta = theta,

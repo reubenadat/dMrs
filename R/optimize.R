@@ -297,7 +297,7 @@ calc_CDFs = function(DATA,PARS,COPULA){
 		smoothScatter(log(1 + DATA[,c("T1","T2")]),
 			xlab = "log(1 + Time1)",
 			ylab = "log(1 + Time2)",
-			main = sprintf("Copula=%s, Theta=%s",COPULA,THETA))
+			main = sprintf("Copula=%s, Theta=%s",COPULA,round(THETA,3)))
 	}
 	
 	par(mfrow = c(1,1),mar = c(5,4,4,2)+0.1)
@@ -324,23 +324,13 @@ calc_CDFs = function(DATA,PARS,COPULA){
 	
 }
 
-wrap_NR = function(DATA,PARS,COPULA,upPARS,verb = TRUE){
+wrap_NR = function(DATA,PARS,COPULA,upPARS,mult = 5,verb = TRUE){
 	
 	dMrs_NR(XX = DATA$time,DELTA = DATA$delta,
 		D2 = DATA$dens_t2,S2 = DATA$surv_t2,
 		PARS = PARS,copula = COPULA,upPARS = upPARS,
-		max_iter = 2e2,eps = 5e-2,verb = verb)
-	
-	out_PARS = PARS
-	return(out_PARS)
-	
-}
-wrap_GD = function(DATA,PARS,COPULA,upPARS,verb = TRUE){
-	
-	dMrs_GD(XX = DATA$time,DELTA = DATA$delta,
-		D2 = DATA$dens_t2,S2 = DATA$surv_t2,
-		PARS = PARS,copula = COPULA,upPARS = upPARS,
-		max_iter = 2e2,eps = 1e-7,verb = verb)
+		max_iter = 2e2,eps = 5e-2,mult = mult,
+		verb = verb)
 	
 	out_PARS = PARS
 	return(out_PARS)
@@ -493,12 +483,6 @@ opt_replicate = function(DATA,COPULA,param_grid,theta,
 			D2 = DATA$dens_t2,S2 = DATA$surv_t2,
 			PARS = iPARS,copula = COPULA,upPARS = upPARS,
 			max_iter = max_iter,eps = 5e-2,verb = verb)
-		
-		# Run Gradient Descent
-		# dMrs_GD(XX = DATA$time,DELTA = DATA$delta,
-			# D2 = DATA$dens_t2,S2 = DATA$surv_t2,
-			# PARS = iPARS,copula = COPULA,upPARS = upPARS,
-			# max_iter = max_iter,eps = 1e-6,verb = verb)
 		
 		tmp_LL = wrap_LL(PARS = iPARS)
 		tmp_GR = wrap_GRAD(PARS = iPARS)

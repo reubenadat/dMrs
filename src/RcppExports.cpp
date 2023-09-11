@@ -187,8 +187,8 @@ BEGIN_RCPP
 END_RCPP
 }
 // dMrs_NR
-void dMrs_NR(const arma::vec& XX, const arma::uvec& DELTA, const arma::vec& D2, const arma::vec& S2, arma::vec& PARS, const std::string& copula, const arma::vec& upPARS, const arma::uword& max_iter, const double& eps, const bool& verb);
-RcppExport SEXP _dMrs_dMrs_NR(SEXP XXSEXP, SEXP DELTASEXP, SEXP D2SEXP, SEXP S2SEXP, SEXP PARSSEXP, SEXP copulaSEXP, SEXP upPARSSEXP, SEXP max_iterSEXP, SEXP epsSEXP, SEXP verbSEXP) {
+void dMrs_NR(const arma::vec& XX, const arma::uvec& DELTA, const arma::vec& D2, const arma::vec& S2, arma::vec& PARS, const std::string& copula, const arma::vec& upPARS, const arma::uword& max_iter, const double& eps, const arma::uword& mult, const bool& verb);
+RcppExport SEXP _dMrs_dMrs_NR(SEXP XXSEXP, SEXP DELTASEXP, SEXP D2SEXP, SEXP S2SEXP, SEXP PARSSEXP, SEXP copulaSEXP, SEXP upPARSSEXP, SEXP max_iterSEXP, SEXP epsSEXP, SEXP multSEXP, SEXP verbSEXP) {
 BEGIN_RCPP
     Rcpp::RNGScope rcpp_rngScope_gen;
     Rcpp::traits::input_parameter< const arma::vec& >::type XX(XXSEXP);
@@ -200,27 +200,9 @@ BEGIN_RCPP
     Rcpp::traits::input_parameter< const arma::vec& >::type upPARS(upPARSSEXP);
     Rcpp::traits::input_parameter< const arma::uword& >::type max_iter(max_iterSEXP);
     Rcpp::traits::input_parameter< const double& >::type eps(epsSEXP);
+    Rcpp::traits::input_parameter< const arma::uword& >::type mult(multSEXP);
     Rcpp::traits::input_parameter< const bool& >::type verb(verbSEXP);
-    dMrs_NR(XX, DELTA, D2, S2, PARS, copula, upPARS, max_iter, eps, verb);
-    return R_NilValue;
-END_RCPP
-}
-// dMrs_GD
-void dMrs_GD(const arma::vec& XX, const arma::uvec& DELTA, const arma::vec& D2, const arma::vec& S2, arma::vec& PARS, const std::string& copula, const arma::vec& upPARS, const arma::uword& max_iter, const double& eps, const bool& verb);
-RcppExport SEXP _dMrs_dMrs_GD(SEXP XXSEXP, SEXP DELTASEXP, SEXP D2SEXP, SEXP S2SEXP, SEXP PARSSEXP, SEXP copulaSEXP, SEXP upPARSSEXP, SEXP max_iterSEXP, SEXP epsSEXP, SEXP verbSEXP) {
-BEGIN_RCPP
-    Rcpp::RNGScope rcpp_rngScope_gen;
-    Rcpp::traits::input_parameter< const arma::vec& >::type XX(XXSEXP);
-    Rcpp::traits::input_parameter< const arma::uvec& >::type DELTA(DELTASEXP);
-    Rcpp::traits::input_parameter< const arma::vec& >::type D2(D2SEXP);
-    Rcpp::traits::input_parameter< const arma::vec& >::type S2(S2SEXP);
-    Rcpp::traits::input_parameter< arma::vec& >::type PARS(PARSSEXP);
-    Rcpp::traits::input_parameter< const std::string& >::type copula(copulaSEXP);
-    Rcpp::traits::input_parameter< const arma::vec& >::type upPARS(upPARSSEXP);
-    Rcpp::traits::input_parameter< const arma::uword& >::type max_iter(max_iterSEXP);
-    Rcpp::traits::input_parameter< const double& >::type eps(epsSEXP);
-    Rcpp::traits::input_parameter< const bool& >::type verb(verbSEXP);
-    dMrs_GD(XX, DELTA, D2, S2, PARS, copula, upPARS, max_iter, eps, verb);
+    dMrs_NR(XX, DELTA, D2, S2, PARS, copula, upPARS, max_iter, eps, mult, verb);
     return R_NilValue;
 END_RCPP
 }
@@ -273,8 +255,7 @@ static const R_CallMethodDef CallEntries[] = {
     {"_dMrs_dMrs_cGRAD", (DL_FUNC) &_dMrs_dMrs_cGRAD, 7},
     {"_dMrs_dMrs_cHESS", (DL_FUNC) &_dMrs_dMrs_cHESS, 7},
     {"_dMrs_dMrs_BFGS", (DL_FUNC) &_dMrs_dMrs_BFGS, 10},
-    {"_dMrs_dMrs_NR", (DL_FUNC) &_dMrs_dMrs_NR, 10},
-    {"_dMrs_dMrs_GD", (DL_FUNC) &_dMrs_dMrs_GD, 10},
+    {"_dMrs_dMrs_NR", (DL_FUNC) &_dMrs_dMrs_NR, 11},
     {"_dMrs_dMrs_GRID", (DL_FUNC) &_dMrs_dMrs_GRID, 11},
     {"_dMrs_dMrs_MATCH", (DL_FUNC) &_dMrs_dMrs_MATCH, 4},
     {NULL, NULL, 0}
