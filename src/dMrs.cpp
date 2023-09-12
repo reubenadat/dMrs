@@ -346,7 +346,7 @@ arma::vec dMrs_GRAD(const arma::vec& XX,const arma::uvec& DELTA,
 	const std::string& copula,const arma::vec& upPARS){
 	
 	arma::uword ii;
-	double shift = 1e-5, old_LL, new_LL, error_num = -999.0, new_theta;
+	double shift = 5e-6, old_LL, new_LL, error_num = -999.0, new_theta;
 	arma::vec GRAD = arma::zeros<arma::vec>(4),
 		old_PARS = GRAD, new_PARS = GRAD;
 	old_PARS.at(0) = std::log(ALPHA);
@@ -415,7 +415,7 @@ arma::mat dMrs_HESS(const arma::vec& XX,const arma::uvec& DELTA,
 	const std::string& copula,const arma::vec& upPARS){
 	
 	arma::uword ii, np = 4;
-	double shift = 1e-5, error_num = -999.0, new_theta;
+	double shift = 5e-6, error_num = -999.0, new_theta;
 	arma::vec old_GRAD = dMrs_GRAD(XX,DELTA,D2,S2,
 		THETA,ALPHA,LAMBDA,KAPPA,copula,upPARS),
 		PARS = arma::zeros<arma::vec>(np),
@@ -675,7 +675,7 @@ void dMrs_NR(const arma::vec& XX,const arma::uvec& DELTA,
 		
 		uu = 0;
 		for(kk = 0; kk < 2; kk++){
-		for(jj = 0; jj <= 30; jj++){
+		for(jj = 0; jj <= 40; jj++){
 			
 			if( kk == 0 ) new_xk = xk + pk_NR / std::pow(4.0,jj);
 			if( kk == 1 ) new_xk = xk + pk_GD / std::pow(4.0,jj);

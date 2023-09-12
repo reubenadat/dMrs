@@ -341,10 +341,10 @@ if( TRUE ){ 	# Test optimization
 
 my_dirs$rep_dir = file.path(my_dirs$curr_dir,"REPS")
 
-tCOPULA = c("Independent","Clayton","Gumbel")[1]
+tCOPULA = c("Independent","Clayton","Gumbel")[3]
 tDIST		= c("weibull","expweibull")[1]
-rr 			= 4
-NN			= 5e3
+rr 			= 181
+NN			= 2e4
 
 repCDN_dir = file.path(my_dirs$rep_dir,
 	sprintf("C.%s_D.%s",tCOPULA,tDIST))
@@ -360,7 +360,6 @@ uPARS
 
 aa = calc_CDFs(DATA = one_rep$DATA,
 	PARS = uPARS,COPULA = tCOPULA)
-smart_hist(aa$D1_D2)
 
 if(FALSE){
 
@@ -395,7 +394,7 @@ wrap_NR(DATA = one_rep$DATA,PARS = iPARS,
 
 }
 
-stepsize = 0.1
+stepsize = 0.15
 bound = 0.5
 param_grid = list(
 	A = uPARS[1] + seq(-bound,bound,stepsize),
@@ -411,7 +410,7 @@ param_grid
 prod(sapply(param_grid,length))
 
 # Estimate assuming truth known
-COPULA	= c(tCOPULA,"Independent","Clayton","Gumbel")[3]
+COPULA	= c(tCOPULA,"Independent","Clayton","Gumbel")[1]
 DIST 		= c(tDIST,"weibull","expweibull")[1]
 
 run_ana = run_analyses(
@@ -446,9 +445,49 @@ plot_SURVs(run_ANA = run_ana,
 	MULTIPLE = TRUE,ALPHA = 0.4)
 
 # Check gradient
-# uPARS = c(0.211749, 1.17674, 0, -0.247436)
-upPARS = c(1,1,1,1)
-shift = c(1e-5,5e-6,1e-9,1e-11)[2]
+uPARS = c(0.182322, 1.38629, 0, 1.48629)
+upPARS = c(1,1,0,1)
+uPARS = wrap_NR(DATA = one_rep$DATA,PARS = uPARS,
+	COPULA = COPULA,upPARS = upPARS,mult = 5,
+	verb = TRUE); uPARS
+aa = calc_CDFs(DATA = one_rep$DATA,
+	PARS = uPARS,COPULA = COPULA)
+head(aa)
+smart_table(aa$CDF_1 %in% c(0,1))
+smart_table(aa$F_T1_T2 %in% c(0,1))
+smart_table(aa$D1 %in% c(0,1))
+smart_table(aa$D1_D2 %in% c(0,1))
+
+old_LL = wrapper_LL(DATA = one_rep$DATA,
+	PARS = uPARS,COPULA = COPULA,verb = TRUE); old_LL
+GRAD = wrapper_GRAD(DATA = one_rep$DATA,
+	PARS = uPARS,COPULA = COPULA,
+	upPARS = upPARS); GRAD
+tGRAD = rep(0,4)
+# ij = which(abs(GRAD) == max(abs(GRAD))); ij
+ij = 4
+tGRAD[ij] = GRAD[ij]
+tGRAD = GRAD
+
+for(cc in seq(0,40)){
+	new_PARS = uPARS + 1/4^cc * tGRAD
+	new_LL = wrapper_LL(DATA = one_rep$DATA,
+		PARS = new_PARS,COPULA = COPULA,
+		verb = TRUE); new_LL
+	if( new_LL == -999 ) next
+	
+	if( new_LL > old_LL ){
+		print("update")
+		uPARS = new_PARS
+		cat(sprintf("diff_LL = %s\n",new_LL - old_LL))
+		break
+	}
+	
+}
+cc
+
+
+shift = c(1e-5,5e-6,1e-6,1e-9,1e-11)[3]
 tGRAD = rep(NA,4)
 
 for(ij in seq(4)){
