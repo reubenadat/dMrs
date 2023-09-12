@@ -8,7 +8,7 @@ run_analyses(
   DATA,
   THETAs = NULL,
   upKAPPA,
-  gTHRES = 0.08,
+  gTHRES = 0.1,
   COPULAS,
   param_grid,
   vec_time,

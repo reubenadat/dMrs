@@ -351,7 +351,7 @@ wrap_NR = function(DATA,PARS,COPULA,upPARS,mult = 5,verb = TRUE){
 }
 
 opt_replicate = function(DATA,COPULA,param_grid,theta,
-	upKAPPA,ncores = 1,gTHRES = 8e-2,max_iter = 2e2,verb,PLOT){
+	upKAPPA,ncores = 1,gTHRES = 1e-1,max_iter = 2e2,verb,PLOT){
 
 	if(FALSE){
 		DATA 				= one_rep$DATA
@@ -361,7 +361,7 @@ opt_replicate = function(DATA,COPULA,param_grid,theta,
 										T = seq(1,3,0.1))
 		theta 			= ifelse(COPULA == "Independent",0,NA)
 		upKAPPA 		= ifelse(DIST == "weibull",0,1)
-		gTHRES 			= 8e-2
+		gTHRES 			= 1e-1
 		verb 				= TRUE
 		ncores 			= 1
 		PLOT				= TRUE
@@ -816,7 +816,7 @@ run_analysis = function(DATA,theta,upKAPPA,gTHRES,
 #'	\code{verb = TRUE}.
 #' @export
 run_analyses = function(DATA,THETAs = NULL,upKAPPA,
-	gTHRES = 8e-2,COPULAS,param_grid,vec_time,ncores = 1,
+	gTHRES = 1e-1,COPULAS,param_grid,vec_time,ncores = 1,
 	max_iter = 2e2,verb,PLOT){
 	
 	if(FALSE){
