@@ -98,7 +98,11 @@ double calc_copula(const double& F1,const double& F2,
 	
 	if( copula == "Independent" ){
 		
-		F_T1_T2 = F1 * F2;
+		// F_T1_T2 = F1 * F2;
+		
+		F_T1_T2 = std::log(F1);
+		F_T1_T2 += std::log(F2);
+		F_T1_T2 = std::exp(F_T1_T2);
 		
 	} else if( copula == "Clayton" ){
 		
@@ -111,10 +115,6 @@ double calc_copula(const double& F1,const double& F2,
 			std::log( arma::sum(arma::exp(log_CDFs - log_mm)) - 
 			1.0 / std::exp(log_mm)) );
 		F_T1_T2 = std::exp(log_COP);
-		
-		// Non-precision method
-		// F_T1_T2 = std::pow(F1,-THETA) + std::pow(F2,-THETA) - 1.0;
-		// F_T1_T2 = std::pow(F_T1_T2,-1.0 / THETA);
 		
 	} else if( copula == "Gumbel" ){
 		
@@ -136,89 +136,85 @@ double calc_copula(const double& F1,const double& F2,
 }
 
 // [[Rcpp::export]]
-double calc_copula_dens(const double& D1,const double& D2,
+double calc_copula_offset(const double& D1,const double& D2,
 	const double& F1,const double& F2,
 	const std::string& copula,const double& THETA,
 	const double& F_T1_T2){
 	
-	double f_T1_T2 = 0.0, nlog_F1, nlog_F2,
-		log_PDF_1, log_PDF_2;
-	
+	double offset = 0.0;
 	arma::vec log_vec = arma::zeros<arma::vec>(2);
 	
 	if( copula == "Independent" ){
 		
-		f_T1_T2 = D1 * F2 + D2 * F1;
-	
+		offset = D1 * F2 + D2 * F1;
+		
 	} else if( copula == "Clayton" ){
 		
-		if( F_T1_T2 == 0.0 ) return 0.0;
-		
-		arma::vec log_CDFs = { std::log(F1), std::log(F2) };
+		double log_F1 = std::log(F1), 
+			log_F2 = std::log(F2);
+		arma::vec log_CDFs = { log_F1, log_F2 };
 		log_CDFs *= -1.0 * THETA;
 		double log_mm = arma::max(log_CDFs);
-		log_PDF_1 = (-1.0 / THETA - 1.0) *
+		
+		offset = (-1.0 / THETA - 1.0) *
 			( log_mm + 
 			std::log( arma::sum(arma::exp(log_CDFs - log_mm)) - 
 			1.0 / std::exp(log_mm)) );
 		
-		log_vec.at(0) = std::log(D1) - (THETA + 1.0) * std::log(F1);
-		log_vec.at(1) = std::log(D2) - (THETA + 1.0) * std::log(F2);
-		log_PDF_2 = Rcpp_logSumExp(log_vec);
+		log_vec.at(0) = std::log(D1) - (THETA + 1) * log_F1;
+		log_vec.at(1) = std::log(D2) - (THETA + 1) * log_F2;
+		offset += Rcpp_logSumExp(log_vec);
 		
-		f_T1_T2 = std::exp(log_PDF_1 + log_PDF_2);
+		offset = std::exp(offset);
 		
 	} else if( copula == "Gumbel" ){
 		
 		if( F_T1_T2 == 0.0 ) return 0.0;
 		
-		// log first term
-		f_T1_T2 = std::log(F_T1_T2);
+		double nlog_F1 = -std::log(F1),
+			nlog_F2 = -std::log(F2), tmp_lognum;
 		
-		nlog_F1 = -std::log(F1);
-		nlog_F2 = -std::log(F2);
+		double log_nlog_F1 = std::log(nlog_F1);
+		double log_nlog_F2 = std::log(nlog_F2);
 		
-		// plus log second term
-		log_vec.at(0) = THETA * std::log(nlog_F1);
-		log_vec.at(1) = THETA * std::log(nlog_F2);
-		f_T1_T2 += (1.0/THETA - 1) * Rcpp_logSumExp(log_vec);
+		offset = std::log(F_T1_T2);
 		
-		// plus log third term
-		log_vec.at(0) = (THETA - 1.0) * std::log(nlog_F1) + std::log(D1) + nlog_F1;
-		log_vec.at(1) = (THETA - 1.0) * std::log(nlog_F2) + std::log(D2) + nlog_F2;
-		f_T1_T2 += Rcpp_logSumExp(log_vec);
+		log_vec.at(0) = THETA * log_nlog_F1;
+		log_vec.at(1) = THETA * log_nlog_F2;
+		tmp_lognum = Rcpp_logSumExp(log_vec);
 		
-		// finally exponentiate
-		f_T1_T2 = std::exp(f_T1_T2);
+		offset += (1.0 / THETA - 1.0) * tmp_lognum;
+		
+		log_vec.at(0) = (THETA - 1.0) * log_nlog_F1 + std::log(D1) + nlog_F1;
+		log_vec.at(1) = (THETA - 1.0) * log_nlog_F2 + std::log(D2) + nlog_F2;
+		
+		offset += Rcpp_logSumExp(log_vec);
+		
+		offset = std::exp(offset);
 		
 	} else {
-		Rcpp::stop("Not a valid copula!");
+		Rcpp::stop("Not a coded copula!");
 	}
 	
-	return f_T1_T2;
+	return offset;
+	
 }
 
 // [[Rcpp::export]]
-arma::vec calc_copula_CDF_PDF(const double& D1,const double& D2,
+arma::vec calc_copula_CDF_OFF(const double& D1,const double& D2,
 	const double& F1,const double& F2,
 	const std::string& copula,const double& THETA){
 	
-	double f_T1_T2 = 0.0, 
+	double offset = 0.0, 
 		F_T1_T2 = calc_copula(F1,F2,copula,THETA);
 	arma::vec out = arma::zeros<arma::vec>(2),
 		log_P = out;
 	out.at(0) = F_T1_T2;
 	
-	/*
-	if( F_T1_T2 == 0.0 || F_T1_T2 == 1.0 ){
-		out.at(1) = 0.0;
-		return out;
-	}
-	*/
+	offset = calc_copula_offset(D1,D2,F1,F2,
+		copula,THETA,F_T1_T2);
 	
-	f_T1_T2 = calc_copula_dens(D1,D2,F1,F2,copula,THETA,F_T1_T2);
-	
-	out.at(1) = f_T1_T2;
+	out.at(1) = offset;
 	
 	return out;
 }
@@ -230,11 +226,7 @@ double dMrs_LL(const arma::vec& XX,const arma::uvec& DELTA,
 	
 	arma::uword ii, NN = XX.n_elem;
 	double LL = 0.0, LL_ii, D1, S1, F1, F2,
-		// log_F1, log_F2, 
-		D1_D2, 
-		// XDL, enXDLa, 
-		// U1T_U2T, U1T1, U2T1,
-		F1_F2, AA, BB, error_num = -999.0;
+		offset, F1_F2, AA, BB, error_num = -999.0;
 		// KAL = KAPPA * ALPHA / LAMBDA
 	arma::vec out = arma::zeros<arma::vec>(2), 
 		vEW = out;
@@ -259,7 +251,7 @@ double dMrs_LL(const arma::vec& XX,const arma::uvec& DELTA,
 		
 		F2 = 1.0 - S2.at(ii);
 		
-		out = calc_copula_CDF_PDF(D1,D2.at(ii),
+		out = calc_copula_CDF_OFF(D1,D2.at(ii),
 			F1,F2,copula,THETA);
 		
 		if( out.has_nan() ){
@@ -277,16 +269,20 @@ double dMrs_LL(const arma::vec& XX,const arma::uvec& DELTA,
 		}
 		
 		F1_F2 = out.at(0);
-		D1_D2 = out.at(1);
+		offset = out.at(1);
 		
 		if( DELTA.at(ii) == 1 ){
-			AA = D1 + D2.at(ii) - D1_D2;
+			
+			AA = D1 + D2.at(ii) - offset;
 			if( AA <= 0.0 ) return error_num;
 			LL_ii = std::log( AA );
+			
 		} else {
+			
 			BB = S1 + S2.at(ii) - 1.0 + F1_F2;
 			if( BB <= 0.0 ) return error_num;
 			LL_ii = std::log( BB );
+			
 		}
 		
 		/*
@@ -301,7 +297,7 @@ double dMrs_LL(const arma::vec& XX,const arma::uvec& DELTA,
 			Rcpp::Rcout << "F2 = " << F2 << "; ";
 			Rcpp::Rcout << "U1T_U2T = " << U1T_U2T << "; ";
 			Rcpp::Rcout << "F1_F2 = " << F1_F2 << "; ";
-			Rcpp::Rcout << "D1_D2 = " << D1_D2 << "\n";
+			Rcpp::Rcout << "offset = " << offset << "\n";
 			Rcpp::Rcout << "   AA = " << AA << "; ";
 			Rcpp::Rcout << "BB = " << BB << "; ";
 			Rcpp::Rcout << "LL_ii = " << LL_ii << "; ";
@@ -674,8 +670,8 @@ void dMrs_NR(const arma::vec& XX,const arma::uvec& DELTA,
 		pk_GD /= std::max(1.0, Rcpp_norm(pk_GD));
 		
 		uu = 0;
-		for(kk = 0; kk < 2; kk++){
-		for(jj = 0; jj <= 40; jj++){
+		for(kk = 0; kk < 1; kk++){
+		for(jj = 0; jj <= 30; jj++){
 			
 			if( kk == 0 ) new_xk = xk + pk_NR / std::pow(4.0,jj);
 			if( kk == 1 ) new_xk = xk + pk_GD / std::pow(4.0,jj);

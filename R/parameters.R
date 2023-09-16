@@ -129,7 +129,7 @@ get_parGRID = function(LOW,HIGH,STEP){
 get_vecTIME = function(TIME,vec_time){
 	
 	if( missing(vec_time) ){
-		vec_time = seq(0,round(max(TIME),1),
+		vec_time = seq(0,round(max(TIME)*2,1),
 				length.out = 100)
 	}
 	

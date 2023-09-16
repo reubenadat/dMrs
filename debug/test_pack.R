@@ -211,83 +211,82 @@ NN = c(500,1000,2000)
 # Running code example
 # ----------
 
+if(FALSE){
+
+ALP = 2
+LAM = 5
+tt = seq(0,LAM * 2,length.out = 1e3)
+PDF = dweibull(x = tt,shape = ALP,scale = LAM)
+plot(tt,PDF,type = "l")
+
+}
 if( TRUE ){ 	# Specify parameters/arguments
 
 COPULAS = c("Independent","Clayton","Gumbel")
 DISTs		= c("weibull","expweibull")
-COPULA 	= COPULAS[3]
-dist1 	= DISTs[1]
-NN 			= 4e3
-theta 	= ifelse(COPULA == "Independent",0,5)
-if( COPULA == "Clayton" && theta < 0 ) stop("theta issue")
-if( COPULA == "Gumbel" && theta < 1 ) stop("theta issue")
-alpha1 	= 1.2
+tCOPULA 	= COPULAS[2]
+tDIST 	= DISTs[1]
+NN 			= 1e4
+theta 	= ifelse(tCOPULA == "Independent",0,5)
+if( tCOPULA == "Clayton" && theta < 0 ) stop("theta issue")
+if( tCOPULA == "Gumbel" && theta < 1 ) stop("theta issue")
+alpha1 	= 1.6
 lambda1 = 4
-kappa1 	= ifelse(dist1 == "weibull",1,1/2)
+kappa1 	= ifelse(tDIST == "weibull",1,1/2)
 alpha2 	= 1.6
-lambda2 = 5
+lambda2 = 4
 propC 	= 0.2
 uPARS = log(c(alpha1,lambda1,kappa1,theta))
-if( COPULA == "Gumbel" ) uPARS[4] = log(theta - 1)
+if( tCOPULA == "Gumbel" ) uPARS[4] = log(theta - 1)
 names(uPARS) = sprintf("log_%s",c("A","L","K","T"))
 # true_PARS
 
 cPARS = c(alpha1,lambda1,kappa1,theta)
 names(cPARS) = c("alpha1","lambda1","kappa1","theta")
-TRUTH = list(COPULA = COPULA,DIST = dist1,
+TRUTH = list(COPULA = tCOPULA,DIST = tDIST,
 	uPARS = uPARS,cPARS = cPARS)
 print(TRUTH)
 
 }
 if( TRUE ){ 	# Simulate dataset
 
-set.seed(2)
+set.seed(1)
 one_rep = sim_replicate(copula = TRUTH$COPULA,
 	dist1 = TRUTH$DIST,NN = NN,theta = theta,
 	alpha1 = alpha1,lambda1 = lambda1,
 	kappa1 = kappa1,alpha2 = alpha2,
 	lambda2 = lambda2,propC = propC,
 	verb = TRUE)
-#one_rep$PARAMS
-#print(table(one_rep$DATA$D) / NN)
-#print(table(one_rep$DATA$delta) / NN)
-
-print(table(D = one_rep$DATA$D,
-	Delta = one_rep$DATA$delta))
 
 upKAPPA = ifelse(TRUTH$DIST == "weibull",0,1)
 
 aa = calc_CDFs(DATA = one_rep$DATA,
-	PARS = TRUTH$uPARS,COPULA = TRUTH$COPULA)
+	PARS = TRUTH$uPARS,COPULA = TRUTH$COPULA,
+	PARAMS = one_rep$PARAMS)
+# head(aa)
 
 }
 if( FALSE ){ 	# Optimize
 
-print(TRUTH)
+print(table(D = one_rep$DATA$D,Delta = one_rep$DATA$delta))
 
-DATA = one_rep$DATA
-log_time75 = as.numeric(log(quantile(DATA$time[DATA$delta == 1],0.75)))
-log_time75
+# check num obs events
+GROUP = bin_cont_var(VAR = one_rep$DATA$time,4,binNUM = TRUE); # smart_table(GROUP)
+print(smart_table(D = one_rep$DATA$D,Delta = one_rep$DATA$delta,G = GROUP))
 
-# Agnostic
-param_grid = list(
-	A = seq(-1,2,0.1),
-	L = log_time75 + seq(-1,1,0.1),
-	K = seq(-0.5,0.5,0.1),
-	T = seq(-1,3,0.25)
-	)
-param_grid
+one_rep$PARAMS
 
 # If we have the truth ...
-ss = 0.1
+ss = 0.75
+bnd = 3
 param_grid = list(
-	A = TRUTH$uPARS[1] + seq(-0.5,0.5,ss),
-	L = TRUTH$uPARS[2] + seq(-0.5,0.5,ss),
-	K = TRUTH$uPARS[3] + seq(-0.5,0.5,ss),
-	T = TRUTH$uPARS[4] + seq(-0.5,0.5,ss))
-if( is.infinite(TRUTH$uPARS[4]) ){
-	param_grid$T = seq(-1,3,ss)
-}
+	A = TRUTH$uPARS[1] + seq(-bnd,bnd,ss),
+	L = TRUTH$uPARS[2] + seq(-bnd,bnd,ss),
+	K = TRUTH$uPARS[3] + seq(-bnd,bnd,ss),
+	T = TRUTH$uPARS[4] + seq(-4,4,0.5))
+# if( is.infinite(TRUTH$uPARS[4]) ){
+	param_grid$T = seq(-8,8,0.75)
+# }
 param_grid
 
 sapply(param_grid,length)
@@ -295,40 +294,34 @@ nGRID = prod(sapply(param_grid,length)); nGRID
 
 run_ana = run_analyses(
 	DATA = one_rep$DATA,
-	COPULAS = COPULA,
-	# upKAPPA = upKAPPA,
+	# COPULAS = tCOPULA,
+	upKAPPA = upKAPPA,
 	param_grid = param_grid,
+	# param_grid = seq(-3,3,0.25),
 	verb = TRUE,PLOT = TRUE)
 
-class(run_ana)
+# class(run_ana)
 length(run_ana)
 
 OO = opt_sum(OPT = run_ana); OO
-print(TRUTH)
+print(TRUTH[c("uPARS","cPARS")])
 
+solu = 3
 solu = which(OO$COPULA == TRUTH$COPULA
 	& OO$DIST == TRUTH$DIST)
 solu
-# run_ana[[solu]]$RES$GOPT_PRE
-# run_ana[[solu]]$RES$out
+
 run_ana[[solu]]$RES$cout
-print(TRUTH)
+uPARS = run_ana[[solu]]$RES$out$EST; uPARS
 
-GRID = smart_df(run_ana[[solu]]$RES$GRID)
-dim(GRID); head(GRID)
+aa = calc_CDFs(DATA = one_rep$DATA,
+	PARS = uPARS,COPULA = run_ana[[solu]]$copula,
+	PARAMS = one_rep$PARAMS); # head(aa)
 
-out = get_PROFILE(GRID = GRID,PLOT = TRUE)
-# out = get_PROFILE(GRID = GRID[which(GRID$log_theta < 5),],PLOT = TRUE)
-out
-
-iPARS = out$VAL
-iPARS
-upPARS = c(1,1,0,1)
-
-wrap_NR(DATA = one_rep$DATA,
-	PARS = iPARS,
-	COPULA = COPULA,
-	upPARS = upPARS)
+out = get_PROFILE(
+	GRID = run_ana[[solu]]$RES$GRID,
+	COPULA = run_ana[[solu]]$copula,
+	PLOT = TRUE); # out
 
 # Check survival
 plot_SURVs(run_ANA = run_ana,
@@ -341,10 +334,10 @@ if( TRUE ){ 	# Test optimization
 
 my_dirs$rep_dir = file.path(my_dirs$curr_dir,"REPS")
 
-tCOPULA = c("Independent","Clayton","Gumbel")[3]
+tCOPULA = c("Independent","Clayton","Gumbel")[2]
 tDIST		= c("weibull","expweibull")[1]
-rr 			= 181
-NN			= 2e4
+rr 			= 1
+NN			= 1e4
 
 repCDN_dir = file.path(my_dirs$rep_dir,
 	sprintf("C.%s_D.%s",tCOPULA,tDIST))
@@ -360,42 +353,10 @@ uPARS
 
 aa = calc_CDFs(DATA = one_rep$DATA,
 	PARS = uPARS,COPULA = tCOPULA)
+head(aa)
 
-if(FALSE){
-
-test_PARS = c(0.1141122, 1.3135781, 0.1113452, -6.4135131)
-COPULA = "Clayton"
-upPARS = rep(1,4)
-
-aa1 = calc_CDFs(DATA = one_rep$DATA,
-	PARS = test_PARS,COPULA = COPULA)
-aa2 = calc_CDFs(DATA = one_rep$DATA,
-	PARS = iPARS,COPULA = COPULA)
-
-# Compare grads
-wrapper_GRAD(DATA = one_rep$DATA,
-	PARS = test_PARS,COPULA = COPULA,
-	upPARS = upPARS)
-
-wrapper_GRAD(DATA = one_rep$DATA,
-	PARS = iPARS,COPULA = COPULA,
-	upPARS = upPARS)
-
-# Chk NR
-test_PARS = wrap_NR(DATA = one_rep$DATA,
-	PARS = test_PARS,COPULA = COPULA,
-	upPARS = upPARS,mult = 5,verb = TRUE)
-test_PARS
-
-wrap_NR(DATA = one_rep$DATA,PARS = iPARS,
-	COPULA = COPULA,upPARS = upPARS,
-	mult = 5,verb = TRUE)
-
-
-}
-
-stepsize = 0.15
-bound = 0.5
+stepsize = 0.2
+bound = 1
 param_grid = list(
 	A = uPARS[1] + seq(-bound,bound,stepsize),
 	L = uPARS[2] + seq(-bound,bound,stepsize),
@@ -404,7 +365,8 @@ param_grid = list(
 
 if( is.infinite(uPARS[4]) ){
 	# param_grid$T = seq(-bound,bound,stepsize)
-	param_grid$T = seq(-1,3,stepsize)
+	# param_grid$T = seq(-1,3,stepsize)
+	param_grid$T = seq(4,9,0.5)
 }
 param_grid
 prod(sapply(param_grid,length))
@@ -428,7 +390,9 @@ if( length(run_ana) > 0 ){
 solu = which(OO$COPULA == tCOPULA & OO$DIST == tDIST); solu
 solu = 1
 GRID = smart_df(run_ana[[solu]]$RES$GRID); # head(GRID)
-out = get_PROFILE(GRID = GRID,PLOT = TRUE)
+out = get_PROFILE(GRID = GRID,
+	COPULA = run_ana[[solu]]$copula,
+	PLOT = TRUE)
 run_ana[[solu]]$RES$cout
 
 # Check distribution of copula, any precision problems
@@ -436,6 +400,8 @@ aa = calc_CDFs(DATA = one_rep$DATA,
 	PARS = run_ana[[solu]]$RES$out$EST,
 	COPULA = COPULA)
 head(aa)
+smart_table(aa$CDF_1 %in% c(0,1))
+smart_table(aa$CDF_2 %in% c(0,1))
 smart_table(aa$F_T1_T2 == 0)
 smart_table(aa$D1_D2 == 0)
 smart_hist(aa$D1_D2)
@@ -445,14 +411,79 @@ plot_SURVs(run_ANA = run_ana,
 	MULTIPLE = TRUE,ALPHA = 0.4)
 
 # Check gradient
-uPARS = c(0.182322, 1.38629, 0, 1.48629)
+uPARS = c(0.174083, 1.36877, 0, 5.72699)
 upPARS = c(1,1,0,1)
-uPARS = wrap_NR(DATA = one_rep$DATA,PARS = uPARS,
-	COPULA = COPULA,upPARS = upPARS,mult = 5,
-	verb = TRUE); uPARS
+# uPARS = wrap_NR(DATA = one_rep$DATA,PARS = uPARS,
+	# COPULA = COPULA,upPARS = upPARS,mult = 5,
+	# verb = TRUE); uPARS
 aa = calc_CDFs(DATA = one_rep$DATA,
 	PARS = uPARS,COPULA = COPULA)
 head(aa)
+smart_table(aa$CDF_2 %in% c(0,1))
+
+stop("Double check how CDF and PDF copula are calculated, see if existing function exists")
+if(FALSE){ # Check Gumbel
+
+THETA = exp(uPARS[4]) + ifelse(tCOPULA == "Gumbel",1,0); THETA
+ALPHA = exp(uPARS[1])
+LAMBDA = exp(uPARS[2])
+
+ALPHA_2 = 1.6; LAMBDA_2 = 5
+
+
+
+head(aa[order(-aa$D2),])
+
+tt = seq(0,100)
+PDF = dweibull(x = tt,scale = LAMBDA,shape = ALPHA)
+plot(tt,PDF,type = "l")
+
+ii = 3
+tt = one_rep$DATA$time[ii]
+F1 = aa$CDF_1[ii]; #F1
+F2 = aa$CDF_2[ii]; #F2
+F_T1_T2 = aa$F_T1_T2[ii]; F_T1_T2
+	# Use copula package functions to check calculation of copula CDF
+	library(copula)
+	# tmp_copula = gumbelCopula(param = THETA,dim = 2)
+	tmp_copula = claytonCopula(param = THETA,dim = 2)
+	bvd = mvdc(copula = tmp_copula,
+		margins = c("weibull","weibull"),
+		paramMargins = list(
+			list(shape = ALPHA,scale = LAMBDA),
+			list(shape = ALPHA_2,scale = LAMBDA_2))
+		)
+	pMvdc(x = c(tt,tt),mvdc = bvd) # we're good!!!
+
+D1 = aa$D1[ii]; D1
+D2 = aa$D2[ii]; D2
+nlog_F1 = -log(F1)
+nlog_F2 = -log(F2)
+# D1_D2 = F_T1_T2 * 
+	# ( (nlog_F1)^THETA + (nlog_F2)^THETA )^(1/THETA-1) *
+	# ( (nlog_F1)^(THETA-1) * D1/F1 + (nlog_F2)^(THETA-1) * D2/F2 ); D1_D2
+# log_D1_D2 = log(F_T1_T2) +
+	# (1/THETA-1) * log( (nlog_F1)^THETA + (nlog_F2)^THETA ) +
+	# log( (nlog_F1)^(THETA-1) * D1/F1 + (nlog_F2)^(THETA-1) * D2/F2 )
+	# exp(log_D1_D2)
+D1_D2 = aa$D1_D2[ii]; D1_D2
+	dMvdc(x = c(tt,tt),mvdc = bvd)
+	stop("The PDF of Gumbel")
+	
+	pweibull(q = tt,shape = ALPHA,scale = LAMBDA)
+	
+
+ALPHA2 = 1.6
+LAMBDA2 = 5
+D2 = dweibull(x = one_rep$DATA$time[ii],
+	shape = ALPHA2,scale = LAMBDA2); D2
+F2 = pweibull(q = one_rep$DATA$time[ii],
+	shape = ALPHA2,scale = LAMBDA2); F2
+one_rep$DATA[ii,]
+
+}
+
+
 smart_table(aa$CDF_1 %in% c(0,1))
 smart_table(aa$F_T1_T2 %in% c(0,1))
 smart_table(aa$D1 %in% c(0,1))
@@ -560,7 +591,9 @@ OO = opt_sum(OPT = run_ana); OO
 	solu = 4
 	names(run_ana[[solu]]$RES)
 	GRID = smart_df(run_ana[[solu]]$RES$GRID); head(GRID)
-	out = get_PROFILE(GRID = GRID,PLOT = TRUE)
+	out = get_PROFILE(GRID = GRID,
+		COPULA = run_ana[[solu]]$copula,
+		PLOT = TRUE)
 	run_ana[[solu]]$RES$GOPT_PRE
 	run_ana[[solu]]$RES$GOPT
 	run_ana[[solu]]$RES$GRAD

@@ -70,7 +70,7 @@ sim_DATA = function(copula,dist1,n_obs,theta,
 	alpha1,lambda1,kappa1,alpha2,lambda2){
 	
 	if(FALSE){
-		copula = c("Clayton","Gumbel")[1]
+		copula = c("Clayton","Gumbel")[2]
 		n_obs = 1e3; theta = 3/2
 		alpha1 = 5; lambda1 = 1.2; kappa1 = 1
 		alpha2 = 2; lambda2 = 2.1
@@ -130,7 +130,7 @@ get_uPARS = function(PARAMS){
 	return(uPARS)
 	
 }
-get_PROFILE = function(GRID,PLOT = FALSE){
+get_PROFILE = function(GRID,COPULA,PLOT = FALSE){
 	if(FALSE){
 		GRID = gout
 		PLOT = TRUE
@@ -166,7 +166,7 @@ get_PROFILE = function(GRID,PLOT = FALSE){
 	}
 	
 	if( PLOT ){
-		par(mfrow = c(2,2),mar = c(4.5,4,2,2))
+		par(mfrow = c(2,2),mar = c(4.5,4,2,2),oma = c(0,0,2,0))
 		for(PAR in PARS){
 			# PAR = PARS[2]; PAR
 			tmp_df = PROF[[PAR]]
@@ -184,7 +184,11 @@ get_PROFILE = function(GRID,PLOT = FALSE){
 				ylab = "Prof.LL",
 				type = "b",pch = 16)
 		}
-		par(mfrow = c(1,1),mar = c(5,4,4,2)+0.1)
+		
+		DIST = ifelse(all(GRID$unc_kappa1 == 0),"Weibull","Exp-Weibull")
+		main = sprintf("Copula = %s; DIST = %s",COPULA,DIST)
+		mtext(main,outer = TRUE,cex = 1.3)
+		par(mfrow = c(1,1),mar = c(5,4,4,2)+0.1,oma = rep(0,4))
 	}
 	
 	# Get local opts

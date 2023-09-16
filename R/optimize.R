@@ -42,7 +42,8 @@ ref_LL = function(DATA,PARS,COPULA){
 		F2 = 1 - DATA$surv_t2[ii]
 		
 		if( COPULA == "Independent" ){
-			f_T1_T2 = f1 * F2 + f2 * F1
+			# f_T1_T2 = f1 * F2 + f2 * F1
+			f_T1_T2 = f1 * f2
 			F_T1_T2 = F1 * F2
 		} else if( COPULA == "Clayton" ){
 			F_T1_T2 = calc_copula(F1 = F1,F2 = F2,
@@ -150,7 +151,7 @@ ref_LL_cpp = function(DATA,PARS,COPULA){
 		F2 = 1 - S2
 		# if( F1 == 0.0 || F2 == 0.0 ) return(error_num)
 		
-		tmp_vec = calc_copula_CDF_PDF(D1 = D1,D2 = D2,
+		tmp_vec = calc_copula_CDF_OFF(D1 = D1,D2 = D2,
 			F1 = F1,F2 = F2,copula = COPULA,THETA = THETA)
 		tmp_vec = as.numeric(tmp_vec)
 		if( any(is.na(tmp_vec)) ){
@@ -162,7 +163,7 @@ ref_LL_cpp = function(DATA,PARS,COPULA){
 			F_T1_T2 = calc_copula(F1 = F1,F2 = F2,
 				copula = COPULA,THETA = THETA); F_T1_T2
 			
-			calc_copula_dens(D1 = D1,D2 = D2,
+			calc_copula_offset(D1 = D1,D2 = D2,
 				F1 = F1,F2 = F2,copula = COPULA,
 				THETA = THETA,F_T1_T2 = F_T1_T2)
 			
@@ -256,9 +257,9 @@ calc_CDFs = function(DATA,PARS,COPULA){
 		DATA = one_rep$DATA
 		# PARS = iPARS
 		# PARS = as.numeric(uPARS[1,1:4]); PARS
-		PARS = run_ana[[solu]]$RES$out$EST;
+		PARS = TRUTH$uPARS
 		PARS
-		COPULA
+		COPULA = COPULA; COPULA
 		
 	}
 	
@@ -281,22 +282,23 @@ calc_CDFs = function(DATA,PARS,COPULA){
 	})
 	
 	# Calc densities
-	# D1 = KAL * TLA^(ALPHA1 - 1) * E_mTLA
-	# if( KAPPA1 != 1.0 ) D1 = D1 * CDF_1 / (1 - E_mTLA)
 	D1 = dexpweibull(x = DATA$time,lambda = LAMBDA1,
 		alpha = ALPHA1,kappa = KAPPA1,log = FALSE)
 	D2 = DATA$dens_t2
 	
-	out = smart_df(CDF_1 = CDF_1,
-		CDF_2 = CDF_2,F_T1_T2 = F_T1_T2,
-		D1 = D1,D2 = D2)
+	out = smart_df(CDF_1 = CDF_1,CDF_2 = CDF_2,
+		D1 = D1,D2 = D2,F_T1_T2 = F_T1_T2,
+		true_F_T1_T2 = NA)
 	
 	out$D1_D2 = apply(out[,c("D1","D2","CDF_1","CDF_2","F_T1_T2")],
 		1,function(xx){
-		calc_copula_dens(D1 = xx[1],D2 = xx[2],
+		calc_copula_offset(D1 = xx[1],D2 = xx[2],
 			F1 = xx[3],F2 = xx[4],copula = COPULA,
 			THETA = THETA,F_T1_T2 = xx[5])
 	})
+	
+	out$H1 = out$D1 / (1 - out$CDF_1)
+	out$H2 = out$D2 / (1 - out$CDF_2)
 	
 	dim(out); head(out)
 	
@@ -309,20 +311,34 @@ calc_CDFs = function(DATA,PARS,COPULA){
 		breaks = 40,xlim = c(0,1))
 	
 	plot(DATA$time,out$CDF_1,col = "red",
-		xlab = "Obs Time",ylab = "CDF")
-	points(DATA$time,out$CDF_2,col = "blue")
+		xlab = "Obs Time",ylab = "CDF",pch = 1)
+	points(DATA$time,out$CDF_2,col = "blue",pch = 4)
+	legend("bottomright",legend = sprintf("Event %s",c(1,2)),
+		col = c("red","blue"),pch = rep(16,2),pt.cex = rep(2,2))
 	
-	smoothScatter(out$CDF_1,out$CDF_2,
-		xlim = c(0,1),ylim = c(0,1),
-		xlab = "F1",ylab = "F2")
+	# smoothScatter(out$CDF_1,out$CDF_2,
+		# xlim = c(0,1),ylim = c(0,1),
+		# xlab = "F1",ylab = "F2")
+	
+	plot(DATA$time,out$H1,col = "red",
+		xlab = "Obs Time",ylab = "Hazard",pch = 1)
+	points(DATA$time,out$H2,col = "blue",pch = 4)
+	legend("topleft",legend = sprintf("Event %s",c(1,2)),
+		col = c("red","blue"),pch = rep(16,2),pt.cex = rep(2,2))
 	
 	hist(out$F_T1_T2,breaks = 40,
 		xlab = "Joint CDF Copula",
 		xlim = c(0,1),main = "")
 	
 	hist(out$D1_D2,breaks = 40,
-		xlab = "Joint PDF Copula",
+		xlab = "Offset Copula",
 		main = "")
+	
+	hist(out$D1,breaks = 40,
+		xlab = "D1",main = "")
+	
+	hist(out$D2,breaks = 40,
+		xlab = "D2",main = "")
 	
 	if( all(c("T1","T2") %in% names(DATA)) ){
 		smoothScatter(log(1 + DATA[,c("T1","T2")]),
@@ -331,7 +347,7 @@ calc_CDFs = function(DATA,PARS,COPULA){
 			main = sprintf("Copula=%s,\nTheta=%s",COPULA,round(THETA,3)))
 	}
 	
-	par(mfrow = c(1,1),mar = c(5,4,4,2)+0.1)
+	par(mfrow = c(1,1),mar = c(5,4,4,2) + 0.1)
 	
 	return(out)
 	
@@ -469,8 +485,8 @@ opt_replicate = function(DATA,COPULA,param_grid,theta,
 			LL = NULL,GRAD = NULL,HESS = NULL,COVAR = NULL))
 	}
 	
-	gprof = get_PROFILE(GRID = gout,PLOT = PLOT)
-	# gprof = get_PROFILE(GRID = gout[which(gout$log_lambda1 > 2 & gout$log_theta > 1),],PLOT = verb)
+	gprof = get_PROFILE(GRID = gout,
+		COPULA = COPULA,PLOT = PLOT)
 	gprof
 	
 	gopt = gprof
@@ -639,6 +655,8 @@ opt_replicate = function(DATA,COPULA,param_grid,theta,
 	LL 		= wrap_LL(iPARS)
 	GRAD 	= wrap_GRAD(iPARS)
 	HESS 	= wrap_HESS(iPARS)
+	
+	LL = round(LL,3)
 	
 	nparams = 2 
 		# alpha,lambda
