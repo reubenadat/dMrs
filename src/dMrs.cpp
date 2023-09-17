@@ -804,8 +804,7 @@ arma::mat dMrs_GRID(const arma::vec& XX,const arma::uvec& DELTA,
 	#ifdef _OPENMP
 	# pragma omp parallel for schedule(dynamic) \
 		num_threads(ncores) \
-		shared(verb2,copula,tot,num_alpha,num_lambda,\
-			num_kappa,num_theta,XX,DELTA,D2,S2,DAT)
+		shared(verb2,copula,tot,XX,DELTA,D2,S2,DAT)
 	#endif
 	for(arma::uword cnt2 = 0; cnt2 < tot; cnt2++){
 		if( verb2 ){

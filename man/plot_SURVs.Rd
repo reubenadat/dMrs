@@ -4,7 +4,7 @@
 \alias{plot_SURVs}
 \title{plot_SURVs}
 \usage{
-plot_SURVs(run_ANA, MULTIPLE, ALPHA = 0.5)
+plot_SURVs(run_ANA, MULTIPLE, ncol = 1, ALPHA = 0.5)
 }
 \arguments{
 \item{run_ANA}{The object outputed from \code{run_analyses}
@@ -14,6 +14,8 @@ function.}
 a survival plot per \code{theta} with accompanying maximum 
 log likelihood. Otherwise, the survival plots will be 
 overlayed with a legend.}
+
+\item{ncol}{Integer number of columns of plots to display}
 
 \item{ALPHA}{A numeric value between 0 and 1 to control the
 confidence band transparency.}

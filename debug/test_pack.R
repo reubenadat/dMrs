@@ -224,17 +224,17 @@ if( TRUE ){ 	# Specify parameters/arguments
 
 COPULAS = c("Independent","Clayton","Gumbel")
 DISTs		= c("weibull","expweibull")
-tCOPULA 	= COPULAS[2]
-tDIST 	= DISTs[1]
+tCOPULA 	= COPULAS[1]
+tDIST 	= DISTs[2]
 NN 			= 1e4
 theta 	= ifelse(tCOPULA == "Independent",0,5)
 if( tCOPULA == "Clayton" && theta < 0 ) stop("theta issue")
 if( tCOPULA == "Gumbel" && theta < 1 ) stop("theta issue")
-alpha1 	= 1.6
-lambda1 = 4
-kappa1 	= ifelse(tDIST == "weibull",1,1/2)
-alpha2 	= 1.6
-lambda2 = 4
+alpha1 	= 0.7
+lambda1 = 8
+kappa1 	= ifelse(tDIST == "weibull",1,0.7)
+alpha2 	= 1/alpha1
+lambda2 = 5
 propC 	= 0.2
 uPARS = log(c(alpha1,lambda1,kappa1,theta))
 if( tCOPULA == "Gumbel" ) uPARS[4] = log(theta - 1)
@@ -250,7 +250,7 @@ print(TRUTH)
 }
 if( TRUE ){ 	# Simulate dataset
 
-set.seed(1)
+set.seed(2)
 one_rep = sim_replicate(copula = TRUTH$COPULA,
 	dist1 = TRUTH$DIST,NN = NN,theta = theta,
 	alpha1 = alpha1,lambda1 = lambda1,
@@ -261,71 +261,81 @@ one_rep = sim_replicate(copula = TRUTH$COPULA,
 upKAPPA = ifelse(TRUTH$DIST == "weibull",0,1)
 
 aa = calc_CDFs(DATA = one_rep$DATA,
-	PARS = TRUTH$uPARS,COPULA = TRUTH$COPULA,
-	PARAMS = one_rep$PARAMS)
+	PARS = TRUTH$uPARS,COPULA = TRUTH$COPULA)
 # head(aa)
-
-}
-if( FALSE ){ 	# Optimize
 
 print(table(D = one_rep$DATA$D,Delta = one_rep$DATA$delta))
 
 # check num obs events
-GROUP = bin_cont_var(VAR = one_rep$DATA$time,4,binNUM = TRUE); # smart_table(GROUP)
-print(smart_table(D = one_rep$DATA$D,Delta = one_rep$DATA$delta,G = GROUP))
+GROUP = bin_cont_var(VAR = one_rep$DATA$time,
+	NUM_GROUPS = 4,binNUM = TRUE); # smart_table(GROUP)
+print(smart_table(D = one_rep$DATA$D[one_rep$DATA$delta==1],
+	G = GROUP[one_rep$DATA$delta==1]))
+
+
+}
+if( FALSE ){ 	# Optimize
 
 one_rep$PARAMS
 
-# If we have the truth ...
-ss = 0.75
-bnd = 3
-param_grid = list(
-	A = TRUTH$uPARS[1] + seq(-bnd,bnd,ss),
-	L = TRUTH$uPARS[2] + seq(-bnd,bnd,ss),
-	K = TRUTH$uPARS[3] + seq(-bnd,bnd,ss),
-	T = TRUTH$uPARS[4] + seq(-4,4,0.5))
-# if( is.infinite(TRUTH$uPARS[4]) ){
-	param_grid$T = seq(-8,8,0.75)
-# }
-param_grid
+# If we make some constraints
+len = 20
+A_range = c(0.5,2)
+L_range = exp(quantile(log(one_rep$DATA$time),c(0.65,0.95)))
+K_range = c(0.5,2)
+T_range = c(1,10)
+
+A_ugrid = log(seq(A_range[1],A_range[2],length.out = len))
+L_ugrid = log(seq(L_range[1],L_range[2],length.out = len))
+K_ugrid = log(seq(K_range[1],K_range[2],length.out = len))
+T_ugrid = log(seq(T_range[1],T_range[2],length.out = len))
+
+param_grid = list(A = A_ugrid,
+	L = L_ugrid,K = K_ugrid,T = T_ugrid)
+# param_grid
 
 sapply(param_grid,length)
 nGRID = prod(sapply(param_grid,length)); nGRID
 
 run_ana = run_analyses(
 	DATA = one_rep$DATA,
-	# COPULAS = tCOPULA,
-	upKAPPA = upKAPPA,
+	COPULAS = tCOPULA,
+	# upKAPPA = upKAPPA,
 	param_grid = param_grid,
-	# param_grid = seq(-3,3,0.25),
+	# param_grid = seq(-4,4,0.5),
 	verb = TRUE,PLOT = TRUE)
-
-# class(run_ana)
 length(run_ana)
 
 OO = opt_sum(OPT = run_ana); OO
-print(TRUTH[c("uPARS","cPARS")])
+print(TRUTH)
 
-solu = 3
+# Check survival
+plot_SURVs(run_ANA = run_ana,
+	MULTIPLE = TRUE,ncol = 2,
+	ALPHA = 0.4)
+
+solu = 2
 solu = which(OO$COPULA == TRUTH$COPULA
 	& OO$DIST == TRUTH$DIST)
 solu
 
+uPARS = run_ana[[solu]]$RES$out$EST; # uPARS
+run_ana[[solu]]$RES$GOPT_PRE
 run_ana[[solu]]$RES$cout
-uPARS = run_ana[[solu]]$RES$out$EST; uPARS
 
+# EST pars
 aa = calc_CDFs(DATA = one_rep$DATA,
-	PARS = uPARS,COPULA = run_ana[[solu]]$copula,
-	PARAMS = one_rep$PARAMS); # head(aa)
+	PARS = uPARS,COPULA = run_ana[[solu]]$copula); # head(aa)
+
+# True pars
+aa = calc_CDFs(DATA = one_rep$DATA,
+	PARS = TRUTH$uPARS,COPULA = TRUTH$COPULA)
 
 out = get_PROFILE(
 	GRID = run_ana[[solu]]$RES$GRID,
 	COPULA = run_ana[[solu]]$copula,
 	PLOT = TRUE); # out
 
-# Check survival
-plot_SURVs(run_ANA = run_ana,
-	MULTIPLE = TRUE,ALPHA = 0.4)
 
 
 

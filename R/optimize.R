@@ -286,7 +286,8 @@ calc_CDFs = function(DATA,PARS,COPULA){
 		alpha = ALPHA1,kappa = KAPPA1,log = FALSE)
 	D2 = DATA$dens_t2
 	
-	out = smart_df(CDF_1 = CDF_1,CDF_2 = CDF_2,
+	out = smart_df(time = DATA$time,
+		CDF_1 = CDF_1,CDF_2 = CDF_2,
 		D1 = D1,D2 = D2,F_T1_T2 = F_T1_T2,
 		true_F_T1_T2 = NA)
 	
@@ -303,7 +304,7 @@ calc_CDFs = function(DATA,PARS,COPULA){
 	dim(out); head(out)
 	
 	# Plot
-	par(mfrow = c(3,3),mar = c(4.4,4.4,2,0.5))
+	par(mfrow = c(4,3),mar = c(4.4,4.4,2,0.5))
 	hist(out$CDF_1,main = "",xlab = "F1",
 		breaks = 40,xlim = c(0,1))
 	
@@ -311,7 +312,8 @@ calc_CDFs = function(DATA,PARS,COPULA){
 		breaks = 40,xlim = c(0,1))
 	
 	plot(DATA$time,out$CDF_1,col = "red",
-		xlab = "Obs Time",ylab = "CDF",pch = 1)
+		xlab = "Obs Time",ylab = "CDF",pch = 1,
+		ylim = c(0,1))
 	points(DATA$time,out$CDF_2,col = "blue",pch = 4)
 	legend("bottomright",legend = sprintf("Event %s",c(1,2)),
 		col = c("red","blue"),pch = rep(16,2),pt.cex = rep(2,2))
@@ -320,11 +322,23 @@ calc_CDFs = function(DATA,PARS,COPULA){
 		# xlim = c(0,1),ylim = c(0,1),
 		# xlab = "F1",ylab = "F2")
 	
+	max_yy = quantile(c(out$H1,out$H2,out$H1 + out$H2),0.95)
 	plot(DATA$time,out$H1,col = "red",
-		xlab = "Obs Time",ylab = "Hazard",pch = 1)
-	points(DATA$time,out$H2,col = "blue",pch = 4)
-	legend("topleft",legend = sprintf("Event %s",c(1,2)),
-		col = c("red","blue"),pch = rep(16,2),pt.cex = rep(2,2))
+		xlab = "Obs Time",ylab = "Hazard",
+		pch = 1,ylim = c(0,max_yy))
+	points(DATA$time,out$H2,col = "blue",
+		pch = 4)
+	points(DATA$time,out$H1 + out$H2,
+		col = "magenta",pch = 5)
+	
+	y_range = range(log(c(out$H1,out$H2,out$H1 + out$H2)))
+	plot(DATA$time,log(out$H1),col = "red",
+		xlab = "Obs Time",ylab = "Log(Hazard)",
+		pch = 1,ylim = y_range)
+	points(DATA$time,log(out$H2),col = "blue",
+		pch = 4)
+	points(DATA$time,log(out$H1 + out$H2),
+		col = "magenta",pch = 5)
 	
 	hist(out$F_T1_T2,breaks = 40,
 		xlab = "Joint CDF Copula",
@@ -334,17 +348,17 @@ calc_CDFs = function(DATA,PARS,COPULA){
 		xlab = "Offset Copula",
 		main = "")
 	
-	hist(out$D1,breaks = 40,
-		xlab = "D1",main = "")
+	hist(log(out$D1),breaks = 40,
+		xlab = "log(D1)",main = "")
 	
-	hist(out$D2,breaks = 40,
-		xlab = "D2",main = "")
+	hist(log(out$D2),breaks = 40,
+		xlab = "log(D2)",main = "")
 	
 	if( all(c("T1","T2") %in% names(DATA)) ){
 		smoothScatter(log(1 + DATA[,c("T1","T2")]),
 			xlab = "log(1 + Time1)",
 			ylab = "log(1 + Time2)",
-			main = sprintf("Copula=%s,\nTheta=%s",COPULA,round(THETA,3)))
+			main = sprintf("Copula=%s,Theta=%s",COPULA,round(THETA,3)))
 	}
 	
 	par(mfrow = c(1,1),mar = c(5,4,4,2) + 0.1)
@@ -497,11 +511,13 @@ opt_replicate = function(DATA,COPULA,param_grid,theta,
 	
 	nn = nrow(gopt)
 	if( verb ) cat(sprintf("%s: NR optimization w/ %s profile point(s) ...\n",date(),nn))
+	DIST = ifelse(upKAPPA == 0,"weibull","expweibull")
 	for(ii in seq(nn)){
 		# ii = 3
-		# if( verb ) cat(".")
-		# if( verb ) smart_progress(ii = ii,nn = nn,
-			# iter = 1,iter2 = 5)
+		if( verb ){
+			cat(sprintf("#---# Copula=%s, Dist=%s, Prof. point=%s out of %s\n",
+				COPULA,DIST,ii,nn))
+		}
 		if( !is.na(gopt$fin_LL[ii]) ) next
 		
 		# Init pars

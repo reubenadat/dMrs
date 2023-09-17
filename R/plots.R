@@ -105,10 +105,11 @@ plot_LL = function(GPROF,GOPT = NULL,nBREAKs = 5,COPULA,
 #'	a survival plot per \code{theta} with accompanying maximum 
 #'	log likelihood. Otherwise, the survival plots will be 
 #'	overlayed with a legend.
+#' @param ncol Integer number of columns of plots to display
 #' @param ALPHA A numeric value between 0 and 1 to control the
 #'	confidence band transparency.
 #' @export
-plot_SURVs = function(run_ANA,MULTIPLE,ALPHA = 0.5){
+plot_SURVs = function(run_ANA,MULTIPLE,ncol = 1,ALPHA = 0.5){
 	
 	if(FALSE){
 		run_ANA 	= run_ana
@@ -177,7 +178,7 @@ plot_SURVs = function(run_ANA,MULTIPLE,ALPHA = 0.5){
 				ymax = high_surv,fill = LABEL),alpha = ALPHA) +
 			ylim(c(0,1)) + xlab("Time") + ylab("Survival Probability") +
 			# ggtitle(my_title) + 
-			facet_wrap(~ LABEL) + 
+			facet_wrap(~ LABEL,ncol = ncol) + 
 			my_themes
 		# gg
 		
