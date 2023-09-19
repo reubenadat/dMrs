@@ -458,11 +458,13 @@ opt_replicate = function(DATA,COPULA,param_grid,theta,
 		log_THETA = sort(unique(log_THETA))
 	}
 	
+	if( verb ) cat(sprintf("%s: Start GRID\n",date()))
 	gout = dMrs_GRID(XX = DATA$time,DELTA = DATA$delta,
 		D2 = DATA$dens_t2,S2 = DATA$surv_t2,
 		log_ALPHA = param_grid$A,log_LAMBDA = param_grid$L,
 		unc_KAPPA = unc_KAPPA,log_THETA = log_THETA,
 		copula = COPULA,verb = verb,ncores = ncores)
+	if( verb ) cat(sprintf("%s: End GRID\n",date()))
 	# str(gout)
 	colnames(gout) = c("log_alpha1","log_lambda1",
 		"unc_kappa1","log_theta","LL")
