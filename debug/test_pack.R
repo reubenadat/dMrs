@@ -220,21 +220,72 @@ PDF = dweibull(x = tt,shape = ALP,scale = LAM)
 plot(tt,PDF,type = "l")
 
 }
+if(FALSE){ 		# Purposely shape bathtub
+
+NN = 2e3
+tt = seq(0.1,20,length.out = NN)
+
+ALPs = c(0.5,1,3)[-1]
+LAMs = 4
+KAPs = c(0.1,0.5,1,3)[-4]
+
+len = length(ALPs) * length(LAMs) * length(KAPs)
+HH = matrix(NA,nrow = NN,ncol = len)
+colnames(HH) = seq(len)
+
+ee = 1
+for(ALP in ALPs){
+for(LAM in LAMs){
+for(KAP in KAPs){
+	
+	log_dd = dexpweibull(x = tt,lambda = LAM,
+		alpha = ALP,kappa = KAP,log = TRUE)
+	pp = pexpweibull(q = tt,lambda = LAM,
+		alpha = ALP,kappa = KAP,log.p = FALSE)
+	hh = exp(log_dd - log(1 - pp)) # hazard = dens / surv
+	HH[,ee] = hh
+	colnames(HH)[ee] = sprintf("ALP=%s;LAM=%s;KAP=%s",ALP,LAM,KAP)
+	ee = ee + 1
+	
+}}}
+
+LWD = 5
+vec_colors = smart_colors(len)
+for(ee in seq(len)){
+	# ee = 1
+	if( ee == 1 ){
+		# max_yy = quantile(c(HH),0.95)
+		plot(tt,HH[,ee],col = vec_colors[ee],
+			ylim = c(0,2),type = "l",lwd = LWD)
+	} else {
+		lines(tt,HH[,ee],col = vec_colors[ee],
+			lwd = LWD)
+	}
+}
+
+legend("right",legend = colnames(HH),
+	pch = rep(16,len),col = vec_colors,
+	pt.cex = rep(2,len),cex = 0.75)
+
+
+}
 if( TRUE ){ 	# Specify parameters/arguments
 
 COPULAS = c("Independent","Clayton","Gumbel")
 DISTs		= c("weibull","expweibull")
-tCOPULA 	= COPULAS[1]
+tCOPULA = COPULAS[1]
 tDIST 	= DISTs[2]
-NN 			= 1e4
+NN 			= 5e3
 theta 	= ifelse(tCOPULA == "Independent",0,5)
 if( tCOPULA == "Clayton" && theta < 0 ) stop("theta issue")
 if( tCOPULA == "Gumbel" && theta < 1 ) stop("theta issue")
-alpha1 	= 0.7
-lambda1 = 8
-kappa1 	= ifelse(tDIST == "weibull",1,0.7)
-alpha2 	= 1/alpha1
-lambda2 = 5
+alpha1 	= 1.1
+lambda1 = 4
+kappa1 	= ifelse(tDIST == "weibull",1,0.8)
+alpha2 	= 1 / alpha1 
+# ALPHA: if < 1, events happen early
+#					if > 1, events happen later
+lambda2 = 4
 propC 	= 0.2
 uPARS = log(c(alpha1,lambda1,kappa1,theta))
 if( tCOPULA == "Gumbel" ) uPARS[4] = log(theta - 1)
@@ -245,12 +296,12 @@ cPARS = c(alpha1,lambda1,kappa1,theta)
 names(cPARS) = c("alpha1","lambda1","kappa1","theta")
 TRUTH = list(COPULA = tCOPULA,DIST = tDIST,
 	uPARS = uPARS,cPARS = cPARS)
-print(TRUTH)
+# print(TRUTH)
 
 }
 if( TRUE ){ 	# Simulate dataset
 
-set.seed(2)
+set.seed(1)
 one_rep = sim_replicate(copula = TRUTH$COPULA,
 	dist1 = TRUTH$DIST,NN = NN,theta = theta,
 	alpha1 = alpha1,lambda1 = lambda1,
@@ -260,8 +311,8 @@ one_rep = sim_replicate(copula = TRUTH$COPULA,
 
 upKAPPA = ifelse(TRUTH$DIST == "weibull",0,1)
 
-aa = calc_CDFs(DATA = one_rep$DATA,
-	PARS = TRUTH$uPARS,COPULA = TRUTH$COPULA)
+# aa = calc_CDFs(DATA = one_rep$DATA,
+	# PARS = TRUTH$uPARS,COPULA = TRUTH$COPULA)
 # head(aa)
 
 print(table(D = one_rep$DATA$D,Delta = one_rep$DATA$delta))
