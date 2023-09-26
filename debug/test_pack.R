@@ -21,20 +21,48 @@ setdirs = function(){
 		curr_dir = "/Users/adat"
 	}
 	pack_dir = file.path(git_dir,"dMrs")
+	pack_dir
 	
 	# Package check
-	req_packs = c("devtools","numDeriv","smarter",
+	req_packs = c("devtools","pkgbuild","installr",
+		"Rtools","numDeriv","smarter",
 		"ggplot2","viridis","relsurv","copula","dMrs")
-	all_packs = as.character(installed.packages()[,1])
 	for(pack in req_packs){
+		# pack = req_packs[4]; pack
 		
-		if( pack %in% all_packs ){
+		chk_pack = tryCatch(find.package(pack),
+			error = function(ee){NULL})
+		chk_pack
+		
+		if( !is.null(chk_pack) ){
 			library(pack,character.only = TRUE)
 			next
 		}
 		
 		if( pack == "smarter" ){
 			install_github(repo = "pllittle/smarter")
+		} else if( pack == "Rtools" ){
+			aa1 = find_rtools(); aa1
+			aa2 = grepl("Rtools",Sys.getenv("PATH")); aa2
+			rtools4_dir = gsub("\\\\","/",Sys.getenv("RTOOLS40_HOME"))
+			
+			if( !aa1 || rtools4_dir == "" ){
+				install.Rtools(check = TRUE,
+					check_r_update = FALSE,
+					GUI = FALSE)
+				cat("Rerun setdirs\n")
+				return(NULL)
+			}
+			
+			rtools4_dir = file.path(rtools4_dir,"usr/bin")
+			rtools4_dir
+			
+			if( !aa2 ){
+				curr_PATH = Sys.getenv("PATH")
+				new_PATH = sprintf("%s;%s",rtools4_dir,curr_PATH)
+				Sys.setenv("PATH" = new_PATH)
+			}
+			
 		} else if( pack == "dMrs" ){
 			# install(pack_dir,build_vignettes = FALSE)
 			Rcpp_fn = file.path(pack_dir,"src/dMrs.cpp")
@@ -223,11 +251,17 @@ plot(tt,PDF,type = "l")
 if(FALSE){ 		# Purposely shape bathtub
 
 NN = 2e3
-tt = seq(0.1,20,length.out = NN)
-
-ALPs = c(0.5,1,3)[-1]
 LAMs = 4
-KAPs = c(0.1,0.5,1,3)[-4]
+tt = seq(0.1,max(LAMs)*3,length.out = NN)
+
+ALPs = c(0.5,1,1.2)
+	ALPs = ALPs[ALPs > 1]
+	# ALPs = ALPs[ALPs < 1]
+	# ALPs = ALPs[ALPs == 1]
+KAPs = c(0.1,0.5,1,3,5)
+	# KAPs = KAPs[KAPs > 1]
+	# KAPs = KAPs[KAPs < 1]
+	# KAPs = KAPs[KAPs == 1]
 
 len = length(ALPs) * length(LAMs) * length(KAPs)
 HH = matrix(NA,nrow = NN,ncol = len)
@@ -256,7 +290,7 @@ for(ee in seq(len)){
 	if( ee == 1 ){
 		# max_yy = quantile(c(HH),0.95)
 		plot(tt,HH[,ee],col = vec_colors[ee],
-			ylim = c(0,2),type = "l",lwd = LWD)
+			ylim = c(0,1),type = "l",lwd = LWD)
 	} else {
 		lines(tt,HH[,ee],col = vec_colors[ee],
 			lwd = LWD)
@@ -265,27 +299,33 @@ for(ee in seq(len)){
 
 legend("right",legend = colnames(HH),
 	pch = rep(16,len),col = vec_colors,
-	pt.cex = rep(2,len),cex = 0.75)
+	pt.cex = rep(2,len),cex = 0.75,bty = "n")
+abline(v = LAMs,lty = 2)
 
+# Takeaways to note:
+#	To estimate kappa 'well', individuals from the 
+#		first underlying event with earlier times
+#		are more informative than those that occur 
+#		later
 
 }
 if( TRUE ){ 	# Specify parameters/arguments
 
 COPULAS = c("Independent","Clayton","Gumbel")
 DISTs		= c("weibull","expweibull")
-tCOPULA = COPULAS[1]
+tCOPULA = COPULAS[3]
 tDIST 	= DISTs[2]
 NN 			= 5e3
 theta 	= ifelse(tCOPULA == "Independent",0,5)
 if( tCOPULA == "Clayton" && theta < 0 ) stop("theta issue")
 if( tCOPULA == "Gumbel" && theta < 1 ) stop("theta issue")
-alpha1 	= 1.1
-lambda1 = 4
+alpha1 	= 1.2
+lambda1 = 12
 kappa1 	= ifelse(tDIST == "weibull",1,0.8)
-alpha2 	= 1 / alpha1 
+alpha2 	= 3.0
 # ALPHA: if < 1, events happen early
-#					if > 1, events happen later
-lambda2 = 4
+#		 if > 1, events happen later
+lambda2 = 10
 propC 	= 0.2
 uPARS = log(c(alpha1,lambda1,kappa1,theta))
 if( tCOPULA == "Gumbel" ) uPARS[4] = log(theta - 1)
@@ -311,8 +351,8 @@ one_rep = sim_replicate(copula = TRUTH$COPULA,
 
 upKAPPA = ifelse(TRUTH$DIST == "weibull",0,1)
 
-# aa = calc_CDFs(DATA = one_rep$DATA,
-	# PARS = TRUTH$uPARS,COPULA = TRUTH$COPULA)
+aa = calc_CDFs(DATA = one_rep$DATA,
+	PARS = TRUTH$uPARS,COPULA = TRUTH$COPULA)
 # head(aa)
 
 print(table(D = one_rep$DATA$D,Delta = one_rep$DATA$delta))

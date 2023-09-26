@@ -76,9 +76,9 @@ plot_LL = function(GPROF,GOPT = NULL,nBREAKs = 5,COPULA,
 			mapping = aes(x = log_alpha1,y = log_lambda1),
 			color = "red",size = 5,shape = 18)
 		g1 = g1 + geom_hline(yintercept = GOPT$log_lambda1,
-			color = "red",linetype = 3,linewidth = 0.75) +
+			color = "red",linetype = 3,size = 0.75) +
 			geom_vline(xintercept = GOPT$log_alpha1,
-				color = "red",linetype = 3,linewidth = 0.75)
+				color = "red",linetype = 3,size = 0.75)
 		if( COPULA %in% c("Independent","Clayton") ){
 			g1 = g1 + geom_text(data = GOPT,
 				aes(label = sprintf("log(\u03B8) = %s",log_theta)),
@@ -166,14 +166,14 @@ plot_SURVs = function(run_ANA,MULTIPLE,ncol = 1,ALPHA = 0.5){
 			panel.spacing = unit(1,"lines"),
 			panel.background = element_blank(),
 			panel.grid.major = element_line(colour = "grey50",
-				linewidth = 0.5,linetype = "dotted"),
+				size = 0.5,linetype = "dotted"),
 			plot.title = element_text(hjust = 0.5),
 			panel.border = element_rect(colour = "black",
-				fill = NA,linewidth = 1),
+				fill = NA,size = 1),
 			strip.text.x = element_text(size = 12))
 		
 		gg = ggplot(data = res,mapping = aes(x = time,y = surv)) +
-			geom_line(linewidth = 1,aes(color = LABEL)) + 
+			geom_line(size = 1,aes(color = LABEL)) + 
 			geom_ribbon(mapping = aes(ymin = low_surv,
 				ymax = high_surv,fill = LABEL),alpha = ALPHA) +
 			ylim(c(0,1)) + xlab("Time") + ylab("Survival Probability") +
@@ -188,9 +188,9 @@ plot_SURVs = function(run_ANA,MULTIPLE,ncol = 1,ALPHA = 0.5){
 			plot.title = element_text(hjust = 0.5),
 			panel.background = element_blank(),
 			panel.grid.major = element_line(colour = "grey50",
-				linewidth = 0.5,linetype = "dotted"),
+				size = 0.5,linetype = "dotted"),
 			panel.border = element_rect(colour = "black",
-				fill = NA,linewidth = 1))
+				fill = NA,size = 1))
 		
 		gg = ggplot(data = res,
 			mapping = aes(x = time,y = surv,group = LABEL,
@@ -252,8 +252,7 @@ calc_CDFs = function(DATA,PARS,COPULA){
 	
 	out = smart_df(time = DATA$time,
 		CDF_1 = CDF_1,CDF_2 = CDF_2,
-		D1 = D1,D2 = D2,F_T1_T2 = F_T1_T2,
-		true_F_T1_T2 = NA)
+		D1 = D1,D2 = D2,F_T1_T2 = F_T1_T2)
 	
 	out$D1_D2 = apply(out[,c("D1","D2","CDF_1","CDF_2","F_T1_T2")],
 		1,function(xx){
