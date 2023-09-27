@@ -267,12 +267,12 @@ calc_CDFs = function(DATA,PARS,COPULA){
 	dim(out); head(out)
 	
 	# Plot
-	par(mfrow = c(4,3),mar = c(4.4,4.4,2,0.5))
+	par(mfrow = c(3,3),mar = c(4.4,4.4,2,0.5))
 	hist(out$CDF_1,main = "",xlab = "F1",
-		breaks = 40,xlim = c(0,1))
+		breaks = 20,xlim = c(0,1))
 	
 	hist(out$CDF_2,main = "",xlab = "F2",
-		breaks = 40,xlim = c(0,1))
+		breaks = 20,xlim = c(0,1))
 	
 	plot(DATA$time,out$CDF_1,col = "red",
 		xlab = "Obs Time",ylab = "CDF",pch = 1,
@@ -294,34 +294,27 @@ calc_CDFs = function(DATA,PARS,COPULA){
 	points(DATA$time,0.5*(out$H1 + out$H2),
 		col = "magenta",pch = 5)
 	
-	y_range = range(log(c(out$H1,out$H2,out$H1 + out$H2)))
-	plot(DATA$time,log(out$H1),col = "red",
-		xlab = "Obs Time",ylab = "Log(Hazard)",
-		pch = 1,ylim = y_range)
-	points(DATA$time,log(out$H2),col = "blue",
-		pch = 4)
-	points(DATA$time,log(0.5*(out$H1 + out$H2)),
-		col = "magenta",pch = 5)
+	smoothScatter(out$time,
+		out$F_T1_T2,
+		ylab = "Joint CDF Copula",
+		xlab = "Obs Time",ylim = c(0,1))
 	
-	hist(out$F_T1_T2,breaks = 40,
-		xlab = "Joint CDF Copula",
-		xlim = c(0,1),main = "")
+	smoothScatter(DATA$time,
+		out$D1_D2,xlab = "Obs Time",
+		ylab = "Offset Copula")
 	
-	hist(out$D1_D2,breaks = 40,
-		xlab = "Offset Copula",
-		main = "")
-	
-	hist(log(out$D1),breaks = 40,
-		xlab = "log(D1)",main = "")
-	
-	hist(log(out$D2),breaks = 40,
-		xlab = "log(D2)",main = "")
+	plot(out$time,out$D1,xlab = "Obs Time",
+		ylab = "Density 1",col = "red",
+		ylim = c(0,quantile(out$D1,0.99)*1.5))
+	plot(out$time,out$D2,xlab = "Obs Time",
+		ylab = "Density 2",col = "blue",
+		ylim = c(0,quantile(out$D2,0.99)*1.5))
 	
 	if( all(c("T1","T2") %in% names(DATA)) ){
 		smoothScatter(log(1 + DATA[,c("T1","T2")]),
 			xlab = "log(1 + Time1)",
 			ylab = "log(1 + Time2)",
-			main = sprintf("Copula=%s,Theta=%s",COPULA,round(THETA,3)))
+			main = sprintf("Copula=%s,\nTheta=%s",COPULA,round(THETA,3)))
 	}
 	
 	par(mfrow = c(1,1),mar = c(5,4,4,2) + 0.1)

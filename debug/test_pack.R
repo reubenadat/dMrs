@@ -35,7 +35,7 @@ setdirs = function(){
 		chk_pack
 		
 		if( !is.null(chk_pack) ){
-			library(pack,character.only = TRUE)
+			suppressPackageStartupMessages(library(pack,character.only = TRUE))
 			next
 		}
 		
@@ -250,17 +250,17 @@ plot(tt,PDF,type = "l")
 }
 if(FALSE){ 		# Purposely shape bathtub
 
-NN = 2e3
-LAMs = 4
+NN = 5e3
+LAMs = 12
 tt = seq(0.1,max(LAMs)*3,length.out = NN)
 
-ALPs = c(0.5,1,1.2)
-	ALPs = ALPs[ALPs > 1]
-	# ALPs = ALPs[ALPs < 1]
+ALPs = c(0.1,0.5,1,1.5)
+	# ALPs = ALPs[ALPs > 1]
+	ALPs = ALPs[ALPs < 1]
 	# ALPs = ALPs[ALPs == 1]
-KAPs = c(0.1,0.5,1,3,5)
+KAPs = c(0.1,0.5,0.8,1,3,5)
 	# KAPs = KAPs[KAPs > 1]
-	# KAPs = KAPs[KAPs < 1]
+	KAPs = KAPs[KAPs <= 1]
 	# KAPs = KAPs[KAPs == 1]
 
 len = length(ALPs) * length(LAMs) * length(KAPs)
@@ -312,20 +312,20 @@ abline(v = LAMs,lty = 2)
 if( TRUE ){ 	# Specify parameters/arguments
 
 COPULAS = c("Independent","Clayton","Gumbel")
-DISTs		= c("weibull","expweibull")
-tCOPULA = COPULAS[3]
+DISTs	= c("weibull","expweibull")
+tCOPULA = COPULAS[1]
 tDIST 	= DISTs[2]
-NN 			= 5e3
+NN 		= 5e3
 theta 	= ifelse(tCOPULA == "Independent",0,5)
 if( tCOPULA == "Clayton" && theta < 0 ) stop("theta issue")
 if( tCOPULA == "Gumbel" && theta < 1 ) stop("theta issue")
 alpha1 	= 1.2
 lambda1 = 12
-kappa1 	= ifelse(tDIST == "weibull",1,0.8)
-alpha2 	= 3.0
+kappa1 	= ifelse(tDIST == "weibull",1,0.5)
+alpha2 	= 3
 # ALPHA: if < 1, events happen early
 #		 if > 1, events happen later
-lambda2 = 10
+lambda2 = 9
 propC 	= 0.2
 uPARS = log(c(alpha1,lambda1,kappa1,theta))
 if( tCOPULA == "Gumbel" ) uPARS[4] = log(theta - 1)
@@ -370,16 +370,17 @@ if( FALSE ){ 	# Optimize
 one_rep$PARAMS
 
 # If we make some constraints
-len = 20
+len1 = 10
+len2 = 20
 A_range = c(0.5,2)
 L_range = exp(quantile(log(one_rep$DATA$time),c(0.65,0.95)))
 K_range = c(0.5,2)
 T_range = c(1,10)
 
-A_ugrid = log(seq(A_range[1],A_range[2],length.out = len))
-L_ugrid = log(seq(L_range[1],L_range[2],length.out = len))
-K_ugrid = log(seq(K_range[1],K_range[2],length.out = len))
-T_ugrid = log(seq(T_range[1],T_range[2],length.out = len))
+A_ugrid = log(seq(A_range[1],A_range[2],length.out = len1))
+L_ugrid = log(seq(L_range[1],L_range[2],length.out = len1))
+K_ugrid = log(seq(K_range[1],K_range[2],length.out = len2))
+T_ugrid = log(seq(T_range[1],T_range[2],length.out = len2))
 
 param_grid = list(A = A_ugrid,
 	L = L_ugrid,K = K_ugrid,T = T_ugrid)
@@ -393,7 +394,6 @@ run_ana = run_analyses(
 	COPULAS = tCOPULA,
 	# upKAPPA = upKAPPA,
 	param_grid = param_grid,
-	# param_grid = seq(-4,4,0.5),
 	verb = TRUE,PLOT = TRUE)
 length(run_ana)
 
@@ -402,7 +402,7 @@ print(TRUTH)
 
 # Check survival
 plot_SURVs(run_ANA = run_ana,
-	MULTIPLE = TRUE,ncol = 2,
+	MULTIPLE = TRUE,ncol = 1,
 	ALPHA = 0.4)
 
 solu = 2
@@ -435,10 +435,10 @@ if( TRUE ){ 	# Test optimization
 
 my_dirs$rep_dir = file.path(my_dirs$curr_dir,"REPS")
 
-tCOPULA = c("Independent","Clayton","Gumbel")[2]
+tCOPULA 	= c("Independent","Clayton","Gumbel")[1]
 tDIST		= c("weibull","expweibull")[1]
-rr 			= 1
-NN			= 1e4
+rr 			= 2
+NN			= 5e3
 
 repCDN_dir = file.path(my_dirs$rep_dir,
 	sprintf("C.%s_D.%s",tCOPULA,tDIST))
@@ -456,25 +456,28 @@ aa = calc_CDFs(DATA = one_rep$DATA,
 	PARS = uPARS,COPULA = tCOPULA)
 head(aa)
 
-stepsize = 0.2
-bound = 1
-param_grid = list(
-	A = uPARS[1] + seq(-bound,bound,stepsize),
-	L = uPARS[2] + seq(-bound,bound,stepsize),
-	K = uPARS[3] + seq(-bound,bound,stepsize),
-	T = uPARS[4] + seq(-bound,bound,stepsize))
+len1 = 10
+len2 = 25
+A_range = c(0.5,2)
+L_range = exp(quantile(log(one_rep$DATA$time),c(0.65,0.95)))
+K_range = c(0.5,2)
+T_range = c(1,10)
 
-if( is.infinite(uPARS[4]) ){
-	# param_grid$T = seq(-bound,bound,stepsize)
-	# param_grid$T = seq(-1,3,stepsize)
-	param_grid$T = seq(4,9,0.5)
-}
-param_grid
+# Less fine grid for alpha/lambda
+A_ugrid = log(seq(A_range[1],A_range[2],length.out = len1))
+L_ugrid = log(seq(L_range[1],L_range[2],length.out = len1))
+# Finer grid for kappa/theta
+K_ugrid = log(seq(K_range[1],K_range[2],length.out = len2))
+T_ugrid = log(seq(T_range[1],T_range[2],length.out = len2))
+
+param_grid = list(A = A_ugrid,
+	L = L_ugrid,K = K_ugrid,T = T_ugrid)
+# param_grid
 prod(sapply(param_grid,length))
 
 # Estimate assuming truth known
-COPULA	= c(tCOPULA,"Independent","Clayton","Gumbel")[1]
-DIST 		= c(tDIST,"weibull","expweibull")[1]
+COPULA	= c(tCOPULA,"Independent","Clayton","Gumbel")[4]
+DIST 	= c(tDIST,"weibull","expweibull")[1]
 
 run_ana = run_analyses(
 	DATA = one_rep$DATA,
