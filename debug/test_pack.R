@@ -435,9 +435,9 @@ if( TRUE ){ 	# Test optimization
 
 my_dirs$rep_dir = file.path(my_dirs$curr_dir,"REPS")
 
-tCOPULA 	= c("Independent","Clayton","Gumbel")[1]
-tDIST		= c("weibull","expweibull")[1]
-rr 			= 2
+tCOPULA 	= c("Independent","Clayton","Gumbel")[2]
+tDIST		= c("weibull","expweibull")[2]
+rr 			= 484
 NN			= 5e3
 
 repCDN_dir = file.path(my_dirs$rep_dir,
@@ -456,10 +456,10 @@ aa = calc_CDFs(DATA = one_rep$DATA,
 	PARS = uPARS,COPULA = tCOPULA)
 head(aa)
 
-len1 = 10
-len2 = 25
+len1 = 5
+len2 = 10
 A_range = c(0.5,2)
-L_range = exp(quantile(log(one_rep$DATA$time),c(0.65,0.95)))
+L_range = exp(quantile(log(one_rep$DATA$time),c(0.75,1)))
 K_range = c(0.5,2)
 T_range = c(1,10)
 
@@ -476,15 +476,14 @@ param_grid = list(A = A_ugrid,
 prod(sapply(param_grid,length))
 
 # Estimate assuming truth known
-COPULA	= c(tCOPULA,"Independent","Clayton","Gumbel")[4]
+COPULA	= c(tCOPULA,"Independent","Clayton","Gumbel")[1]
 DIST 	= c(tDIST,"weibull","expweibull")[1]
 
 run_ana = run_analyses(
 	DATA = one_rep$DATA,
 	COPULAS = COPULA,
-	upKAPPA = ifelse(DIST == "weibull",0,1),
+	# upKAPPA = ifelse(DIST == "weibull",0,1),
 	param_grid = param_grid,
-	# param_grid = seq(-1,3,0.1),
 	verb = TRUE)
 if( length(run_ana) > 0 ){
 	OO = opt_sum(OPT = run_ana)

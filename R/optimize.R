@@ -103,7 +103,7 @@ ref_LL_cpp = function(DATA,PARS,COPULA){
 	if(FALSE){
 		DATA 		= one_rep$DATA
 		PARS 		= uPARS
-		COPULA 	= tmp_copula
+		COPULA 		= tCOPULA
 		
 	}
 	
@@ -581,12 +581,12 @@ run_analysis = function(DATA,theta,upKAPPA,gTHRES,
 	ncores = 1){
 	
 	if(FALSE){
-		DATA 				= one_rep$DATA
+		DATA 			= one_rep$DATA
 		theta 			= NA
 		upKAPPA 		= ifelse(DIST == "weibull",0,1)
 		gTHRES 			= 8e-2
-		copula 			= c(COPULA,"Clayton","Gumbel")[1]
-		param_grid 	= param_grid
+		copula 			= COPULA
+		param_grid 		= param_grid
 		vec_time 		= vec_time
 		
 		verb = TRUE; ncores = 1
@@ -628,7 +628,7 @@ run_analysis = function(DATA,theta,upKAPPA,gTHRES,
 	
 	est_SE = function(tt){
 		if(FALSE){
-			ii = 15; tt = pred$time[ii]
+			ii = 40; tt = pred$time[ii]
 		}
 		
 		if( tt == 0 ) return(0)

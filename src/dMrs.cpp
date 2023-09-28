@@ -150,6 +150,8 @@ double calc_copula_offset(const double& D1,const double& D2,
 		
 	} else if( copula == "Clayton" ){
 		
+		if( F_T1_T2 == 0.0 ) return 0.0;
+		
 		double log_F1 = std::log(F1), 
 			log_F2 = std::log(F2);
 		arma::vec log_CDFs = { log_F1, log_F2 };
