@@ -341,10 +341,11 @@ double dMrs_cLL(const arma::vec& XX,const arma::uvec& DELTA,
 arma::vec dMrs_GRAD(const arma::vec& XX,const arma::uvec& DELTA,
 	const arma::vec& D2,const arma::vec& S2,const double& THETA,
 	const double& ALPHA,const double& LAMBDA,const double& KAPPA,
-	const std::string& copula,const arma::vec& upPARS){
+	const std::string& copula,const arma::vec& upPARS,
+	const double& shift = 1e-6){
 	
 	arma::uword ii;
-	double shift = 1e-6, old_LL, new_LL, error_num = -999.0, new_theta;
+	double old_LL, new_LL, error_num = -999.0, new_theta;
 	arma::vec GRAD = arma::zeros<arma::vec>(4),
 		old_PARS = GRAD, new_PARS = GRAD;
 	old_PARS.at(0) = std::log(ALPHA);
@@ -383,6 +384,12 @@ arma::vec dMrs_GRAD(const arma::vec& XX,const arma::uvec& DELTA,
 			GRAD.fill(error_num);
 			return GRAD;
 		}
+		
+		if( new_LL == old_LL ){
+			return dMrs_GRAD(XX,DELTA,D2,S2,THETA,ALPHA,
+				LAMBDA,KAPPA,copula,upPARS,2*shift);
+		}
+		
 		GRAD.at(ii) = (new_LL - old_LL) / shift;
 	}
 	
@@ -395,16 +402,15 @@ arma::vec dMrs_cGRAD(const arma::vec& XX,const arma::uvec& DELTA,
 	const std::string& copula,const arma::vec& upPARS){
 	
 	arma::vec ePARS = arma::exp(PARS);
-	double THETA = ePARS.at(3);
-	// double KAPPA = 1.0 / (1.0 + std::exp(-PARS.at(2)));
-	double KAPPA = ePARS.at(2);
+	double THETA = ePARS.at(3),
+		KAPPA = ePARS.at(2), shift = 1e-6;
 	
 	if( copula == "Gumbel" ){
 		THETA += 1.0;
 	}
 	
 	return dMrs_GRAD(XX,DELTA,D2,S2,THETA,ePARS.at(0),
-		ePARS.at(1),KAPPA,copula,upPARS);
+		ePARS.at(1),KAPPA,copula,upPARS,shift);
 }
 
 arma::mat dMrs_HESS(const arma::vec& XX,const arma::uvec& DELTA,
@@ -415,7 +421,7 @@ arma::mat dMrs_HESS(const arma::vec& XX,const arma::uvec& DELTA,
 	arma::uword ii, np = 4;
 	double shift = 1e-6, error_num = -999.0, new_theta;
 	arma::vec old_GRAD = dMrs_GRAD(XX,DELTA,D2,S2,
-		THETA,ALPHA,LAMBDA,KAPPA,copula,upPARS),
+		THETA,ALPHA,LAMBDA,KAPPA,copula,upPARS,shift),
 		PARS = arma::zeros<arma::vec>(np),
 		PARS_2 = PARS, tmp_vec = PARS;
 	arma::mat HESS = arma::zeros<arma::mat>(np,np),
@@ -448,7 +454,7 @@ arma::mat dMrs_HESS(const arma::vec& XX,const arma::uvec& DELTA,
 		tmp_vec = dMrs_GRAD(XX,DELTA,D2,S2,
 			new_theta,std::exp(PARS_2.at(0)),
 			std::exp(PARS_2.at(1)),std::exp(PARS_2.at(2)),
-			copula,upPARS);
+			copula,upPARS,shift);
 		if( arma::any(tmp_vec == error_num) ){
 			HESS.fill(error_num);
 			return HESS;
