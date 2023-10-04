@@ -231,13 +231,26 @@ calc_CDFs = function(DATA,PARS,COPULA){
 	LAMBDA1 = exp(PARS[2])
 	KAPPA1 	= exp(PARS[3])
 	THETA 	= exp(PARS[4]) + 
-							ifelse(COPULA %in% c("Independent","Clayton"),0,1)
-	KAL = KAPPA1 * ALPHA1 / LAMBDA1
+				ifelse(COPULA %in% c("Independent","Clayton"),0,1)
 	
-	TT_LL = DATA$time / LAMBDA1
-	TLA = (TT_LL)^ALPHA1
-	E_mTLA = exp(-TLA)
-	CDF_1 = (1 - E_mTLA)^KAPPA1
+	if( "D" %in% names(DATA) ){
+		print(table(D = DATA$D,Delta = DATA$delta))
+		
+		GROUP = bin_cont_var(VAR = DATA$time,
+			NUM_GROUPS = 5,binNUM = TRUE); # smart_table(GROUP)
+		print(smart_table(D = DATA$D[DATA$delta==1],
+			G = GROUP[DATA$delta==1]))
+	}
+	
+	tmp_mat = sapply(DATA$time,function(tt){
+		calc_expweibull_CDF_PDF(XX = tt,
+			LAM = LAMBDA1,
+			ALP = ALPHA1,
+			KAP = KAPPA1)
+	},USE.NAMES = FALSE)
+	tmp_mat = t(tmp_mat)
+	
+	CDF_1 = tmp_mat[,1]
 	CDF_2 = 1 - DATA$surv_t2
 	
 	F_T1_T2 = apply(smart_df(CDF_1,CDF_2),1,function(xx){
@@ -246,71 +259,114 @@ calc_CDFs = function(DATA,PARS,COPULA){
 	})
 	
 	# Calc densities
-	D1 = dexpweibull(x = DATA$time,lambda = LAMBDA1,
-		alpha = ALPHA1,kappa = KAPPA1,log = FALSE)
+	# D1 = dexpweibull(x = DATA$time,lambda = LAMBDA1,
+		# alpha = ALPHA1,kappa = KAPPA1,log = FALSE)
+	D1 = tmp_mat[,2]
 	D2 = DATA$dens_t2
 	
-	out = smart_df(time = DATA$time,
+	DATA = cbind(DATA,smart_df(
 		CDF_1 = CDF_1,CDF_2 = CDF_2,
-		D1 = D1,D2 = D2,F_T1_T2 = F_T1_T2)
+		D1 = D1,D2 = D2,F_T1_T2 = F_T1_T2))
 	
-	out$D1_D2 = apply(out[,c("D1","D2","CDF_1","CDF_2","F_T1_T2")],
+	DATA$D1_D2 = apply(DATA[,c("D1","D2","CDF_1","CDF_2","F_T1_T2")],
 		1,function(xx){
 		calc_copula_offset(D1 = xx[1],D2 = xx[2],
 			F1 = xx[3],F2 = xx[4],copula = COPULA,
 			THETA = THETA,F_T1_T2 = xx[5])
 	})
 	
-	out$H1 = out$D1 / (1 - out$CDF_1)
-	out$H2 = out$D2 / (1 - out$CDF_2)
+	DATA$H1 = DATA$D1 / (1 - DATA$CDF_1)
+	DATA$H2 = DATA$D2 / (1 - DATA$CDF_2)
 	
-	dim(out); head(out)
+	# Calculate each sample's LL contribution
+	DATA$LL = NA
+	
+	idx = which(DATA$delta == 1)
+	DATA$LL[idx] = log(DATA$D1[idx] + DATA$D2[idx] - DATA$D1_D2[idx])
+	
+	# Get mix density
+	DATA$mDENS = NA
+	DATA$mDENS[idx] = exp(DATA$LL[idx]) 
+	
+	idx = which(DATA$delta == 0)
+	DATA$LL[idx] = log( (1 - DATA$CDF_1[idx]) +
+		(1 - DATA$CDF_2[idx]) - 1 +
+		DATA$F_T1_T2[idx] )
+	
+	
+	dim(DATA); head(DATA)
 	
 	# Plot
 	par(mfrow = c(3,3),mar = c(4.4,4.4,2,0.5))
-	hist(out$CDF_1,main = "",xlab = "F1",
-		breaks = 20,xlim = c(0,1))
+	# hist(DATA$CDF_1,main = "",xlab = "F1",
+		# breaks = 20,xlim = c(0,1))
 	
-	hist(out$CDF_2,main = "",xlab = "F2",
-		breaks = 20,xlim = c(0,1))
+	# hist(DATA$CDF_2,main = "",xlab = "F2",
+		# breaks = 20,xlim = c(0,1))
 	
-	plot(DATA$time,out$CDF_1,col = "red",
+	plot(DATA$time,DATA$CDF_1,col = "red",
 		xlab = "Obs Time",ylab = "CDF",pch = 1,
 		ylim = c(0,1))
-	points(DATA$time,out$CDF_2,col = "blue",pch = 4)
+	points(DATA$time,DATA$CDF_2,col = "blue",pch = 4)
 	legend("bottomright",legend = sprintf("Event %s",c(1,2)),
 		col = c("red","blue"),pch = rep(16,2),pt.cex = rep(2,2))
 	
-	# smoothScatter(out$CDF_1,out$CDF_2,
+	# smoothScatter(DATA$CDF_1,DATA$CDF_2,
 		# xlim = c(0,1),ylim = c(0,1),
 		# xlab = "F1",ylab = "F2")
 	
-	max_yy = quantile(c(out$H1,out$H2),0.95) * 1.5
-	plot(DATA$time,out$H1,col = "red",
+	max_yy = quantile(c(DATA$H1,DATA$H2),0.95) * 1.5
+	plot(DATA$time,DATA$H1,col = "red",
 		xlab = "Obs Time",ylab = "Hazard",
 		pch = 1,ylim = c(0,max_yy))
-	points(DATA$time,out$H2,col = "blue",
+	points(DATA$time,DATA$H2,col = "blue",
 		pch = 4)
-	points(DATA$time,0.5*(out$H1 + out$H2),
-		col = "magenta",pch = 5)
+	# points(DATA$time,0.5*(DATA$H1 + DATA$H2),
+		# col = "magenta",pch = 5)
 	
-	smoothScatter(out$time,
-		out$F_T1_T2,
+	smoothScatter(DATA$time,DATA$F_T1_T2,
 		ylab = "Joint CDF Copula",
 		xlab = "Obs Time",ylim = c(0,1))
 	
-	smoothScatter(DATA$time,
-		out$D1_D2,xlab = "Obs Time",
+	smoothScatter(DATA$time,DATA$D1_D2,
+		xlab = "Obs Time",
 		ylab = "Offset Copula")
 	
-	plot(out$time,out$D1,xlab = "Obs Time",
-		ylab = "Density 1",col = "red",
-		ylim = c(0,quantile(out$D1,0.99)*1.5))
-	plot(out$time,out$D2,xlab = "Obs Time",
-		ylab = "Density 2",col = "blue",
-		ylim = c(0,quantile(out$D2,0.99)*1.5))
+	DATA = DATA[order(DATA$time),]
+	idx = which(DATA$delta == 1)
+	ymax = unique(c(DATA$D1[idx],DATA$D2[idx],DATA$mDENS[idx]))
+	ymax = quantile(ymax,0.99) * 1.2
 	
-	if( all(c("T1","T2") %in% names(DATA)) ){
+	plot(DATA$time[idx],DATA$D1[idx],
+		xlab = "Obs Time",
+		ylab = "Density",col = "red",
+		ylim = c(0,ymax),type = "l",
+		lwd = 2,lty = 2)
+	lines(DATA$time[idx],DATA$D2[idx],
+		col = "blue",
+		lwd = 2,lty = 2)
+	lines(DATA$time[idx],DATA$mDENS[idx],
+		col = "magenta",
+		lwd = 2,lty = 1)
+	
+	smoothScatter(DATA$time,DATA$LL,
+		xlab = "Obs Time",ylab = "Log Likelihood")
+	
+	hist(DATA$time[DATA$delta == 1],
+		breaks = 40,main = "",
+		xlab = "Obs Event Times")
+	
+	if( all(c("T1","T2","D","delta") %in% names(DATA)) ){
+		tmp = hist(DATA$time[DATA$delta == 1],
+			breaks = 40,plot = FALSE)
+		tmp_rr = range(DATA$time[DATA$delta == 1])
+		hist(DATA$time[DATA$delta == 1 & DATA$D == 1],
+			col = rgb(1,0,0,0.5),breaks = 40,main = "",
+			xlab = "Obs Time",ylim = c(0,max(tmp$counts)),
+			xlim = tmp_rr)
+		hist(DATA$time[DATA$delta == 1 & DATA$D == 0],
+			col = rgb(0,0,1,0.5),breaks = 40,add = TRUE)
+		
 		smoothScatter(log(1 + DATA[,c("T1","T2")]),
 			xlab = "log(1 + Time1)",
 			ylab = "log(1 + Time2)",
@@ -319,9 +375,107 @@ calc_CDFs = function(DATA,PARS,COPULA){
 	
 	par(mfrow = c(1,1),mar = c(5,4,4,2) + 0.1)
 	
-	return(out)
+	return(DATA)
 	
 }
 
+mix_dens = function(COPULA,ALPHA1,LAMBDA1,KAPPA1,
+	ALPHA2,LAMBDA2,THETA){
+	
+	if(FALSE){
+		COPULA 	= c("Independent","Clayton","Gumbel")[1]
+		ALPHA1 	= 1.2
+		LAMBDA1 = 10
+		KAPPA1 	= 1
+		ALPHA2	= 3
+		LAMBDA2 = 9
+		THETA	= 5
+	}
+	
+	# Input checks
+	if( COPULA == "Independent" ){
+		THETA = 0
+	} else {
+		if( THETA <= 0 && COPULA == "Clayton" )
+			stop("THETA should be > 0")
+		if( THETA <= 1 && COPULA == "Gumbel" )
+			stop("THETA should be > 1")
+	}
+	
+	# Calculate the mixture density over time, see how parameters need to be set for simulation
+	TT = seq(1e-3,max(c(LAMBDA1,LAMBDA2))*2,length.out = 5e3)
+	D1 = dexpweibull(x = TT,
+		lambda = LAMBDA1,
+		alpha = ALPHA1,
+		kappa = KAPPA1)
+	F1 = pexpweibull(q = TT,
+		lambda = LAMBDA1,
+		alpha = ALPHA1,
+		kappa = KAPPA1)
+	D2 = dexpweibull(x = TT,
+		lambda = LAMBDA2,
+		alpha = ALPHA2,
+		kappa = 1)
+	F2 = pexpweibull(q = TT,
+		lambda = LAMBDA2,
+		alpha = ALPHA2,
+		kappa = 1)
+	
+	F_T1_T2 = apply(smart_df(F1,F2),1,function(xx){
+		calc_copula(F1 = xx[1],F2 = xx[2],
+			copula = COPULA,THETA = THETA)
+	})
+	
+	out = smart_df(time = TT,
+		F1 = F1,F2 = F2,
+		D1 = D1,D2 = D2,F_T1_T2 = F_T1_T2)
+	
+	out$D1_D2 = apply(out[,c("D1","D2","F1","F2","F_T1_T2")],
+		1,function(xx){
+		calc_copula_offset(D1 = xx[1],D2 = xx[2],
+			F1 = xx[3],F2 = xx[4],copula = COPULA,
+			THETA = THETA,F_T1_T2 = xx[5])
+	})
+	
+	out$mDENS = out$D1 + out$D2 - out$D1_D2
+	
+	ymax = unique(c(out$D1,out$D2,out$mDENS))
+	ymax = quantile(ymax,0.99) * 1.2
+	
+	par(mfrow = c(2,1),mar = c(5,4,0.5,0.5))
+	plot(out$time,out$mDENS,
+		xlab = "Event Time",
+		ylab = "Mixture Density",
+		type = "l",ylim = c(0,ymax),
+		col = "magenta",lwd = 3,lty = 2)
+	lines(out$time,out$D1,
+		col = "red",lwd = 3,lty = 3)
+		abline(v = LAMBDA1,lty = 2,col = "red")
+	lines(out$time,out$D2,
+		col = "blue",lwd = 3,lty = 3)
+		abline(v = LAMBDA2,lty = 2,col = "blue")
+	
+	out2 = out[which(out$time > min(out$time)),]
+	out2$AD = abs(out2$F1 - out2$F2)
+	head(out2)
+	idx = which(out2$AD == min(out2$AD))
+	int_tt = out2$time[idx]
+	int_tt
+	#abline(v = int_tt,lwd = 1,lty = 3)
+	
+	plot(out$time,out$F1,ylim = c(0,1),
+		xlab = "Event Time",
+		ylab = "CDF",col = "red",
+		type = "l",lwd = 3,lty = 3)
+	lines(out$time,out$F2,
+		col = "blue",lwd = 3,lty = 3)
+	lines(out$time,out$F_T1_T2,
+		col = "magenta",lwd = 3,lty = 2)
+	#abline(v = int_tt,lwd = 1,lty = 3)
+	par(mfrow = c(1,1),mar = c(5,4,4,2) + 0.1)
+	
+	return(out)
+	
+}
 
 ###

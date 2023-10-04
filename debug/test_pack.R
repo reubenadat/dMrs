@@ -239,7 +239,7 @@ NN = c(500,1000,2000)
 # Running code example
 # ----------
 
-if(FALSE){
+if( FALSE ){
 
 ALP = 2
 LAM = 5
@@ -248,15 +248,15 @@ PDF = dweibull(x = tt,shape = ALP,scale = LAM)
 plot(tt,PDF,type = "l")
 
 }
-if(FALSE){ 		# Purposely shape bathtub
+if( FALSE ){ 		# Purposely shape bathtub
 
 NN = 5e3
 LAMs = 12
 tt = seq(0.1,max(LAMs)*3,length.out = NN)
 
 ALPs = c(0.1,0.5,1,1.5)
-	# ALPs = ALPs[ALPs > 1]
-	ALPs = ALPs[ALPs < 1]
+	ALPs = ALPs[ALPs >= 1]
+	# ALPs = ALPs[ALPs < 1]
 	# ALPs = ALPs[ALPs == 1]
 KAPs = c(0.1,0.5,0.8,1,3,5)
 	# KAPs = KAPs[KAPs > 1]
@@ -290,7 +290,8 @@ for(ee in seq(len)){
 	if( ee == 1 ){
 		# max_yy = quantile(c(HH),0.95)
 		plot(tt,HH[,ee],col = vec_colors[ee],
-			ylim = c(0,1),type = "l",lwd = LWD)
+			ylim = c(0,1),type = "l",lwd = LWD,
+			xlab = "Time",ylab = "Hazard")
 	} else {
 		lines(tt,HH[,ee],col = vec_colors[ee],
 			lwd = LWD)
@@ -313,19 +314,33 @@ if( TRUE ){ 	# Specify parameters/arguments
 
 COPULAS = c("Independent","Clayton","Gumbel")
 DISTs	= c("weibull","expweibull")
-tCOPULA = COPULAS[1]
+tCOPULA = COPULAS[3]
 tDIST 	= DISTs[2]
 NN 		= 5e3
 theta 	= ifelse(tCOPULA == "Independent",0,5)
 if( tCOPULA == "Clayton" && theta < 0 ) stop("theta issue")
 if( tCOPULA == "Gumbel" && theta < 1 ) stop("theta issue")
 alpha1 	= 1.2
-lambda1 = 12
-kappa1 	= ifelse(tDIST == "weibull",1,0.5)
+lambda1 = 11
+kappa1 	= ifelse(tDIST == "weibull",1,0.75)
 alpha2 	= 3
 # ALPHA: if < 1, events happen early
 #		 if > 1, events happen later
-lambda2 = 9
+lambda2 = 8
+
+aa = mix_dens(COPULA = tCOPULA,ALPHA1 = alpha1,
+	LAMBDA1 = lambda1,KAPPA1 = kappa1,
+	ALPHA2 = alpha2,LAMBDA2 = lambda2,
+	THETA = theta)
+# aa = mix_dens(COPULA = tCOPULA,ALPHA1 = alpha1,
+	# LAMBDA1 = lambda1,KAPPA1 = kappa1,
+	# ALPHA2 = alpha2,LAMBDA2 = lambda2,
+	# THETA = 1.1)
+# aa = mix_dens(COPULA = tCOPULA,ALPHA1 = alpha1,
+	# LAMBDA1 = lambda1,KAPPA1 = kappa1,
+	# ALPHA2 = alpha2,LAMBDA2 = lambda2,
+	# THETA = 3e2)
+
 propC 	= 0.2
 uPARS = log(c(alpha1,lambda1,kappa1,theta))
 if( tCOPULA == "Gumbel" ) uPARS[4] = log(theta - 1)
@@ -355,15 +370,6 @@ aa = calc_CDFs(DATA = one_rep$DATA,
 	PARS = TRUTH$uPARS,COPULA = TRUTH$COPULA)
 # head(aa)
 
-print(table(D = one_rep$DATA$D,Delta = one_rep$DATA$delta))
-
-# check num obs events
-GROUP = bin_cont_var(VAR = one_rep$DATA$time,
-	NUM_GROUPS = 4,binNUM = TRUE); # smart_table(GROUP)
-print(smart_table(D = one_rep$DATA$D[one_rep$DATA$delta==1],
-	G = GROUP[one_rep$DATA$delta==1]))
-
-
 }
 if( FALSE ){ 	# Optimize
 
@@ -373,7 +379,7 @@ one_rep$PARAMS
 len1 = 10
 len2 = 20
 A_range = c(0.5,2)
-L_range = exp(quantile(log(one_rep$DATA$time),c(0.65,0.95)))
+L_range = exp(quantile(log(one_rep$DATA$time),c(0.75,1)))
 K_range = c(0.5,2)
 T_range = c(1,10)
 
@@ -395,10 +401,10 @@ run_ana = run_analyses(
 	# upKAPPA = upKAPPA,
 	param_grid = param_grid,
 	verb = TRUE,PLOT = TRUE)
-length(run_ana)
-
-OO = opt_sum(OPT = run_ana); OO
-print(TRUTH)
+if( length(run_ana) > 0 ){
+	OO = opt_sum(OPT = run_ana); print(OO)
+	print(TRUTH)
+}
 
 # Check survival
 plot_SURVs(run_ANA = run_ana,
@@ -435,10 +441,10 @@ if( TRUE ){ 	# Test optimization
 
 my_dirs$rep_dir = file.path(my_dirs$curr_dir,"REPS")
 
-tCOPULA 	= c("Independent","Clayton","Gumbel")[2]
+tCOPULA 	= c("Independent","Clayton","Gumbel")[1]
 tDIST		= c("weibull","expweibull")[2]
-rr 			= 484
-NN			= 5e3
+rr 			= 210
+NN			= c(5e3,1e4,2e4)[1]
 
 repCDN_dir = file.path(my_dirs$rep_dir,
 	sprintf("C.%s_D.%s",tCOPULA,tDIST))
@@ -449,6 +455,12 @@ one_rep$DATA = one_rep$DATA[seq(NN),]
 smart_table(D = one_rep$DATA$D,Delta = one_rep$DATA$delta)
 one_rep$PARAMS
 
+# check num obs events
+GROUP = bin_cont_var(VAR = one_rep$DATA$time,
+	NUM_GROUPS = 5,binNUM = TRUE); # smart_table(GROUP)
+print(smart_table(D = one_rep$DATA$D[one_rep$DATA$delta==1],
+	G = GROUP[one_rep$DATA$delta==1]))
+
 uPARS = get_uPARS(PARAMS = one_rep$PARAMS)
 uPARS
 
@@ -456,11 +468,11 @@ aa = calc_CDFs(DATA = one_rep$DATA,
 	PARS = uPARS,COPULA = tCOPULA)
 head(aa)
 
-len1 = 5
-len2 = 10
+len1 = 15
+len2 = 25
 A_range = c(0.5,2)
 L_range = exp(quantile(log(one_rep$DATA$time),c(0.75,1)))
-K_range = c(0.5,2)
+K_range = c(0.3,2)
 T_range = c(1,10)
 
 # Less fine grid for alpha/lambda
@@ -492,15 +504,19 @@ if( length(run_ana) > 0 ){
 
 solu = which(OO$COPULA == tCOPULA & OO$DIST == tDIST); solu
 solu = 1
-GRID = smart_df(run_ana[[solu]]$RES$GRID); # head(GRID)
+GRID = smart_df(run_ana[[solu]]$RES$GRID); head(GRID)
+GRID = GRID[which(GRID$unc_kappa1 < -0.2),]
+dim(GRID)
 out = get_PROFILE(GRID = GRID,
 	COPULA = run_ana[[solu]]$copula,
 	PLOT = TRUE)
 run_ana[[solu]]$RES$cout
+run_ana[[solu]]$RES$GOPT_PRE
 
 # Check distribution of copula, any precision problems
 aa = calc_CDFs(DATA = one_rep$DATA,
 	PARS = run_ana[[solu]]$RES$out$EST,
+	# PARS = as.numeric(run_ana[[solu]]$RES$GOPT_PRE[3,1:4]),
 	COPULA = COPULA)
 head(aa)
 smart_table(aa$CDF_1 %in% c(0,1))
@@ -509,162 +525,77 @@ smart_table(aa$F_T1_T2 == 0)
 smart_table(aa$D1_D2 == 0)
 smart_hist(aa$D1_D2)
 
-# Plot survival curves
+## Double check cdf calculation
+aa[which(aa$CDF_1 == 0),][1:20,]
+ii = 1
+tt = aa$time[ii]
+
+pexpweibull(q = tt,
+	lambda = run_ana[[solu]]$RES$cout$EST[2],
+	alpha = run_ana[[solu]]$RES$cout$EST[1],
+	kappa = run_ana[[solu]]$RES$cout$EST[3])
+
+calc_expweibull_CDF_PDF(XX = tt,
+	LAM = run_ana[[solu]]$RES$cout$EST[2],
+	ALP = run_ana[[solu]]$RES$cout$EST[1],
+	KAP = run_ana[[solu]]$RES$cout$EST[3])
+
+## Double check cdf calculation
+aa[which(aa$CDF_2 == 0),]#[1:20,]
+ii = 1074
+tt = aa$time[ii]
+one_rep$PARAMS
+
+pexpweibull(q = tt,
+	lambda = one_rep$PARAMS$lambda2,
+	alpha = one_rep$PARAMS$alpha2,
+	kappa = 1)
+
+calc_expweibull_CDF_PDF(XX = tt,
+	LAM = one_rep$PARAMS$lambda2,
+	ALP = one_rep$PARAMS$alpha2,
+	KAP = 1)
+
+# Test grids
+one_rep$PARAMS
+len1 = 25
+len2 = len1
+A_range = c(1,1.5)
+L_range = exp(quantile(log(one_rep$DATA$time),c(0.75,1)))
+K_range = c(0.3,0.8)
+T_range = c(1,10)
+A_ugrid = log(seq(A_range[1],A_range[2],length.out = len1))
+L_ugrid = log(seq(L_range[1],L_range[2],length.out = len1))
+K_ugrid = log(seq(K_range[1],K_range[2],length.out = len2))
+T_ugrid = log(seq(T_range[1],T_range[2],length.out = len2))
+
+param_grid = list(A = A_ugrid,
+	L = L_ugrid,K = K_ugrid,T = T_ugrid)
+# param_grid
+prod(sapply(param_grid,length))
+
+out = run_GRID_PROF(DATA = one_rep$DATA,COPULA = tCOPULA,
+	DIST = tDIST,param_grid = param_grid)
+out2 = get_PROFILE(
+	# GRID = out$GRID,
+	GRID = out$GRID[which(out$GRID$log_alpha1 >= 0.12
+		& out$GRID$log_alpha1 <= 0.24
+		& out$GRID$log_lambda1 >= 2.3),],
+	COPULA = tCOPULA,PLOT = TRUE)
+
+upPARS = c(1,1,1,0)
+uPARS = as.numeric(out$GPROF[2,1:4]); uPARS
+wrap_NR(DATA = one_rep$DATA,
+	PARS = uPARS,
+	COPULA = tCOPULA,
+	upPARS = upPARS,
+	mult = 1,
+	verb = TRUE)
+
+# Plot survival curves, check that they're smooth and make sense, no skips
 plot_SURVs(run_ANA = run_ana,
 	MULTIPLE = TRUE,ALPHA = 0.4)
 
-# Check gradient
-uPARS = c(0.174083, 1.36877, 0, 5.72699)
-upPARS = c(1,1,0,1)
-# uPARS = wrap_NR(DATA = one_rep$DATA,PARS = uPARS,
-	# COPULA = COPULA,upPARS = upPARS,mult = 5,
-	# verb = TRUE); uPARS
-aa = calc_CDFs(DATA = one_rep$DATA,
-	PARS = uPARS,COPULA = COPULA)
-head(aa)
-smart_table(aa$CDF_2 %in% c(0,1))
-
-stop("Double check how CDF and PDF copula are calculated, see if existing function exists")
-if(FALSE){ # Check Gumbel
-
-THETA = exp(uPARS[4]) + ifelse(tCOPULA == "Gumbel",1,0); THETA
-ALPHA = exp(uPARS[1])
-LAMBDA = exp(uPARS[2])
-
-ALPHA_2 = 1.6; LAMBDA_2 = 5
-
-
-
-head(aa[order(-aa$D2),])
-
-tt = seq(0,100)
-PDF = dweibull(x = tt,scale = LAMBDA,shape = ALPHA)
-plot(tt,PDF,type = "l")
-
-ii = 3
-tt = one_rep$DATA$time[ii]
-F1 = aa$CDF_1[ii]; #F1
-F2 = aa$CDF_2[ii]; #F2
-F_T1_T2 = aa$F_T1_T2[ii]; F_T1_T2
-	# Use copula package functions to check calculation of copula CDF
-	library(copula)
-	# tmp_copula = gumbelCopula(param = THETA,dim = 2)
-	tmp_copula = claytonCopula(param = THETA,dim = 2)
-	bvd = mvdc(copula = tmp_copula,
-		margins = c("weibull","weibull"),
-		paramMargins = list(
-			list(shape = ALPHA,scale = LAMBDA),
-			list(shape = ALPHA_2,scale = LAMBDA_2))
-		)
-	pMvdc(x = c(tt,tt),mvdc = bvd) # we're good!!!
-
-D1 = aa$D1[ii]; D1
-D2 = aa$D2[ii]; D2
-nlog_F1 = -log(F1)
-nlog_F2 = -log(F2)
-# D1_D2 = F_T1_T2 * 
-	# ( (nlog_F1)^THETA + (nlog_F2)^THETA )^(1/THETA-1) *
-	# ( (nlog_F1)^(THETA-1) * D1/F1 + (nlog_F2)^(THETA-1) * D2/F2 ); D1_D2
-# log_D1_D2 = log(F_T1_T2) +
-	# (1/THETA-1) * log( (nlog_F1)^THETA + (nlog_F2)^THETA ) +
-	# log( (nlog_F1)^(THETA-1) * D1/F1 + (nlog_F2)^(THETA-1) * D2/F2 )
-	# exp(log_D1_D2)
-D1_D2 = aa$D1_D2[ii]; D1_D2
-	dMvdc(x = c(tt,tt),mvdc = bvd)
-	stop("The PDF of Gumbel")
-	
-	pweibull(q = tt,shape = ALPHA,scale = LAMBDA)
-	
-
-ALPHA2 = 1.6
-LAMBDA2 = 5
-D2 = dweibull(x = one_rep$DATA$time[ii],
-	shape = ALPHA2,scale = LAMBDA2); D2
-F2 = pweibull(q = one_rep$DATA$time[ii],
-	shape = ALPHA2,scale = LAMBDA2); F2
-one_rep$DATA[ii,]
-
-}
-
-
-smart_table(aa$CDF_1 %in% c(0,1))
-smart_table(aa$F_T1_T2 %in% c(0,1))
-smart_table(aa$D1 %in% c(0,1))
-smart_table(aa$D1_D2 %in% c(0,1))
-
-old_LL = wrapper_LL(DATA = one_rep$DATA,
-	PARS = uPARS,COPULA = COPULA,verb = TRUE); old_LL
-GRAD = wrapper_GRAD(DATA = one_rep$DATA,
-	PARS = uPARS,COPULA = COPULA,
-	upPARS = upPARS); GRAD
-tGRAD = rep(0,4)
-# ij = which(abs(GRAD) == max(abs(GRAD))); ij
-ij = 4
-tGRAD[ij] = GRAD[ij]
-tGRAD = GRAD
-
-for(cc in seq(0,40)){
-	new_PARS = uPARS + 1/4^cc * tGRAD
-	new_LL = wrapper_LL(DATA = one_rep$DATA,
-		PARS = new_PARS,COPULA = COPULA,
-		verb = TRUE); new_LL
-	if( new_LL == -999 ) next
-	
-	if( new_LL > old_LL ){
-		print("update")
-		uPARS = new_PARS
-		cat(sprintf("diff_LL = %s\n",new_LL - old_LL))
-		break
-	}
-	
-}
-cc
-
-
-shift = c(1e-5,5e-6,1e-6,1e-9,1e-11)[3]
-tGRAD = rep(NA,4)
-
-for(ij in seq(4)){
-	# ij = 1
-	if( upPARS[ij] == 0 ){
-		tGRAD[ij] = 0
-		next
-	}
-	new_PARS = uPARS
-	new_PARS[ij] = uPARS[ij] + shift
-	old_LL = wrapper_LL(DATA = one_rep$DATA,
-		PARS = uPARS,COPULA = COPULA,verb = TRUE)
-	new_LL = wrapper_LL(DATA = one_rep$DATA,
-		PARS = new_PARS,COPULA = COPULA,verb = TRUE)
-	tGRAD[ij] = (new_LL - old_LL) / shift
-}
-tGRAD
-Rcpp_norm(tGRAD)
-
-# Precision problem
-XX = 1e-3
-LAM = 5
-ALP = 3
-
-PL_log_CDF = function(XX,LAM,ALP){
-	
-	XDL = XX / LAM; XDL
-	# exp(XDL^ALP)
-	F1 = 1 - exp(-XDL^ALP); F1
-	
-	if( F1 <= 1e-10 ){
-		log_F1 = ALP * log(XDL) + log(1 - 0.5 * XDL^ALP)
-	} else {
-		log_F1 = log(F1)
-	}
-	
-	log_F1
-	return(log_F1)
-	
-}
-
-pweibull(q = XX,shape = ALP,scale = LAM,log.p = TRUE)
-PL_log_CDF(XX = XX,LAM = LAM,ALP = ALP)
 
 
 }

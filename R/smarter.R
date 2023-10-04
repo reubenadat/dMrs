@@ -190,6 +190,48 @@ make_menu = function(PROMPT,OPTS){
 chk_int_vec = function(xx){
 	is(xx,"numeric") && all(xx == round(xx))
 }
+bin_cont_var = function(VAR,NUM_GROUPS,
+	ROUND = 3,binNUM = FALSE){
+	
+	my_quantiles = as.numeric(quantile(x = VAR,
+		probs = seq(NUM_GROUPS - 1) / NUM_GROUPS,
+		na.rm = TRUE))
+	
+	out_VAR = rep(NA,length(VAR))
+	for(ii in seq(NUM_GROUPS)){
+		if( ii == 1 ){
+			if( binNUM ){
+				out_VAR[which(VAR <= my_quantiles[ii])] = ii
+			} else {
+				out_VAR[which(VAR <= my_quantiles[ii])] = paste0(ii,
+					") ",round(min(VAR,na.rm = TRUE),ROUND),
+					"-",round(my_quantiles[ii],ROUND))
+			}
+		} else if( ii == NUM_GROUPS ){
+			if( binNUM ){
+				out_VAR[which(VAR > my_quantiles[ii-1])] = ii
+			} else {
+				out_VAR[which(VAR > my_quantiles[ii-1])] = paste0(ii,
+					") ",round(my_quantiles[ii-1],ROUND),
+					"-",round(max(VAR,na.rm = TRUE),ROUND))
+			}
+		} else {
+			if( binNUM ){
+				out_VAR[which(VAR > my_quantiles[ii-1] 
+					& VAR <= my_quantiles[ii])] = ii
+			} else {
+				out_VAR[which(VAR > my_quantiles[ii-1] 
+					& VAR <= my_quantiles[ii])] = paste0(ii,
+					") ",round(my_quantiles[ii-1],ROUND),
+					"-",round(my_quantiles[ii],ROUND))
+			}
+		}
+	}
+	
+	if( binNUM ) out_VAR = as.character(out_VAR)
+	
+	out_VAR
+}
 
 ###
 

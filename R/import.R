@@ -3,7 +3,7 @@
 #'	quantile sd qweibull qnorm
 #' @importFrom graphics par hist abline mtext legend
 #'	image lines smoothScatter points
-#' @importFrom grDevices pdf dev.off
+#' @importFrom grDevices pdf dev.off rgb
 #' @importFrom gplots colorpanel
 #' @importFrom ggplot2 ggplot aes geom_hline geom_vline
 #'	geom_tile coord_cartesian scale_x_continuous geom_text

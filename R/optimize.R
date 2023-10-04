@@ -244,12 +244,13 @@ wrapper_HESS = function(DATA,PARS,COPULA,upPARS){
 }
 	
 
-wrap_NR = function(DATA,PARS,COPULA,upPARS,mult = 5,verb = TRUE){
+wrap_NR = function(DATA,PARS,COPULA,upPARS,
+	max_iter = 2e2,mult = 5,verb = TRUE){
 	
 	dMrs_NR(XX = DATA$time,DELTA = DATA$delta,
 		D2 = DATA$dens_t2,S2 = DATA$surv_t2,
 		PARS = PARS,copula = COPULA,upPARS = upPARS,
-		max_iter = 2e2,eps = 5e-2,mult = mult,
+		max_iter = max_iter,eps = 5e-2,mult = mult,
 		verb = verb)
 	
 	out_PARS = PARS
@@ -257,6 +258,70 @@ wrap_NR = function(DATA,PARS,COPULA,upPARS,mult = 5,verb = TRUE){
 	
 }
 
+run_GRID_PROF = function(DATA,COPULA,DIST,
+	param_grid,PLOT = TRUE,verb = TRUE,ncores = 1){
+	
+	if( COPULA == "Independent" )
+		param_grid$T = -Inf
+	
+	if( DIST == "weibull" )
+		param_grid$K = 0
+	
+	if( verb ) cat(sprintf("%s: Start GRID\n",date()))
+	gout = dMrs_GRID(XX = DATA$time,DELTA = DATA$delta,
+		D2 = DATA$dens_t2,S2 = DATA$surv_t2,
+		log_ALPHA = param_grid$A,log_LAMBDA = param_grid$L,
+		unc_KAPPA = param_grid$K,log_THETA = param_grid$T,
+		copula = COPULA,verb = verb,ncores = ncores)
+	if( verb ) cat(sprintf("%s: End GRID\n",date()))
+	
+	# str(gout)
+	colnames(gout) = c("log_alpha1","log_lambda1",
+		"unc_kappa1","log_theta","LL")
+	gout = smart_df(gout)
+	dim(gout); head(gout)
+	gout = gout[which(gout[,"LL"] != -999),,drop = FALSE]
+	dim(gout)
+	gout[1:5,]
+	chk_NA = any(is.na(gout[,"LL"])); chk_NA
+	if( chk_NA ){
+		stop("NAs in LL grid, debug this")
+		smart_table(!is.na(gout[,"LL"]))
+		gout[is.na(gout[,"LL"]),]
+		
+		iPARS = c(-0.1,2.6,2.9,2.9)
+		
+		# Rcpp function
+		dMrs_cLL(XX = DATA$time,DELTA = DATA$delta,
+			D2 = DATA$dens_t2,S2 = DATA$surv_t2,
+			PARS = iPARS,copula = COPULA,
+			verb = TRUE)
+		
+		# R function
+		ref_LL_cpp(DATA = DATA,PARS = iPARS,COPULA = COPULA)
+		
+		ref_LL(DATA = DATA,PARS = iPARS,COPULA = COPULA)
+		
+	}
+	
+	if( nrow(gout) == 0 ){
+		if( verb ) cat(sprintf("%s: No valid grid points! ...\n",date()))
+		return(list(GRID = gout,GPROF = NULL,GOPT = NULL,
+			GOPT_PRE = NULL,out = NULL,cout = NULL,
+			LL = NULL,GRAD = NULL,HESS = NULL,COVAR = NULL))
+	}
+	
+	gprof = get_PROFILE(GRID = gout,
+		COPULA = COPULA,PLOT = PLOT)
+	gprof
+	
+	out = list(GRID = gout,GPROF = gprof,GOPT = NULL,
+		GOPT_PRE = NULL,out = NULL,cout = NULL,
+		LL = NULL,GRAD = NULL,HESS = NULL,COVAR = NULL)
+	
+	return(out)
+	
+}
 opt_replicate = function(DATA,COPULA,param_grid,theta,
 	upKAPPA,ncores = 1,gTHRES = 1e-1,max_iter = 2e2,verb,PLOT){
 
