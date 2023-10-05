@@ -251,14 +251,14 @@ plot(tt,PDF,type = "l")
 if( FALSE ){ 		# Purposely shape bathtub
 
 NN = 5e3
-LAMs = 12
+LAMs = c(5,11)
 tt = seq(0.1,max(LAMs)*3,length.out = NN)
 
-ALPs = c(0.1,0.5,1,1.5)
-	ALPs = ALPs[ALPs >= 1]
+ALPs = c(0.1,0.5,1,1.5,6)
+	ALPs = ALPs[ALPs > 1]
 	# ALPs = ALPs[ALPs < 1]
-	# ALPs = ALPs[ALPs == 1]
-KAPs = c(0.1,0.5,0.8,1,3,5)
+	# ALPs = ALPs[ALPs == 6]
+KAPs = c(0.5,1,3,5)
 	# KAPs = KAPs[KAPs > 1]
 	KAPs = KAPs[KAPs <= 1]
 	# KAPs = KAPs[KAPs == 1]
@@ -266,6 +266,8 @@ KAPs = c(0.1,0.5,0.8,1,3,5)
 len = length(ALPs) * length(LAMs) * length(KAPs)
 HH = matrix(NA,nrow = NN,ncol = len)
 colnames(HH) = seq(len)
+DE = matrix(NA,nrow = NN,ncol = len)
+colnames(DE) = seq(len)
 
 ee = 1
 for(ALP in ALPs){
@@ -277,31 +279,52 @@ for(KAP in KAPs){
 	pp = pexpweibull(q = tt,lambda = LAM,
 		alpha = ALP,kappa = KAP,log.p = FALSE)
 	hh = exp(log_dd - log(1 - pp)) # hazard = dens / surv
+	
 	HH[,ee] = hh
 	colnames(HH)[ee] = sprintf("ALP=%s;LAM=%s;KAP=%s",ALP,LAM,KAP)
+	
+	DE[,ee] = exp(log_dd)
+	colnames(DE)[ee] = sprintf("ALP=%s;LAM=%s;KAP=%s",ALP,LAM,KAP)
+	
 	ee = ee + 1
 	
 }}}
 
 LWD = 5
 vec_colors = smart_colors(len)
+par(mfrow = c(2,1),mar = c(5,4,0.5,0.5))
+for(kk in c("HH","DE")){
 for(ee in seq(len)){
 	# ee = 1
 	if( ee == 1 ){
 		# max_yy = quantile(c(HH),0.95)
-		plot(tt,HH[,ee],col = vec_colors[ee],
-			ylim = c(0,1),type = "l",lwd = LWD,
-			xlab = "Time",ylab = "Hazard")
+		if( kk == "HH" ){
+			plot(tt,HH[,ee],col = vec_colors[ee],
+				ylim = c(0,1),type = "l",lwd = LWD,
+				xlab = "Time",ylab = "Hazard")
+		} else {
+			ymax = unique(c(DE))
+			ymax = quantile(ymax,0.99)*1.5
+			plot(tt,DE[,ee],col = vec_colors[ee],
+				ylim = c(0,ymax),type = "l",lwd = LWD,
+				xlab = "Time",ylab = "Density")
+		}
+		legend("right",legend = colnames(HH),
+			pch = rep(16,len),col = vec_colors,
+			pt.cex = rep(2,len),cex = 0.75,bty = "n")
+		abline(v = LAMs,lty = 2)
+		
 	} else {
-		lines(tt,HH[,ee],col = vec_colors[ee],
-			lwd = LWD)
+		if( kk == "HH" ){
+			lines(tt,HH[,ee],col = vec_colors[ee],
+				lwd = LWD)
+		} else {
+			lines(tt,DE[,ee],col = vec_colors[ee],
+				lwd = LWD)
+		}
 	}
-}
-
-legend("right",legend = colnames(HH),
-	pch = rep(16,len),col = vec_colors,
-	pt.cex = rep(2,len),cex = 0.75,bty = "n")
-abline(v = LAMs,lty = 2)
+}}
+par(mfrow = c(1,1),mar = c(5,4,4,2)+0.1)
 
 # Takeaways to note:
 #	To estimate kappa 'well', individuals from the 
@@ -315,15 +338,15 @@ if( TRUE ){ 	# Specify parameters/arguments
 COPULAS = c("Independent","Clayton","Gumbel")
 DISTs	= c("weibull","expweibull")
 tCOPULA = COPULAS[3]
-tDIST 	= DISTs[2]
+tDIST 	= DISTs[1]
 NN 		= 5e3
 theta 	= ifelse(tCOPULA == "Independent",0,5)
 if( tCOPULA == "Clayton" && theta < 0 ) stop("theta issue")
 if( tCOPULA == "Gumbel" && theta < 1 ) stop("theta issue")
-alpha1 	= 1.2
+alpha1 	= 1.5
 lambda1 = 11
-kappa1 	= ifelse(tDIST == "weibull",1,0.75)
-alpha2 	= 3
+kappa1 	= ifelse(tDIST == "weibull",1,0.5)
+alpha2 	= 8
 # ALPHA: if < 1, events happen early
 #		 if > 1, events happen later
 lambda2 = 8
@@ -332,6 +355,7 @@ aa = mix_dens(COPULA = tCOPULA,ALPHA1 = alpha1,
 	LAMBDA1 = lambda1,KAPPA1 = kappa1,
 	ALPHA2 = alpha2,LAMBDA2 = lambda2,
 	THETA = theta)
+
 # aa = mix_dens(COPULA = tCOPULA,ALPHA1 = alpha1,
 	# LAMBDA1 = lambda1,KAPPA1 = kappa1,
 	# ALPHA2 = alpha2,LAMBDA2 = lambda2,
@@ -403,7 +427,7 @@ run_ana = run_analyses(
 	verb = TRUE,PLOT = TRUE)
 if( length(run_ana) > 0 ){
 	OO = opt_sum(OPT = run_ana); print(OO)
-	print(TRUTH)
+	# print(TRUTH)
 }
 
 # Check survival
@@ -443,7 +467,7 @@ my_dirs$rep_dir = file.path(my_dirs$curr_dir,"REPS")
 
 tCOPULA 	= c("Independent","Clayton","Gumbel")[1]
 tDIST		= c("weibull","expweibull")[2]
-rr 			= 210
+rr 			= 109
 NN			= c(5e3,1e4,2e4)[1]
 
 repCDN_dir = file.path(my_dirs$rep_dir,
@@ -452,14 +476,7 @@ repCDN_dir = file.path(my_dirs$rep_dir,
 rds_fn = file.path(repCDN_dir,sprintf("R.%s.rds",rr))
 one_rep = readRDS(rds_fn)
 one_rep$DATA = one_rep$DATA[seq(NN),]
-smart_table(D = one_rep$DATA$D,Delta = one_rep$DATA$delta)
 one_rep$PARAMS
-
-# check num obs events
-GROUP = bin_cont_var(VAR = one_rep$DATA$time,
-	NUM_GROUPS = 5,binNUM = TRUE); # smart_table(GROUP)
-print(smart_table(D = one_rep$DATA$D[one_rep$DATA$delta==1],
-	G = GROUP[one_rep$DATA$delta==1]))
 
 uPARS = get_uPARS(PARAMS = one_rep$PARAMS)
 uPARS

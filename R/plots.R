@@ -297,7 +297,7 @@ calc_CDFs = function(DATA,PARS,COPULA){
 	dim(DATA); head(DATA)
 	
 	# Plot
-	par(mfrow = c(3,3),mar = c(4.4,4.4,2,0.5))
+	par(mfrow = c(3,3),mar = c(4.4,4.4,0.5,0.5))
 	# hist(DATA$CDF_1,main = "",xlab = "F1",
 		# breaks = 20,xlim = c(0,1))
 	
@@ -360,17 +360,26 @@ calc_CDFs = function(DATA,PARS,COPULA){
 		tmp = hist(DATA$time[DATA$delta == 1],
 			breaks = 40,plot = FALSE)
 		tmp_rr = range(DATA$time[DATA$delta == 1])
+		
+		tmp_hh1 = hist(DATA$time[DATA$delta == 1 & DATA$D == 1],
+			breaks = 40,plot = FALSE)
+		tmp_hh2 = hist(DATA$time[DATA$delta == 1 & DATA$D == 0],
+			breaks = 40,plot = FALSE)
+		ymax = max(c(tmp_hh1$counts,tmp_hh2$counts))
+		
 		hist(DATA$time[DATA$delta == 1 & DATA$D == 1],
 			col = rgb(1,0,0,0.5),breaks = 40,main = "",
-			xlab = "Obs Time",ylim = c(0,max(tmp$counts)),
+			xlab = "Obs Time",ylim = c(0,ymax),
 			xlim = tmp_rr)
 		hist(DATA$time[DATA$delta == 1 & DATA$D == 0],
 			col = rgb(0,0,1,0.5),breaks = 40,add = TRUE)
 		
+		par(mar = c(5,4,2,0.5))
 		smoothScatter(log(1 + DATA[,c("T1","T2")]),
-			xlab = "log(1 + Time1)",
-			ylab = "log(1 + Time2)",
-			main = sprintf("Copula=%s,\nTheta=%s",COPULA,round(THETA,3)))
+			xlab = "log(1 + Time1)",ylab = "log(1 + Time2)",
+			main = sprintf("Copula=%s,\nTheta=%s",COPULA,round(THETA,3)),
+			cex.main = 1)
+		abline(a = 0,b = 1,lty = 2)
 	}
 	
 	par(mfrow = c(1,1),mar = c(5,4,4,2) + 0.1)
