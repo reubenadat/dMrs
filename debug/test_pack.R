@@ -337,8 +337,8 @@ if( TRUE ){ 	# Specify parameters/arguments
 
 COPULAS = c("Independent","Clayton","Gumbel")
 DISTs	= c("weibull","expweibull")
-tCOPULA = COPULAS[3]
-tDIST 	= DISTs[1]
+tCOPULA = COPULAS[1]
+tDIST 	= DISTs[2]
 NN 		= 5e3
 theta 	= ifelse(tCOPULA == "Independent",0,5)
 if( tCOPULA == "Clayton" && theta < 0 ) stop("theta issue")
@@ -421,7 +421,7 @@ nGRID = prod(sapply(param_grid,length)); nGRID
 
 run_ana = run_analyses(
 	DATA = one_rep$DATA,
-	COPULAS = tCOPULA,
+	# COPULAS = tCOPULA,
 	# upKAPPA = upKAPPA,
 	param_grid = param_grid,
 	verb = TRUE,PLOT = TRUE)
@@ -467,7 +467,7 @@ my_dirs$rep_dir = file.path(my_dirs$curr_dir,"REPS")
 
 tCOPULA 	= c("Independent","Clayton","Gumbel")[1]
 tDIST		= c("weibull","expweibull")[2]
-rr 			= 109
+rr 			= c(27,168)[2]
 NN			= c(5e3,1e4,2e4)[1]
 
 repCDN_dir = file.path(my_dirs$rep_dir,
@@ -483,26 +483,38 @@ uPARS
 
 aa = calc_CDFs(DATA = one_rep$DATA,
 	PARS = uPARS,COPULA = tCOPULA)
-head(aa)
+# head(aa)
 
-len1 = 15
-len2 = 25
-A_range = c(0.5,2)
-L_range = exp(quantile(log(one_rep$DATA$time),c(0.75,1)))
-K_range = c(0.3,2)
-T_range = c(1,10)
+if(FALSE){ # Check precision of event time 2
 
-# Less fine grid for alpha/lambda
-A_ugrid = log(seq(A_range[1],A_range[2],length.out = len1))
-L_ugrid = log(seq(L_range[1],L_range[2],length.out = len1))
-# Finer grid for kappa/theta
-K_ugrid = log(seq(K_range[1],K_range[2],length.out = len2))
-T_ugrid = log(seq(T_range[1],T_range[2],length.out = len2))
+idx = aa$CDF_2 %in% c(0,1)
+table(idx)
+hist(aa$time[which(idx)])
+aa[idx,][1:3,]
 
-param_grid = list(A = A_ugrid,
-	L = L_ugrid,K = K_ugrid,T = T_ugrid)
-# param_grid
-prod(sapply(param_grid,length))
+ii = which(idx)[1]; ii
+aa[ii,]
+
+# Calculate survival
+one_rep$PARAMS
+CDF = pweibull(q = aa$time[ii],
+	shape = one_rep$PARAMS$alpha2,
+	scale = one_rep$PARAMS$lambda2); CDF
+SURV = 1 - CDF; SURV # precision problem here
+
+pweibull(q = aa$time[ii],
+	shape = one_rep$PARAMS$alpha2,
+	scale = one_rep$PARAMS$lambda2,
+	lower.tail = FALSE,log.p = TRUE)
+
+
+}
+
+# Param grid
+param_grid = gen_paramGrid(DATA = one_rep$DATA,
+	A = NULL,
+	L = NULL,
+	K = NULL,T = NULL)
 
 # Estimate assuming truth known
 COPULA	= c(tCOPULA,"Independent","Clayton","Gumbel")[1]
@@ -511,7 +523,7 @@ DIST 	= c(tDIST,"weibull","expweibull")[1]
 run_ana = run_analyses(
 	DATA = one_rep$DATA,
 	COPULAS = COPULA,
-	# upKAPPA = ifelse(DIST == "weibull",0,1),
+	upKAPPA = ifelse(DIST == "weibull",0,1),
 	param_grid = param_grid,
 	verb = TRUE)
 if( length(run_ana) > 0 ){
@@ -573,35 +585,10 @@ calc_expweibull_CDF_PDF(XX = tt,
 	ALP = one_rep$PARAMS$alpha2,
 	KAP = 1)
 
-# Test grids
-one_rep$PARAMS
-len1 = 25
-len2 = len1
-A_range = c(1,1.5)
-L_range = exp(quantile(log(one_rep$DATA$time),c(0.75,1)))
-K_range = c(0.3,0.8)
-T_range = c(1,10)
-A_ugrid = log(seq(A_range[1],A_range[2],length.out = len1))
-L_ugrid = log(seq(L_range[1],L_range[2],length.out = len1))
-K_ugrid = log(seq(K_range[1],K_range[2],length.out = len2))
-T_ugrid = log(seq(T_range[1],T_range[2],length.out = len2))
-
-param_grid = list(A = A_ugrid,
-	L = L_ugrid,K = K_ugrid,T = T_ugrid)
-# param_grid
-prod(sapply(param_grid,length))
-
-out = run_GRID_PROF(DATA = one_rep$DATA,COPULA = tCOPULA,
-	DIST = tDIST,param_grid = param_grid)
-out2 = get_PROFILE(
-	# GRID = out$GRID,
-	GRID = out$GRID[which(out$GRID$log_alpha1 >= 0.12
-		& out$GRID$log_alpha1 <= 0.24
-		& out$GRID$log_lambda1 >= 2.3),],
-	COPULA = tCOPULA,PLOT = TRUE)
-
+# Test NR around truth
 upPARS = c(1,1,1,0)
-uPARS = as.numeric(out$GPROF[2,1:4]); uPARS
+uPARS = get_uPARS(PARAMS = one_rep$PARAMS); uPARS
+
 wrap_NR(DATA = one_rep$DATA,
 	PARS = uPARS,
 	COPULA = tCOPULA,
@@ -913,159 +900,6 @@ png(file.path(my_dirs$curr_dir,"dMrs_0.png"),
 gen_fig_CIs(theta = 3,lambda1 = 6,VERB = FALSE)
 dev.off()
 
-
-# ----------
-# Code for analyzing real data
-# ----------
-
-# Import data
-wdat_fn = file.path(my_dirs$pack_dir,
-	"inst/extdata","bc.txt")
-wDAT = data.table::fread(wdat_fn,data.table = FALSE)
-rdat_fn = file.path(my_dirs$pack_dir,
-	"inst/extdata","frepop.txt")
-rDAT = data.table::fread(rdat_fn,data.table = FALSE)
-
-names(wDAT)[names(wDAT) == "Status"] = "delta"
-names(wDAT)[names(wDAT) == "Age"] = "age"
-names(wDAT)[names(wDAT) == "Time"] = "time"
-wDAT[1:3,]
-
-rDAT$sex = "female"
-rDAT$Age = as.integer(gsub("\\+","",rDAT$Age))
-rDAT = rDAT[order(rDAT$Year,rDAT$Age,rDAT$sex),]
-rDAT = rDAT[,c("Year","Age","qx","sex")]
-rDAT[1:3,]
-
-# Run matching with reference dataset
-rd = refData_match(wDAT = wDAT,rDAT = rDAT)
-rd[1:5,]
-table(rd$delta)
-
-## Analyze
-res1 = full_ana_opt(DATA = rd,max_year = 100,
-	param_grid = seq(-3,5,0.5),verb = TRUE)
-names(res1)
-
-# Get Estimates
-cohort = "French Breast Cancer Registry"
-NAME 	 = "FPOP"
-out_est = full_ana_est(RES = res1,COHORT = cohort)
-
-# Get Survival Probabilities
-out_surv = full_ana_surv(RES = res1,
-	myYEARS = c(1,3,5,10))
-out_surv
-
-# Provide plots
-full_ana_plots(curr_dir = my_dirs$curr_dir,
-	RES = res1,
-	NAME = NAME)
-
-
-# ----------
-# Run second real data analysis
-# ----------
-conv_date_to_year = function(DATE){
-	DATE = as.character(DATE)
-	out = as.integer(strsplit(DATE,"-")[[1]][1])
-	return(out)
-}
-data(slopop)
-data(rdata)
-
-# Prep reference data: need cols Year, Age, qx, sex
-str(slopop) # this is an array!
-bb 		= as.array(slopop); dim(bb)
-SEXs 	= dimnames(bb)[[3]]
-YEARs = dimnames(bb)[[2]]
-rDAT = c()
-for(SEX in SEXs){
-for(YEAR in YEARs){
-	# SEX = SEXs[1]; YEAR = YEARs[1]
-	
-	tmp_vec = bb[,YEAR,SEX]
-	
-	tmp_df = smart_df(Year = YEAR,
-		Age = names(tmp_vec),
-		qx = as.numeric(tmp_vec),
-		sex = SEX)
-	rDAT = rbind(rDAT,tmp_df)
-	rm(tmp_df)
-	
-}}
-rDAT$Year = as.integer(rDAT$Year)
-rDAT$Age = as.integer(rDAT$Age)
-dim(rDAT); rDAT[1:5,]
-
-# Prep working data: need cols age, time, delta, datediag_yr, dateEvent_yr, sex
-wDAT = rdata
-wDAT = name_change(wDAT,"cens","delta")
-wDAT$sex[wDAT$sex == "1"] = "male"
-wDAT$sex[wDAT$sex == "2"] = "female"
-# note: wDAT$year is Julian date aka days since 1960-01-01
-wDAT$datediag_yr = as.Date(wDAT$year)
-wDAT$dateEvent_yr = wDAT$datediag_yr + wDAT$time
-wDAT$datediag_yr = sapply(wDAT$datediag_yr,conv_date_to_year)
-wDAT$dateEvent_yr = sapply(wDAT$dateEvent_yr,conv_date_to_year)
-wDAT$time = wDAT$time / 365.25
-wDAT[1:3,]
-
-# Match data for input to dMrs
-rd = refData_match(wDAT = wDAT,rDAT = rDAT)
-rd[1:5,]
-table(rd$delta)
-
-cohort 	= "Slovenia Colon Cancer Registry"
-NAME 		= "Slovenia"
-
-# Analyze
-run_ana = run_analyses(
-	DATA = rd,
-	THETAs = c(0,2/3,2,6),COPULAS = "Clayton",
-	# THETAs = c(1,4/3,2,4),COPULAS = "Gumbel",
-	# upKAPPA = c(0,1)[2],
-	# COPULAS = c("Clayton","Gumbel")[2],upKAPPA = 1,
-	param_grid = seq(-3,4,0.25),
-	verb = TRUE)
-length(run_ana)
-
-# Check estimates
-
-idx = 1
-run_ana[[idx]]$copula
-run_ana[[idx]]$RES[c("out","cout","LL")]
-dim(run_ana[[idx]]$RES$GRID)
-
-plot_LL(GPROF = run_ana[[idx]]$RES$GPROF,
-	GOPT = run_ana[[idx]]$RES$GOPT,
-	COPULA = run_ana[[idx]]$copula)
-
-# Plot survival
-plot_SURVs(run_ANA = run_ana,MULTIPLE = TRUE,ALPHA = 0.4)
-plot_SURVs(run_ANA = run_ana,MULTIPLE = !TRUE,ALPHA = 0.4)
-
-### OLDER analysis code below
-
-
-
-
-res2 = full_ana_opt(DATA = rd,max_year = 100,
-	param_grid = seq(-3,5,0.25),verb = TRUE)
-names(res2)
-
-# Get Estimates
-out_est = full_ana_est(RES = res2,COHORT = cohort)
-
-# Get Survival Probabilities
-out_surv = full_ana_surv(RES = res2,
-	myYEARS = c(1,3,5,10))
-out_surv
-
-# Provide plots
-full_ana_plots(curr_dir = my_dirs$curr_dir,
-	RES = res2,
-	NAME = NAME)
 
 
 

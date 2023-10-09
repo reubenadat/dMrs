@@ -55,7 +55,7 @@ void prt_vec(const arma::vec& aa){
 }
 
 // [[Rcpp::export]]
-arma::vec calc_expweibull_CDF_PDF(const double& XX,
+arma::vec calc_expweibull_logCDF_logPDF(const double& XX,
 	const double& LAM,const double& ALP,const double& KAP){
 	
 	double log_cdf_weibull = R::pweibull(XX,ALP,LAM,1,1);
@@ -68,8 +68,8 @@ arma::vec calc_expweibull_CDF_PDF(const double& XX,
 	}
 	
 	arma::vec out = arma::zeros<arma::vec>(2);
-	out.at(0) = std::exp(log_cdf_expweibull);
-	out.at(1) = std::exp(log_pdf_expweibull);
+	out.at(0) = log_cdf_expweibull;
+	out.at(1) = log_pdf_expweibull;
 	
 	return out;
 	
@@ -80,141 +80,141 @@ arma::vec calc_expweibull_CDF_PDF(const double& XX,
 // New Functions
 
 // [[Rcpp::export]]
-double calc_copula(const double& F1,const double& F2,
+double calc_copula(const arma::vec& log_CDFs,
 	const std::string& copula,const double& THETA){
 	
-	double F_T1_T2 = 0.0;
+	double cop_CDF = 0.0;
 	
-	// A general property of copulas
-	if( F1 == 0.0 || F2 == 0.0 )
+	// A general property of copulas, if any CDF is 0, copula is 0
+	if( log_CDFs.has_inf() )
 		return 0.0;
-	
-	// A general property of copulas
-	if( F1 == 1.0 ) return F2;
-	if( F2 == 1.0 ) return F1;
-	
-	// if( F1 == 1.0 && F2 == 1.0 )
-		// return 1.0;
 	
 	if( copula == "Independent" ){
 		
-		// F_T1_T2 = F1 * F2;
-		
-		F_T1_T2 = std::log(F1);
-		F_T1_T2 += std::log(F2);
-		F_T1_T2 = std::exp(F_T1_T2);
+		cop_CDF = std::exp(arma::sum(log_CDFs));
+		return cop_CDF;
 		
 	} else if( copula == "Clayton" ){
 		
 		// Precision method
-		arma::vec log_CDFs = { std::log(F1), std::log(F2) };
-		log_CDFs *= -1.0 * THETA;
-		double log_mm = arma::max(log_CDFs), log_COP;
+		arma::vec log_vec = log_CDFs;
+		log_vec *= -1.0 * THETA;
+		double log_mm = arma::max(log_vec), log_COP;
 		log_COP = -1.0 / THETA *
 			( log_mm + 
-			std::log( arma::sum(arma::exp(log_CDFs - log_mm)) - 
+			std::log( arma::sum(arma::exp(log_vec - log_mm)) - 
 			1.0 / std::exp(log_mm)) );
-		F_T1_T2 = std::exp(log_COP);
+		cop_CDF = std::exp(log_COP);
+		return cop_CDF;
 		
 	} else if( copula == "Gumbel" ){
 		
-		arma::vec log_vec = arma::zeros<arma::vec>(2);
-		log_vec.at(0) = THETA * std::log(-std::log(F1));
-		log_vec.at(1) = THETA * std::log(-std::log(F2));
-		
-		F_T1_T2 = std::exp(1.0 / THETA * Rcpp_logSumExp(log_vec));
-		F_T1_T2 = std::exp(-F_T1_T2);
+		arma::vec log_vec = THETA * arma::log(-log_CDFs);
+		cop_CDF = std::exp(1.0 / THETA * Rcpp_logSumExp(log_vec));
+		cop_CDF = std::exp(-cop_CDF);
+		return cop_CDF;
 		
 	} else {
 		Rcpp::stop("Not a valid copula!");
 	}
 	
-	if( F_T1_T2 < 0 )
-		Rcpp::stop("Negative copula detected!");
-	
-	return F_T1_T2;
 }
 
 // [[Rcpp::export]]
-double calc_copula_offset(const double& D1,const double& D2,
-	const double& F1,const double& F2,
-	const std::string& copula,const double& THETA,
-	const double& F_T1_T2){
+double calc_copula_offset(const arma::vec& log_DENs,
+	const arma::vec& log_CDFs,const std::string& copula,
+	const double& THETA,const double& cop_CDF){
+	
+	if( cop_CDF == 0.0 ) return 0.0; /*Assumed to be true no matter the copula ...*/
 	
 	double offset = 0.0;
 	arma::vec log_vec = arma::zeros<arma::vec>(2);
 	
 	if( copula == "Independent" ){
 		
-		offset = D1 * F2 + D2 * F1;
+		// offset = D1 * F2 + D2 * F1;
+		
+		/*
+		Question: Should this be zero if any F1, F2,... are zero?
+		*/
+		
+		log_vec.at(0) = log_DENs.at(0) + log_CDFs.at(1);
+		log_vec.at(1) = log_DENs.at(1) + log_CDFs.at(0);
+		offset = arma::sum(arma::exp(log_vec));
+		return offset;
 		
 	} else if( copula == "Clayton" ){
 		
-		if( F_T1_T2 == 0.0 ) return 0.0;
+		// if( cop_CDF == 0.0 ) return 0.0;
 		
-		double log_F1 = std::log(F1), 
-			log_F2 = std::log(F2);
-		arma::vec log_CDFs = { log_F1, log_F2 };
-		log_CDFs *= -1.0 * THETA;
-		double log_mm = arma::max(log_CDFs);
+		log_vec = -1.0 * THETA * log_CDFs;
+		double log_mm = arma::max(log_vec);
 		
 		offset = (-1.0 / THETA - 1.0) *
 			( log_mm + 
-			std::log( arma::sum(arma::exp(log_CDFs - log_mm)) - 
+			std::log( arma::sum(arma::exp(log_vec - log_mm)) - 
 			1.0 / std::exp(log_mm)) );
 		
-		log_vec.at(0) = std::log(D1) - (THETA + 1) * log_F1;
-		log_vec.at(1) = std::log(D2) - (THETA + 1) * log_F2;
+		log_vec = log_DENs - (THETA + 1.0) * log_CDFs;
 		offset += Rcpp_logSumExp(log_vec);
 		
 		offset = std::exp(offset);
+		return offset;
 		
 	} else if( copula == "Gumbel" ){
 		
-		if( F_T1_T2 == 0.0 ) return 0.0;
+		// if( cop_CDF == 0.0 ) return 0.0;
 		
-		double nlog_F1 = -std::log(F1),
-			nlog_F2 = -std::log(F2), tmp_lognum;
+		double /*nlog_F1 = -std::log(F1),
+			nlog_F2 = -std::log(F2),*/ tmp_lognum;
 		
+		/*
 		double log_nlog_F1 = std::log(nlog_F1);
 		double log_nlog_F2 = std::log(nlog_F2);
+		*/
 		
-		offset = std::log(F_T1_T2);
+		offset = std::log(cop_CDF);
 		
+		/*
 		log_vec.at(0) = THETA * log_nlog_F1;
 		log_vec.at(1) = THETA * log_nlog_F2;
+		*/
+		arma::vec log_nlog_CDFs = arma::log(-1.0 * log_CDFs);
+		
+		log_vec = THETA * log_nlog_CDFs;
 		tmp_lognum = Rcpp_logSumExp(log_vec);
 		
 		offset += (1.0 / THETA - 1.0) * tmp_lognum;
 		
+		/*
 		log_vec.at(0) = (THETA - 1.0) * log_nlog_F1 + std::log(D1) + nlog_F1;
 		log_vec.at(1) = (THETA - 1.0) * log_nlog_F2 + std::log(D2) + nlog_F2;
-		
+		*/
+		log_vec = (THETA - 1.0) * log_nlog_CDFs + log_DENs - log_CDFs;
 		offset += Rcpp_logSumExp(log_vec);
 		
 		offset = std::exp(offset);
+		return offset;
 		
 	} else {
 		Rcpp::stop("Not a coded copula!");
 	}
 	
-	return offset;
-	
 }
 
 // [[Rcpp::export]]
-arma::vec calc_copula_CDF_OFF(const double& D1,const double& D2,
-	const double& F1,const double& F2,
-	const std::string& copula,const double& THETA){
+arma::vec calc_copula_CDF_OFF(const arma::vec& log_DENs,
+	const arma::vec& log_CDFs,const std::string& copula,
+	const double& THETA){
 	
 	double offset = 0.0, 
-		F_T1_T2 = calc_copula(F1,F2,copula,THETA);
-	arma::vec out = arma::zeros<arma::vec>(2),
-		log_P = out;
-	out.at(0) = F_T1_T2;
+		cop_CDF = calc_copula(log_CDFs,copula,THETA);
+	arma::vec out = arma::zeros<arma::vec>(2);
 	
-	offset = calc_copula_offset(D1,D2,F1,F2,
-		copula,THETA,F_T1_T2);
+	out.at(0) = cop_CDF;
+	
+	offset = calc_copula_offset(log_DENs,log_CDFs,
+		copula,THETA,cop_CDF);
 	
 	out.at(1) = offset;
 	
@@ -222,90 +222,62 @@ arma::vec calc_copula_CDF_OFF(const double& D1,const double& D2,
 }
 
 double dMrs_LL(const arma::vec& XX,const arma::uvec& DELTA,
-	const arma::vec& D2,const arma::vec& S2,const double& THETA,
+	const arma::vec& log_D2,const arma::vec& log_F2,const double& THETA,
 	const double& ALPHA,const double& LAMBDA,const double& KAPPA,
 	const std::string& copula,const bool& verb = false){
 	
 	arma::uword ii, NN = XX.n_elem;
-	double LL = 0.0, LL_ii, D1, S1, F1, F2,
-		offset, F1_F2, AA, BB, error_num = -999.0;
-		// KAL = KAPPA * ALPHA / LAMBDA
-	arma::vec out = arma::zeros<arma::vec>(2), 
+	double LL = 0.0, LL_ii, offset, 
+		cop_CDF, AA, BB, error_num = -999.0;
+	arma::vec out = arma::zeros<arma::vec>(2),
+		log_DENs = out, log_CDFs = out,
+		DENs = out,CDFs = out,
 		vEW = out;
 	
 	for(ii = 0; ii < NN; ii++){
 		
-		vEW = calc_expweibull_CDF_PDF(XX.at(ii),LAMBDA,ALPHA,KAPPA);
+		vEW = calc_expweibull_logCDF_logPDF(
+			XX.at(ii),LAMBDA,ALPHA,KAPPA);
 		
-		// XDL = XX.at(ii) / LAMBDA;
-		// enXDLa = std::exp(-std::pow(XDL,ALPHA));
+		log_CDFs.at(0) = vEW.at(0);
+		log_CDFs.at(1) = log_F2.at(ii);
+		CDFs = arma::exp(log_CDFs);
 		
-		// F1 = 1.0 - enXDLa;
-		// if( KAPPA != 1.0 ) F1 = std::pow(F1,KAPPA);
+		log_DENs.at(0) = vEW.at(1);
+		log_DENs.at(1) = log_D2.at(ii);
+		DENs = arma::exp(log_DENs);
 		
-		F1 = vEW.at(0);
-		D1 = vEW.at(1);
-		S1 = 1.0 - F1;
-		
-		// D1 = KAL * std::pow(XDL,ALPHA - 1.0) * enXDLa;
-		// if( KAPPA != 1.0 ) D1 *= F1 / ( 1.0 - enXDLa );
-		// if( F1 == 0.0 ) D1 = 0.0;
-		
-		F2 = 1.0 - S2.at(ii);
-		
-		out = calc_copula_CDF_OFF(D1,D2.at(ii),
-			F1,F2,copula,THETA);
+		out = calc_copula_CDF_OFF(log_DENs,
+			log_CDFs,copula,THETA);
 		
 		if( out.has_nan() ){
 			// if( verb ){
 				// Rcpp::Rcout << "ii = " << ii + 1 << "; ";
 				// Rcpp::Rcout << "Delta = " << DELTA.at(ii) << "; ";
-				// Rcpp::Rcout << "D1 = " << D1 << "; ";
-				// Rcpp::Rcout << "D2 = " << D2.at(ii) << "; ";
-				// Rcpp::Rcout << "F1 = " << F1 << "; ";
-				// Rcpp::Rcout << "F2 = " << F2 << "; ";
-				// Rcpp::Rcout << "F1_F2 = " << out.at(0) << "; ";
+				// Rcpp::Rcout << "D1 = " << DENs.at(0) << "; ";
+				// Rcpp::Rcout << "D2 = " << DENs.at(1) << "; ";
+				// Rcpp::Rcout << "F1 = " << CDFs.at(0) << "; ";
+				// Rcpp::Rcout << "F2 = " << CDFs.at(1) << "; ";
+				// Rcpp::Rcout << "cop_CDF = " << out.at(0) << "; ";
 				// Rcpp::Rcout << "D1_D2 = " << out.at(1) << "\n";
 			// }
 			return error_num;
 		}
 		
-		F1_F2 = out.at(0);
+		cop_CDF = out.at(0);
 		offset = out.at(1);
 		
 		if( DELTA.at(ii) == 1 ){
-			
-			AA = D1 + D2.at(ii) - offset;
+			AA = DENs.at(0) + DENs.at(1) - offset;
 			if( AA <= 0.0 ) return error_num;
 			LL_ii = std::log( AA );
 			
 		} else {
-			
-			BB = S1 + S2.at(ii) - 1.0 + F1_F2;
+			BB = 1 - CDFs.at(0) - CDFs.at(1) + cop_CDF;
 			if( BB <= 0.0 ) return error_num;
 			LL_ii = std::log( BB );
 			
 		}
-		
-		/*
-		if( verb ){
-			Rcpp::Rcout << "ii = " << ii+1 << "; ";
-			Rcpp::Rcout << "Delta = " << DELTA.at(ii) << "; ";
-			Rcpp::Rcout << "D1 = " << D1 << "; ";
-			Rcpp::Rcout << "F1 = " << F1 << "; ";
-			Rcpp::Rcout << "U1T1 = " << U1T1 << "; ";
-			Rcpp::Rcout << "U2T1 = " << U2T1 << "\n";
-			Rcpp::Rcout << "   D2 = " << D2.at(ii) << "; ";
-			Rcpp::Rcout << "F2 = " << F2 << "; ";
-			Rcpp::Rcout << "U1T_U2T = " << U1T_U2T << "; ";
-			Rcpp::Rcout << "F1_F2 = " << F1_F2 << "; ";
-			Rcpp::Rcout << "offset = " << offset << "\n";
-			Rcpp::Rcout << "   AA = " << AA << "; ";
-			Rcpp::Rcout << "BB = " << BB << "; ";
-			Rcpp::Rcout << "LL_ii = " << LL_ii << "; ";
-			Rcpp::Rcout << "LL = " << LL << "\n";
-		}
-		*/
 		
 		LL += LL_ii;
 	}
@@ -316,33 +288,27 @@ double dMrs_LL(const arma::vec& XX,const arma::uvec& DELTA,
 
 // [[Rcpp::export]]
 double dMrs_cLL(const arma::vec& XX,const arma::uvec& DELTA,
-	const arma::vec& D2,const arma::vec& S2,const arma::vec& PARS,
+	const arma::vec& log_D2,const arma::vec& log_F2,const arma::vec& PARS,
 	const std::string& copula,const bool& verb = false){
 	
 	// For Clayton: 0 <= THETA < infinity
 	// For Gumbel: 1 <= THETA < infinity
 	arma::vec ePARS = arma::exp(PARS);
-	double THETA = ePARS.at(3);
+	double KAPPA = ePARS.at(2), THETA = ePARS.at(3);
 	// double KAPPA = 1.0 / (1.0 + std::exp(-PARS.at(2)));
-	double KAPPA = ePARS.at(2);
 	
-	if( copula == "Gumbel" ){
+	if( copula == "Gumbel" )
 		THETA += 1.0;
-		/* 
-		For Gumbel: theta >= 1
-		For Clayton: theta >= 0
-		*/
-	}
 	
-	return dMrs_LL(XX,DELTA,D2,S2,THETA,ePARS.at(0),
+	return dMrs_LL(XX,DELTA,log_D2,log_F2,THETA,ePARS.at(0),
 		ePARS.at(1),KAPPA,copula,verb);
 }
 
 arma::vec dMrs_GRAD(const arma::vec& XX,const arma::uvec& DELTA,
-	const arma::vec& D2,const arma::vec& S2,const double& THETA,
+	const arma::vec& log_D2,const arma::vec& log_F2,const double& THETA,
 	const double& ALPHA,const double& LAMBDA,const double& KAPPA,
 	const std::string& copula,const arma::vec& upPARS,
-	const double& shift = 1e-6){
+	const double& shift = 5e-6){
 	
 	arma::uword ii;
 	double old_LL, new_LL, error_num = -999.0, new_theta;
@@ -358,7 +324,7 @@ arma::vec dMrs_GRAD(const arma::vec& XX,const arma::uvec& DELTA,
 		old_PARS.at(3) = std::log(THETA);
 	}
 	
-	old_LL = dMrs_LL(XX,DELTA,D2,S2,THETA,ALPHA,
+	old_LL = dMrs_LL(XX,DELTA,log_D2,log_F2,THETA,ALPHA,
 		LAMBDA,KAPPA,copula,false);
 	if( old_LL == error_num ){
 		GRAD.fill(error_num);
@@ -375,7 +341,7 @@ arma::vec dMrs_GRAD(const arma::vec& XX,const arma::uvec& DELTA,
 			new_theta += 1.0;
 		}
 		
-		new_LL = dMrs_LL(XX,DELTA,D2,S2,new_theta,
+		new_LL = dMrs_LL(XX,DELTA,log_D2,log_F2,new_theta,
 			std::exp(new_PARS.at(0)),
 			std::exp(new_PARS.at(1)),
 			std::exp(new_PARS.at(2)),
@@ -386,8 +352,9 @@ arma::vec dMrs_GRAD(const arma::vec& XX,const arma::uvec& DELTA,
 		}
 		
 		if( new_LL == old_LL ){
-			return dMrs_GRAD(XX,DELTA,D2,S2,THETA,ALPHA,
-				LAMBDA,KAPPA,copula,upPARS,2*shift);
+			return dMrs_GRAD(XX,DELTA,log_D2,log_F2,
+				THETA,ALPHA,LAMBDA,KAPPA,copula,
+				upPARS,2*shift);
 		}
 		
 		GRAD.at(ii) = (new_LL - old_LL) / shift;
@@ -398,29 +365,29 @@ arma::vec dMrs_GRAD(const arma::vec& XX,const arma::uvec& DELTA,
 
 // [[Rcpp::export]]
 arma::vec dMrs_cGRAD(const arma::vec& XX,const arma::uvec& DELTA,
-	const arma::vec& D2,const arma::vec& S2,const arma::vec& PARS,
+	const arma::vec& log_D2,const arma::vec& log_F2,const arma::vec& PARS,
 	const std::string& copula,const arma::vec& upPARS){
 	
 	arma::vec ePARS = arma::exp(PARS);
 	double THETA = ePARS.at(3),
-		KAPPA = ePARS.at(2), shift = 1e-6;
+		KAPPA = ePARS.at(2), shift = 5e-6;
 	
 	if( copula == "Gumbel" ){
 		THETA += 1.0;
 	}
 	
-	return dMrs_GRAD(XX,DELTA,D2,S2,THETA,ePARS.at(0),
+	return dMrs_GRAD(XX,DELTA,log_D2,log_F2,THETA,ePARS.at(0),
 		ePARS.at(1),KAPPA,copula,upPARS,shift);
 }
 
 arma::mat dMrs_HESS(const arma::vec& XX,const arma::uvec& DELTA,
-	const arma::vec& D2,const arma::vec& S2,const double& THETA,
+	const arma::vec& log_D2,const arma::vec& log_F2,const double& THETA,
 	const double& ALPHA,const double& LAMBDA,const double& KAPPA,
 	const std::string& copula,const arma::vec& upPARS){
 	
 	arma::uword ii, np = 4;
-	double shift = 1e-6, error_num = -999.0, new_theta;
-	arma::vec old_GRAD = dMrs_GRAD(XX,DELTA,D2,S2,
+	double shift = 5e-6, error_num = -999.0, new_theta;
+	arma::vec old_GRAD = dMrs_GRAD(XX,DELTA,log_D2,log_F2,
 		THETA,ALPHA,LAMBDA,KAPPA,copula,upPARS,shift),
 		PARS = arma::zeros<arma::vec>(np),
 		PARS_2 = PARS, tmp_vec = PARS;
@@ -451,7 +418,7 @@ arma::mat dMrs_HESS(const arma::vec& XX,const arma::uvec& DELTA,
 			new_theta += 1.0;
 		}
 		
-		tmp_vec = dMrs_GRAD(XX,DELTA,D2,S2,
+		tmp_vec = dMrs_GRAD(XX,DELTA,log_D2,log_F2,
 			new_theta,std::exp(PARS_2.at(0)),
 			std::exp(PARS_2.at(1)),std::exp(PARS_2.at(2)),
 			copula,upPARS,shift);
@@ -472,7 +439,7 @@ arma::mat dMrs_HESS(const arma::vec& XX,const arma::uvec& DELTA,
 
 // [[Rcpp::export]]
 arma::mat dMrs_cHESS(const arma::vec& XX,const arma::uvec& DELTA,
-	const arma::vec& D2,const arma::vec& S2,const arma::vec& PARS,
+	const arma::vec& log_D2,const arma::vec& log_F2,const arma::vec& PARS,
 	const std::string& copula,const arma::vec& upPARS){
 	
 	arma::vec ePARS = arma::exp(PARS);
@@ -484,140 +451,13 @@ arma::mat dMrs_cHESS(const arma::vec& XX,const arma::uvec& DELTA,
 		THETA += 1.0;
 	}
 	
-	return dMrs_HESS(XX,DELTA,D2,S2,THETA,ePARS.at(0),
+	return dMrs_HESS(XX,DELTA,log_D2,log_F2,THETA,ePARS.at(0),
 		ePARS.at(1),KAPPA,copula,upPARS);
 }
 
 // [[Rcpp::export]]
-void dMrs_BFGS(const arma::vec& XX,const arma::uvec& DELTA,
-	const arma::vec& D2,const arma::vec& S2,arma::vec& PARS,
-	const std::string& copula,const arma::vec& upPARS,
-	const arma::uword& max_iter = 4e3,const double& eps = 1e-7,
-	const bool& verb = true){
-	
-	arma::uword iter = 0, jj, uu,
-		reset_Bk = 0, np = PARS.n_elem;
-	
-	// Initialize parameters
-	if( verb ) PARS.t().print("iPARS = "); // Rcpp::Rcout << "iPARS = " << PARS.t();
-	arma::mat I_np = arma::eye<arma::mat>(np,np),
-		inv_Bk = I_np, ISYT = I_np;
-	arma::vec xk = PARS, curr_xk = arma::zeros<arma::vec>(np),
-		new_xk = curr_xk, gr_k = curr_xk, gr2_k = curr_xk,
-		p_k = curr_xk, s_k = curr_xk, y_k = curr_xk;
-	double old_LL, new_LL, inv_norm_p_k, tmp_step, ys,
-		fnscale = -1.0, curr_LL = 0.0, error_num = -999.0,
-		diff_LL = 0.0;
-	double orig_LL = dMrs_cLL(XX,DELTA,D2,S2,xk,copula,false);
-	arma::vec orig_GRAD = dMrs_cGRAD(XX,DELTA,D2,S2,xk,copula,upPARS);
-	
-	if( orig_LL == error_num || arma::any(orig_GRAD == error_num) ){
-		// Rcpp::Rcout << "Rerun optimization w/ new initialized parameters ...\n";
-		return;
-	}
-	
-	while(iter < max_iter){
-		
-		// Calculate Direction p_k
-		gr_k = fnscale * dMrs_cGRAD(XX,DELTA,D2,S2,xk,copula,upPARS);
-		p_k = -1.0 * inv_Bk * gr_k;
-		inv_norm_p_k = 1.0 / std::max(1.0,Rcpp_norm(p_k));
-
-		// Line search for new xk
-		uu = 0;
-		old_LL = fnscale * dMrs_cLL(XX,DELTA,D2,S2,xk,copula,false);
-		diff_LL = std::abs(old_LL - curr_LL);
-		
-		if( verb ){
-			Rcpp::Rcout << "Iter = " << iter + 1 << "\n";
-			Rcpp::Rcout << "   LL = " << -old_LL << "\n";
-			if( iter > 0 ) Rcpp::Rcout << "   abs_diff_LL = " << diff_LL << "\n";
-			Rcpp::Rcout << "   PARS = " << xk.t();
-			Rcpp::Rcout << "   grad = " << gr_k.t();
-		}
-		
-		for(jj = 0; jj <= 30; jj++){
-			tmp_step = inv_norm_p_k / std::pow(4,jj);
-			new_xk = xk + tmp_step * p_k;
-			
-			new_LL = fnscale * dMrs_cLL(XX,DELTA,D2,S2,new_xk,copula,false);
-			if( new_LL >= old_LL || new_LL == fnscale * error_num ) continue;
-			
-			gr2_k = fnscale * dMrs_cGRAD(XX,DELTA,D2,S2,new_xk,copula,upPARS);
-			if( arma::any(gr2_k == fnscale * error_num) ) continue;
-			
-			y_k = gr2_k - gr_k;
-			s_k = tmp_step * p_k;
-			ys = arma::dot(y_k,s_k);
-			if( ys > 0.0 ){
-				ISYT = I_np - (s_k * y_k.t()) / ys;
-				inv_Bk = ISYT * inv_Bk * ISYT.t() + s_k * s_k.t() / ys;
-			}
-			xk = new_xk;
-			old_LL = new_LL;
-			uu = 1;
-			break;
-			
-		}
-		
-		if( uu == 0 ) { // aka no update
-			if( Rcpp_norm(gr_k) > 1.0 ){
-				if( verb ) printR_obj("Reset inv_Bk");
-				inv_Bk = I_np;
-				reset_Bk++;
-			} else {
-				if( verb ) printR_obj("Failed line search");
-				break;
-			}
-		}
-		
-		if( reset_Bk > 5 ) break;
-		
-		// Check Convergence
-		if( iter > 0 ){
-			if( std::abs(curr_LL - old_LL) < eps &&
-				// Rcpp_norm(curr_xk - xk) < eps
-				Rcpp_max_abs_diff(curr_xk,xk) < eps ){
-				gr_k = dMrs_cGRAD(XX,DELTA,D2,S2,xk,copula,upPARS);
-				if( Rcpp_norm(gr_k) < eps ){
-					break;
-				}
-			}
-		}
-		
-		curr_xk = xk;
-		curr_LL = old_LL;
-		iter++;
-	
-	}
-	
-	old_LL = dMrs_cLL(XX,DELTA,D2,S2,xk,copula,false);
-	if( old_LL > orig_LL ){ // Criteria for convergence
-		PARS = xk;
-	}
-
-	if( verb ){
-		Rcpp::Rcout << "####\nNum Iter = " << iter+1 << "\n";
-		Rcpp::Rcout << "Params = " << xk.t();
-		Rcpp::Rcout << "LL = " << old_LL << "\n";
-		gr_k = dMrs_cGRAD(XX,DELTA,D2,S2,xk,copula,upPARS);
-		arma::mat hh = dMrs_cHESS(XX,DELTA,D2,S2,PARS,copula,upPARS),
-			ihh = arma::zeros<arma::mat>(4,4);
-		arma::uvec nz = arma::find(hh.diag() != 0.0);
-		ihh.submat(nz,nz) = arma::inv(-1.0 * hh.submat(nz,nz));
-		Rcpp::Rcout << "GRAD = " << gr_k.t();
-		Rcpp::Rcout << "Convergence Indicators: \n"
-			<< "   NormGrad = " << Rcpp_norm(gr_k) << "\n"
-			<< "   NormIHessGrad = " << Rcpp_norm(inv_Bk * gr_k) << "\n"
-			<< "   NormIHessGrad2 = " << Rcpp_norm(ihh * gr_k) << "\n";
-		Rcpp::Rcout << "Var = " << ihh.diag().t();
-	}
-	
-}
-
-// [[Rcpp::export]]
 void dMrs_NR(const arma::vec& XX,const arma::uvec& DELTA,
-	const arma::vec& D2,const arma::vec& S2,arma::vec& PARS,
+	const arma::vec& log_D2,const arma::vec& log_F2,arma::vec& PARS,
 	const std::string& copula,const arma::vec& upPARS,
 	const arma::uword& max_iter = 2e2,const double& eps = 5e-2,
 	const arma::uword& mult = 5,const bool& verb = true){
@@ -637,20 +477,20 @@ void dMrs_NR(const arma::vec& XX,const arma::uvec& DELTA,
 		pk_GD = curr_xk;
 	double error_num = -999.0, diff_LL = 0.0, 
 		rcond_num, diff_PARS,
-		orig_LL = dMrs_cLL(XX,DELTA,D2,S2,xk,copula,false),
+		orig_LL = dMrs_cLL(XX,DELTA,log_D2,log_F2,xk,copula,false),
 		nGRAD, old_LL, new_LL;
 	arma::uvec chk = arma::zeros<arma::uvec>(np),
 		idx_fin = arma::find_finite(PARS);
 	
 	old_LL = orig_LL;
 	while( iter < max_iter ){
-		GRAD = dMrs_cGRAD(XX,DELTA,D2,S2,xk,copula,upPARS);
+		GRAD = dMrs_cGRAD(XX,DELTA,log_D2,log_F2,xk,copula,upPARS);
 		if( GRAD.at(0) == error_num ){
 			if( verb ) Rcpp::Rcout << "Invalid pars\n";
 			return;
 		}
 		
-		HESS = dMrs_cHESS(XX,DELTA,D2,S2,xk,copula,upPARS);
+		HESS = dMrs_cHESS(XX,DELTA,log_D2,log_F2,xk,copula,upPARS);
 		if( HESS.at(0,0) == error_num ){
 			if( verb ) Rcpp::Rcout << "Invalid pars\n";
 			return;
@@ -684,14 +524,14 @@ void dMrs_NR(const arma::vec& XX,const arma::uvec& DELTA,
 			if( kk == 0 ) new_xk = xk + pk_NR / std::pow(4.0,jj);
 			if( kk == 1 ) new_xk = xk + pk_GD / std::pow(4.0,jj);
 			
-			new_LL = dMrs_cLL(XX,DELTA,D2,S2,new_xk,copula,false);
+			new_LL = dMrs_cLL(XX,DELTA,log_D2,log_F2,new_xk,copula,false);
 			if( new_LL == error_num ) continue;
 			if( new_LL <= old_LL ) continue;
 			
-			GRAD = dMrs_cGRAD(XX,DELTA,D2,S2,new_xk,copula,upPARS);
+			GRAD = dMrs_cGRAD(XX,DELTA,log_D2,log_F2,new_xk,copula,upPARS);
 			if( arma::any(GRAD == error_num) ) continue;
 			
-			HESS = dMrs_cHESS(XX,DELTA,D2,S2,new_xk,copula,upPARS);
+			HESS = dMrs_cHESS(XX,DELTA,log_D2,log_F2,new_xk,copula,upPARS);
 			if( HESS.at(0,0) == error_num ) continue;
 			
 			chk.zeros();
@@ -870,17 +710,25 @@ arma::mat dMrs_MATCH(const arma::mat& wDAT,const arma::mat& rDAT,
 		sex = wDAT.at(ii,3);
 		
 		arma::uvec idx = arma::find(rDAT.col(0) >= yr_diag
-			&& rDAT.col(0) <= yr_event && rDAT.col(1) == age
-			&& rDAT.col(3) == sex);
+			&& rDAT.col(0) <= yr_event 
+			&& rDAT.col(3) == sex
+			
+			/*older incorrect code*/
+			/*&& rDAT.col(1) == age*/
+			
+			/*this assumes 'age' is 'age at diagnosis'*/
+			&& ( rDAT.col(0) - rDAT.col(1) ) == ( yr_diag - age )
+			
+			);
 		
 		arma::mat tmp_mat = rDAT.rows(idx);
 		arma::vec tmp_haz = tmp_mat.col(2);
 		
-		// Calculate survival
+		// Calculate survival aka exp(-cumul hazards)
 		OUT.at(ii,1) = std::exp(-1.0 * arma::sum(tmp_haz));
 		
-		// Calculate density
-		OUT.at(ii,0) = tmp_haz.at(tmp_haz.n_elem - 1) / OUT.at(ii,1);
+		// Calculate density aka hazard * survival
+		OUT.at(ii,0) = tmp_haz.at(tmp_haz.n_elem - 1) * OUT.at(ii,1);
 		
 	}
 	

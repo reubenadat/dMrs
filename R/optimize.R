@@ -243,6 +243,50 @@ wrapper_HESS = function(DATA,PARS,COPULA,upPARS){
 		copula = COPULA,upPARS = upPARS)
 }
 	
+gen_paramGrid = function(DATA,
+	A = NULL,L = NULL,
+	K = NULL,T = NULL){
+	
+	if( is.null(A) ){
+		A = c(0.5,2,10)
+	}
+	if( is.null(L) ){
+		L = c(quantile(DATA$time,c(0.75,1)),10)
+	}
+	if( is.null(K) ){
+		K = c(0.5,2,20)
+	}
+	if( is.null(T) ){
+		T = c(1,10,20)
+	}
+	
+	# Setup param_grid
+	A_range = sort(A[1:2])
+	L_range = sort(L[1:2])
+	K_range = sort(K[1:2])
+	T_range = sort(T[1:2])
+
+	A_ugrid = log(seq(A_range[1],A_range[2],length.out = A[3]))
+	L_ugrid = log(seq(L_range[1],L_range[2],length.out = L[3]))
+	K_ugrid = log(seq(K_range[1],K_range[2],length.out = K[3]))
+	T_ugrid = log(seq(T_range[1],T_range[2],length.out = T[3]))
+
+	param_grid = list(A = A_ugrid,
+		L = L_ugrid,K = K_ugrid,T = T_ugrid)
+	# param_grid
+
+	n_pts = sapply(param_grid,length)
+	cat(sprintf("n.alpha1.pts = %s\n",n_pts[1]))
+	cat(sprintf("n.lambda1.pts = %s\n",n_pts[2]))
+	cat(sprintf("n.kappa1.pts = %s\n",n_pts[3]))
+	cat(sprintf("n.theta.pts = %s\n",n_pts[4]))
+	
+	nGRID = prod(n_pts)
+	cat(sprintf("Max grid points = %s\n",nGRID))
+	
+	return(param_grid)
+	
+}
 
 wrap_NR = function(DATA,PARS,COPULA,upPARS,
 	max_iter = 2e2,mult = 5,verb = TRUE){
@@ -599,7 +643,7 @@ opt_replicate = function(DATA,COPULA,param_grid,theta,
 		cout$EST[4],exp(out$EST[4]))
 	nab_par = diag(nab_par)
 	
-	cout$SE 			= sqrt(diag(nab_par %*% covar %*% nab_par))
+	cout$SE 		= sqrt(diag(nab_par %*% covar %*% nab_par))
 	cout$lowCI 		= cout$EST - z_alpha * cout$SE
 	cout$highCI 	= cout$EST + z_alpha * cout$SE
 	cout$lowCI_2 	= cout$EST * exp(-z_alpha * out$SE)
