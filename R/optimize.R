@@ -33,7 +33,7 @@ ref_LL = function(DATA,PARS,COPULA){
 			(1 - E_mTLA)^(KAPPA1 - 1) * E_mTLA
 		if( CDF == 0 ) PDF = 0
 		f1 = PDF
-		f2 = DATA$dens_t2[ii]
+		f2 = DATA$log_dens_t2[ii]
 		F1 = CDF
 		# if(F1 <= 0){
 			# print(sprintf("ii = %s: error1",ii))
@@ -136,23 +136,13 @@ ref_LL_cpp = function(DATA,PARS,COPULA){
 		
 		if( F1 == 0 ) D1 = 0
 		
-		if(FALSE){
-			# log(F1)
-			log(F1)
-			
-			
-			ALPHA1 * log(XDL)
-			D1 = KAL * (XDL)^(ALPHA1 - 1) * (1 - enXDLa)^(KAPPA1 - 1) * enXDLa; D1
-			
-		}
+		log_D2 = DATA$log_dens_t2[ii]
+		log_F2 = DATA$log_cdf_t2[ii]
+		log_DENs = c(log(D1),log_D2)
+		log_CDFs = c(log(F1),log_F2)
 		
-		D2 = DATA$dens_t2[ii]
-		S2 = DATA$surv_t2[ii]
-		F2 = 1 - S2
-		# if( F1 == 0.0 || F2 == 0.0 ) return(error_num)
-		
-		tmp_vec = calc_copula_CDF_OFF(D1 = D1,D2 = D2,
-			F1 = F1,F2 = F2,copula = COPULA,THETA = THETA)
+		tmp_vec = calc_copula_CDF_OFF(log_DENs = log_DENs,
+			log_CDFs = log_CDFs,copula = COPULA,THETA = THETA)
 		tmp_vec = as.numeric(tmp_vec)
 		if( any(is.na(tmp_vec)) ){
 			tmp_vec
@@ -192,6 +182,9 @@ ref_LL_cpp = function(DATA,PARS,COPULA){
 		F1_F2 = tmp_vec[1]
 		D1_D2 = tmp_vec[2]
 		
+		D2 = exp(log_D2)
+		F2 = exp(log_F2)
+		
 		if( DATA$delta[ii] == 1 ){
 			D1; D2; D1_D2
 			tmp_num = D1 + D2 - D1_D2
@@ -204,6 +197,7 @@ ref_LL_cpp = function(DATA,PARS,COPULA){
 			}
 			tmp_LL = log(tmp_num)
 		} else {
+			S2 = 1 - F2
 			tmp_num = S1 + S2 - 1 + F1_F2
 			if( is.na(tmp_num) || tmp_num <= 0 ){
 				print(sprintf("ii = %s",ii))
@@ -223,14 +217,14 @@ ref_LL_cpp = function(DATA,PARS,COPULA){
 wrapper_LL = function(DATA,PARS,COPULA,verb = TRUE){
 	# PARS = iPARS
 	dMrs_cLL(XX = DATA$time,DELTA = DATA$delta,
-		D2 = DATA$dens_t2,S2 = DATA$surv_t2,
+		log_D2 = DATA$log_dens_t2,log_F2 = DATA$log_cdf_t2,
 		PARS = PARS,copula = COPULA,
 		verb = verb)
 }
 wrapper_GRAD = function(DATA,PARS,COPULA,upPARS){
 	# PARS = iPARS
 	out = dMrs_cGRAD(XX = DATA$time,DELTA = DATA$delta,
-		D2 = DATA$dens_t2,S2 = DATA$surv_t2,PARS = PARS,
+		log_D2 = DATA$log_dens_t2,log_F2 = DATA$log_cdf_t2,PARS = PARS,
 		copula = COPULA,upPARS = upPARS)
 	
 	# out = grad(wrap_LL,PARS)
@@ -239,7 +233,7 @@ wrapper_GRAD = function(DATA,PARS,COPULA,upPARS){
 wrapper_HESS = function(DATA,PARS,COPULA,upPARS){
 	# PARS = iPARS
 	dMrs_cHESS(XX = DATA$time,DELTA = DATA$delta,
-		D2 = DATA$dens_t2,S2 = DATA$surv_t2,PARS = PARS,
+		log_D2 = DATA$log_dens_t2,log_F2 = DATA$log_cdf_t2,PARS = PARS,
 		copula = COPULA,upPARS = upPARS)
 }
 	
@@ -292,7 +286,7 @@ wrap_NR = function(DATA,PARS,COPULA,upPARS,
 	max_iter = 2e2,mult = 5,verb = TRUE){
 	
 	dMrs_NR(XX = DATA$time,DELTA = DATA$delta,
-		D2 = DATA$dens_t2,S2 = DATA$surv_t2,
+		log_D2 = DATA$log_dens_t2,log_F2 = DATA$log_cdf_t2,
 		PARS = PARS,copula = COPULA,upPARS = upPARS,
 		max_iter = max_iter,eps = 5e-2,mult = mult,
 		verb = verb)
@@ -313,7 +307,7 @@ run_GRID_PROF = function(DATA,COPULA,DIST,
 	
 	if( verb ) cat(sprintf("%s: Start GRID\n",date()))
 	gout = dMrs_GRID(XX = DATA$time,DELTA = DATA$delta,
-		D2 = DATA$dens_t2,S2 = DATA$surv_t2,
+		log_D2 = DATA$log_dens_t2,log_F2 = DATA$log_cdf_t2,
 		log_ALPHA = param_grid$A,log_LAMBDA = param_grid$L,
 		unc_KAPPA = param_grid$K,log_THETA = param_grid$T,
 		copula = COPULA,verb = verb,ncores = ncores)
@@ -337,7 +331,7 @@ run_GRID_PROF = function(DATA,COPULA,DIST,
 		
 		# Rcpp function
 		dMrs_cLL(XX = DATA$time,DELTA = DATA$delta,
-			D2 = DATA$dens_t2,S2 = DATA$surv_t2,
+			log_D2 = DATA$log_dens_t2,log_F2 = DATA$log_cdf_t2,
 			PARS = iPARS,copula = COPULA,
 			verb = TRUE)
 		
@@ -394,15 +388,15 @@ opt_replicate = function(DATA,COPULA,param_grid,theta,
 	wrap_LL 	= function(PARS){
 		# PARS = iPARS
 		dMrs_cLL(XX = DATA$time,DELTA = DATA$delta,
-			D2 = DATA$dens_t2,S2 = DATA$surv_t2,
+			log_D2 = DATA$log_dens_t2,log_F2 = DATA$log_cdf_t2,
 			PARS = PARS,copula = COPULA,
 			verb = !TRUE)
 	}
 	wrap_GRAD = function(PARS){
 		# PARS = iPARS
 		out = dMrs_cGRAD(XX = DATA$time,DELTA = DATA$delta,
-			D2 = DATA$dens_t2,S2 = DATA$surv_t2,PARS = PARS,
-			copula = COPULA,upPARS = upPARS)
+			log_D2 = DATA$log_dens_t2,log_F2 = DATA$log_cdf_t2,
+			PARS = PARS,copula = COPULA,upPARS = upPARS)
 		
 		# out = grad(wrap_LL,PARS)
 		c(out)
@@ -410,8 +404,8 @@ opt_replicate = function(DATA,COPULA,param_grid,theta,
 	wrap_HESS = function(PARS){
 		# PARS = iPARS
 		dMrs_cHESS(XX = DATA$time,DELTA = DATA$delta,
-			D2 = DATA$dens_t2,S2 = DATA$surv_t2,PARS = PARS,
-			copula = COPULA,upPARS = upPARS)
+			log_D2 = DATA$log_dens_t2,log_F2 = DATA$log_cdf_t2,
+			PARS = PARS,copula = COPULA,upPARS = upPARS)
 	}
 	
 	# Estimate parameters
@@ -446,7 +440,7 @@ opt_replicate = function(DATA,COPULA,param_grid,theta,
 	
 	if( verb ) cat(sprintf("%s: Start GRID\n",date()))
 	gout = dMrs_GRID(XX = DATA$time,DELTA = DATA$delta,
-		D2 = DATA$dens_t2,S2 = DATA$surv_t2,
+		log_D2 = DATA$log_dens_t2,log_F2 = DATA$log_cdf_t2,
 		log_ALPHA = param_grid$A,log_LAMBDA = param_grid$L,
 		unc_KAPPA = unc_KAPPA,log_THETA = log_THETA,
 		copula = COPULA,verb = verb,ncores = ncores)
@@ -469,7 +463,7 @@ opt_replicate = function(DATA,COPULA,param_grid,theta,
 		
 		# Rcpp function
 		dMrs_cLL(XX = DATA$time,DELTA = DATA$delta,
-			D2 = DATA$dens_t2,S2 = DATA$surv_t2,
+			log_D2 = DATA$log_dens_t2,log_F2 = DATA$log_cdf_t2,
 			PARS = iPARS,copula = COPULA,
 			verb = TRUE)
 		
@@ -513,7 +507,7 @@ opt_replicate = function(DATA,COPULA,param_grid,theta,
 		
 		# Run Newton Raphson
 		dMrs_NR(XX = DATA$time,DELTA = DATA$delta,
-			D2 = DATA$dens_t2,S2 = DATA$surv_t2,
+			log_D2 = DATA$log_dens_t2,log_F2 = DATA$log_cdf_t2,
 			PARS = iPARS,copula = COPULA,upPARS = upPARS,
 			max_iter = max_iter,eps = 5e-2,verb = verb)
 		
@@ -704,7 +698,7 @@ run_analysis = function(DATA,theta,upKAPPA,gTHRES,
 	
 	verb = get_verb(verb = verb)
 	PLOT = get_PLOT(PLOT = PLOT)
-	req_names = c("time","delta","dens_t2","surv_t2")
+	req_names = c("time","delta","log_dens_t2","log_cdf_t2")
 	if( !all(req_names %in% names(DATA)) ){
 		miss_names = req_names[!(req_names %in% names(DATA))]
 		stop(sprintf("DATA colnames missing: %s",

@@ -596,7 +596,7 @@ void dMrs_NR(const arma::vec& XX,const arma::uvec& DELTA,
 		
 	}
 	
-	old_LL = dMrs_cLL(XX,DELTA,D2,S2,xk,copula,false);
+	old_LL = dMrs_cLL(XX,DELTA,log_D2,log_F2,xk,copula,false);
 	if( old_LL > orig_LL ){ // Criteria for convergence
 		PARS = xk;
 	}
@@ -605,8 +605,8 @@ void dMrs_NR(const arma::vec& XX,const arma::uvec& DELTA,
 		Rcpp::Rcout << "####\nNum Iter = " << iter+1 << "\n";
 		Rcpp::Rcout << "Params = "; prt_vec(xk);
 		Rcpp::Rcout << "LL = " << old_LL << "\n";
-		GRAD = dMrs_cGRAD(XX,DELTA,D2,S2,xk,copula,upPARS);
-		HESS = dMrs_cHESS(XX,DELTA,D2,S2,PARS,copula,upPARS);
+		GRAD = dMrs_cGRAD(XX,DELTA,log_D2,log_F2,xk,copula,upPARS);
+		HESS = dMrs_cHESS(XX,DELTA,log_D2,log_F2,PARS,copula,upPARS);
 		arma::uvec nz = arma::find(HESS.diag() != 0.0);
 		iHESS.submat(nz,nz) = arma::inv(-1.0 * HESS.submat(nz,nz));
 		Rcpp::Rcout << "GRAD = "; prt_vec(GRAD);
@@ -620,7 +620,7 @@ void dMrs_NR(const arma::vec& XX,const arma::uvec& DELTA,
 
 // [[Rcpp::export]]
 arma::mat dMrs_GRID(const arma::vec& XX,const arma::uvec& DELTA,
-	const arma::vec& D2,const arma::vec& S2,const arma::vec& log_THETA,
+	const arma::vec& log_D2,const arma::vec& log_F2,const arma::vec& log_THETA,
 	const arma::vec& log_ALPHA,const arma::vec& log_LAMBDA,
 	const arma::vec& unc_KAPPA,const std::string& copula,
 	const bool& verb = false,const int& ncores = 1){
@@ -652,7 +652,7 @@ arma::mat dMrs_GRID(const arma::vec& XX,const arma::uvec& DELTA,
 	#ifdef _OPENMP
 	# pragma omp parallel for schedule(dynamic) \
 		num_threads(ncores) \
-		shared(verb2,copula,tot,XX,DELTA,D2,S2,DAT)
+		shared(verb2,copula,tot,XX,DELTA,log_D2,log_F2,DAT)
 	#endif
 	for(arma::uword cnt2 = 0; cnt2 < tot; cnt2++){
 		if( verb2 ){
@@ -665,7 +665,7 @@ arma::mat dMrs_GRID(const arma::vec& XX,const arma::uvec& DELTA,
 		}
 		
 		arma::vec PARS = DAT(cnt2,arma::span(0,3)).t();
-		DAT.at(cnt2,4) = dMrs_cLL(XX,DELTA,D2,S2,PARS,copula,false);
+		DAT.at(cnt2,4) = dMrs_cLL(XX,DELTA,log_D2,log_F2,PARS,copula,false);
 	}
 	
 	// Get parameters with largest log-likelihood

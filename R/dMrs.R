@@ -66,6 +66,37 @@ qexpweibull = function(p,lambda,alpha,kappa){
 	return(quant)
 } 
 
+sim_copula_unif = function(COPULA,NN,THETA){
+	if(FALSE){
+		COPULA 	= c("Independent","Clayton","Gumbel")[1]
+		NN 			= 1e3
+		THETA 	= 2
+		
+	}
+	
+	if( COPULA == "Independent" ){
+		tmp_copula = indepCopula(dim = 2)
+	} else if( COPULA == "Clayton" ){
+		if( THETA < 0 ) stop("THETA must be >= 0")
+		tmp_copula = claytonCopula(param = THETA,dim = 2)
+	} else if( COPULA == "Gumbel" ){
+		if( THETA < 1 ) stop("THETA must be >= 1")
+		tmp_copula = gumbelCopula(param = THETA,dim = 2)
+	} else {
+		stop(sprintf("No code for copula = %s.",COPULA))
+	}
+	
+	bvd = mvdc(copula = tmp_copula,
+		margins = c("unif","unif"),
+		paramMargins = list(
+			list(min = 0,max = 1),
+			list(min = 0,max = 1)))
+	
+	all_data = rMvdc(n = NN,mvdc = bvd)
+	return(all_data)
+	
+}
+
 sim_DATA = function(copula,dist1,n_obs,theta,
 	alpha1,lambda1,kappa1,alpha2,lambda2){
 	
@@ -87,7 +118,7 @@ sim_DATA = function(copula,dist1,n_obs,theta,
 	} else if( copula == "Gumbel" ){
 		if( theta < 1 ) stop("theta must be >= 1")
 		tmp_copula = gumbelCopula(param = theta,
-			dim = 2,use.indepC =c("message","TRUE","FALSE"))
+			dim = 2,use.indepC = c("message","TRUE","FALSE"))
 	} else {
 		stop(sprintf("No code for copula = %s.",copula))
 	}
