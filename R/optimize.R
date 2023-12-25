@@ -40,13 +40,14 @@ ref_LL = function(DATA,PARS,COPULA){
 			# return(error_num)
 		# }
 		F2 = 1 - DATA$surv_t2[ii]
+		log_CDFs = log(c(F1,F2))
 		
 		if( COPULA == "Independent" ){
 			# f_T1_T2 = f1 * F2 + f2 * F1
 			f_T1_T2 = f1 * f2
 			F_T1_T2 = F1 * F2
 		} else if( COPULA == "Clayton" ){
-			F_T1_T2 = calc_copula(F1 = F1,F2 = F2,
+			F_T1_T2 = calc_copula(log_CDFs = log_CDFs,
 				copula = COPULA,THETA = THETA)
 			if( F_T1_T2 == 0 ){
 				f_T1_T2 = 0
@@ -150,12 +151,12 @@ ref_LL_cpp = function(DATA,PARS,COPULA){
 			print(sprintf("D1=%s, D2=%s, F1=%s, F2=%s",D1,D2,F1,F2))
 			return(error_num)
 			
-			F_T1_T2 = calc_copula(F1 = F1,F2 = F2,
+			F_T1_T2 = calc_copula(log_CDFs = log_CDFs,
 				copula = COPULA,THETA = THETA); F_T1_T2
 			
-			calc_copula_offset(D1 = D1,D2 = D2,
-				F1 = F1,F2 = F2,copula = COPULA,
-				THETA = THETA,F_T1_T2 = F_T1_T2)
+			calc_copula_offset(log_DENs = log_DENs,
+				log_CDFs = log_CDFs,copula = COPULA,
+				THETA = THETA,cop_CDF = F_T1_T2)
 			
 			
 			# Check on calculation

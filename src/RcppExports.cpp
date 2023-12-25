@@ -55,9 +55,9 @@ BEGIN_RCPP
     return R_NilValue;
 END_RCPP
 }
-// calc_expweibull_CDF_PDF
-arma::vec calc_expweibull_CDF_PDF(const double& XX, const double& LAM, const double& ALP, const double& KAP);
-RcppExport SEXP _dMrs_calc_expweibull_CDF_PDF(SEXP XXSEXP, SEXP LAMSEXP, SEXP ALPSEXP, SEXP KAPSEXP) {
+// calc_expweibull_logCDF_logPDF
+arma::vec calc_expweibull_logCDF_logPDF(const double& XX, const double& LAM, const double& ALP, const double& KAP);
+RcppExport SEXP _dMrs_calc_expweibull_logCDF_logPDF(SEXP XXSEXP, SEXP LAMSEXP, SEXP ALPSEXP, SEXP KAPSEXP) {
 BEGIN_RCPP
     Rcpp::RObject rcpp_result_gen;
     Rcpp::RNGScope rcpp_rngScope_gen;
@@ -65,136 +65,112 @@ BEGIN_RCPP
     Rcpp::traits::input_parameter< const double& >::type LAM(LAMSEXP);
     Rcpp::traits::input_parameter< const double& >::type ALP(ALPSEXP);
     Rcpp::traits::input_parameter< const double& >::type KAP(KAPSEXP);
-    rcpp_result_gen = Rcpp::wrap(calc_expweibull_CDF_PDF(XX, LAM, ALP, KAP));
+    rcpp_result_gen = Rcpp::wrap(calc_expweibull_logCDF_logPDF(XX, LAM, ALP, KAP));
     return rcpp_result_gen;
 END_RCPP
 }
 // calc_copula
-double calc_copula(const double& F1, const double& F2, const std::string& copula, const double& THETA);
-RcppExport SEXP _dMrs_calc_copula(SEXP F1SEXP, SEXP F2SEXP, SEXP copulaSEXP, SEXP THETASEXP) {
+double calc_copula(const arma::vec& log_CDFs, const std::string& copula, const double& THETA);
+RcppExport SEXP _dMrs_calc_copula(SEXP log_CDFsSEXP, SEXP copulaSEXP, SEXP THETASEXP) {
 BEGIN_RCPP
     Rcpp::RObject rcpp_result_gen;
     Rcpp::RNGScope rcpp_rngScope_gen;
-    Rcpp::traits::input_parameter< const double& >::type F1(F1SEXP);
-    Rcpp::traits::input_parameter< const double& >::type F2(F2SEXP);
+    Rcpp::traits::input_parameter< const arma::vec& >::type log_CDFs(log_CDFsSEXP);
     Rcpp::traits::input_parameter< const std::string& >::type copula(copulaSEXP);
     Rcpp::traits::input_parameter< const double& >::type THETA(THETASEXP);
-    rcpp_result_gen = Rcpp::wrap(calc_copula(F1, F2, copula, THETA));
+    rcpp_result_gen = Rcpp::wrap(calc_copula(log_CDFs, copula, THETA));
     return rcpp_result_gen;
 END_RCPP
 }
 // calc_copula_offset
-double calc_copula_offset(const double& D1, const double& D2, const double& F1, const double& F2, const std::string& copula, const double& THETA, const double& F_T1_T2);
-RcppExport SEXP _dMrs_calc_copula_offset(SEXP D1SEXP, SEXP D2SEXP, SEXP F1SEXP, SEXP F2SEXP, SEXP copulaSEXP, SEXP THETASEXP, SEXP F_T1_T2SEXP) {
+double calc_copula_offset(const arma::vec& log_DENs, const arma::vec& log_CDFs, const std::string& copula, const double& THETA, const double& cop_CDF);
+RcppExport SEXP _dMrs_calc_copula_offset(SEXP log_DENsSEXP, SEXP log_CDFsSEXP, SEXP copulaSEXP, SEXP THETASEXP, SEXP cop_CDFSEXP) {
 BEGIN_RCPP
     Rcpp::RObject rcpp_result_gen;
     Rcpp::RNGScope rcpp_rngScope_gen;
-    Rcpp::traits::input_parameter< const double& >::type D1(D1SEXP);
-    Rcpp::traits::input_parameter< const double& >::type D2(D2SEXP);
-    Rcpp::traits::input_parameter< const double& >::type F1(F1SEXP);
-    Rcpp::traits::input_parameter< const double& >::type F2(F2SEXP);
+    Rcpp::traits::input_parameter< const arma::vec& >::type log_DENs(log_DENsSEXP);
+    Rcpp::traits::input_parameter< const arma::vec& >::type log_CDFs(log_CDFsSEXP);
     Rcpp::traits::input_parameter< const std::string& >::type copula(copulaSEXP);
     Rcpp::traits::input_parameter< const double& >::type THETA(THETASEXP);
-    Rcpp::traits::input_parameter< const double& >::type F_T1_T2(F_T1_T2SEXP);
-    rcpp_result_gen = Rcpp::wrap(calc_copula_offset(D1, D2, F1, F2, copula, THETA, F_T1_T2));
+    Rcpp::traits::input_parameter< const double& >::type cop_CDF(cop_CDFSEXP);
+    rcpp_result_gen = Rcpp::wrap(calc_copula_offset(log_DENs, log_CDFs, copula, THETA, cop_CDF));
     return rcpp_result_gen;
 END_RCPP
 }
 // calc_copula_CDF_OFF
-arma::vec calc_copula_CDF_OFF(const double& D1, const double& D2, const double& F1, const double& F2, const std::string& copula, const double& THETA);
-RcppExport SEXP _dMrs_calc_copula_CDF_OFF(SEXP D1SEXP, SEXP D2SEXP, SEXP F1SEXP, SEXP F2SEXP, SEXP copulaSEXP, SEXP THETASEXP) {
+arma::vec calc_copula_CDF_OFF(const arma::vec& log_DENs, const arma::vec& log_CDFs, const std::string& copula, const double& THETA);
+RcppExport SEXP _dMrs_calc_copula_CDF_OFF(SEXP log_DENsSEXP, SEXP log_CDFsSEXP, SEXP copulaSEXP, SEXP THETASEXP) {
 BEGIN_RCPP
     Rcpp::RObject rcpp_result_gen;
     Rcpp::RNGScope rcpp_rngScope_gen;
-    Rcpp::traits::input_parameter< const double& >::type D1(D1SEXP);
-    Rcpp::traits::input_parameter< const double& >::type D2(D2SEXP);
-    Rcpp::traits::input_parameter< const double& >::type F1(F1SEXP);
-    Rcpp::traits::input_parameter< const double& >::type F2(F2SEXP);
+    Rcpp::traits::input_parameter< const arma::vec& >::type log_DENs(log_DENsSEXP);
+    Rcpp::traits::input_parameter< const arma::vec& >::type log_CDFs(log_CDFsSEXP);
     Rcpp::traits::input_parameter< const std::string& >::type copula(copulaSEXP);
     Rcpp::traits::input_parameter< const double& >::type THETA(THETASEXP);
-    rcpp_result_gen = Rcpp::wrap(calc_copula_CDF_OFF(D1, D2, F1, F2, copula, THETA));
+    rcpp_result_gen = Rcpp::wrap(calc_copula_CDF_OFF(log_DENs, log_CDFs, copula, THETA));
     return rcpp_result_gen;
 END_RCPP
 }
 // dMrs_cLL
-double dMrs_cLL(const arma::vec& XX, const arma::uvec& DELTA, const arma::vec& D2, const arma::vec& S2, const arma::vec& PARS, const std::string& copula, const bool& verb);
-RcppExport SEXP _dMrs_dMrs_cLL(SEXP XXSEXP, SEXP DELTASEXP, SEXP D2SEXP, SEXP S2SEXP, SEXP PARSSEXP, SEXP copulaSEXP, SEXP verbSEXP) {
+double dMrs_cLL(const arma::vec& XX, const arma::uvec& DELTA, const arma::vec& log_D2, const arma::vec& log_F2, const arma::vec& PARS, const std::string& copula, const bool& verb);
+RcppExport SEXP _dMrs_dMrs_cLL(SEXP XXSEXP, SEXP DELTASEXP, SEXP log_D2SEXP, SEXP log_F2SEXP, SEXP PARSSEXP, SEXP copulaSEXP, SEXP verbSEXP) {
 BEGIN_RCPP
     Rcpp::RObject rcpp_result_gen;
     Rcpp::RNGScope rcpp_rngScope_gen;
     Rcpp::traits::input_parameter< const arma::vec& >::type XX(XXSEXP);
     Rcpp::traits::input_parameter< const arma::uvec& >::type DELTA(DELTASEXP);
-    Rcpp::traits::input_parameter< const arma::vec& >::type D2(D2SEXP);
-    Rcpp::traits::input_parameter< const arma::vec& >::type S2(S2SEXP);
+    Rcpp::traits::input_parameter< const arma::vec& >::type log_D2(log_D2SEXP);
+    Rcpp::traits::input_parameter< const arma::vec& >::type log_F2(log_F2SEXP);
     Rcpp::traits::input_parameter< const arma::vec& >::type PARS(PARSSEXP);
     Rcpp::traits::input_parameter< const std::string& >::type copula(copulaSEXP);
     Rcpp::traits::input_parameter< const bool& >::type verb(verbSEXP);
-    rcpp_result_gen = Rcpp::wrap(dMrs_cLL(XX, DELTA, D2, S2, PARS, copula, verb));
+    rcpp_result_gen = Rcpp::wrap(dMrs_cLL(XX, DELTA, log_D2, log_F2, PARS, copula, verb));
     return rcpp_result_gen;
 END_RCPP
 }
 // dMrs_cGRAD
-arma::vec dMrs_cGRAD(const arma::vec& XX, const arma::uvec& DELTA, const arma::vec& D2, const arma::vec& S2, const arma::vec& PARS, const std::string& copula, const arma::vec& upPARS);
-RcppExport SEXP _dMrs_dMrs_cGRAD(SEXP XXSEXP, SEXP DELTASEXP, SEXP D2SEXP, SEXP S2SEXP, SEXP PARSSEXP, SEXP copulaSEXP, SEXP upPARSSEXP) {
+arma::vec dMrs_cGRAD(const arma::vec& XX, const arma::uvec& DELTA, const arma::vec& log_D2, const arma::vec& log_F2, const arma::vec& PARS, const std::string& copula, const arma::vec& upPARS);
+RcppExport SEXP _dMrs_dMrs_cGRAD(SEXP XXSEXP, SEXP DELTASEXP, SEXP log_D2SEXP, SEXP log_F2SEXP, SEXP PARSSEXP, SEXP copulaSEXP, SEXP upPARSSEXP) {
 BEGIN_RCPP
     Rcpp::RObject rcpp_result_gen;
     Rcpp::RNGScope rcpp_rngScope_gen;
     Rcpp::traits::input_parameter< const arma::vec& >::type XX(XXSEXP);
     Rcpp::traits::input_parameter< const arma::uvec& >::type DELTA(DELTASEXP);
-    Rcpp::traits::input_parameter< const arma::vec& >::type D2(D2SEXP);
-    Rcpp::traits::input_parameter< const arma::vec& >::type S2(S2SEXP);
+    Rcpp::traits::input_parameter< const arma::vec& >::type log_D2(log_D2SEXP);
+    Rcpp::traits::input_parameter< const arma::vec& >::type log_F2(log_F2SEXP);
     Rcpp::traits::input_parameter< const arma::vec& >::type PARS(PARSSEXP);
     Rcpp::traits::input_parameter< const std::string& >::type copula(copulaSEXP);
     Rcpp::traits::input_parameter< const arma::vec& >::type upPARS(upPARSSEXP);
-    rcpp_result_gen = Rcpp::wrap(dMrs_cGRAD(XX, DELTA, D2, S2, PARS, copula, upPARS));
+    rcpp_result_gen = Rcpp::wrap(dMrs_cGRAD(XX, DELTA, log_D2, log_F2, PARS, copula, upPARS));
     return rcpp_result_gen;
 END_RCPP
 }
 // dMrs_cHESS
-arma::mat dMrs_cHESS(const arma::vec& XX, const arma::uvec& DELTA, const arma::vec& D2, const arma::vec& S2, const arma::vec& PARS, const std::string& copula, const arma::vec& upPARS);
-RcppExport SEXP _dMrs_dMrs_cHESS(SEXP XXSEXP, SEXP DELTASEXP, SEXP D2SEXP, SEXP S2SEXP, SEXP PARSSEXP, SEXP copulaSEXP, SEXP upPARSSEXP) {
+arma::mat dMrs_cHESS(const arma::vec& XX, const arma::uvec& DELTA, const arma::vec& log_D2, const arma::vec& log_F2, const arma::vec& PARS, const std::string& copula, const arma::vec& upPARS);
+RcppExport SEXP _dMrs_dMrs_cHESS(SEXP XXSEXP, SEXP DELTASEXP, SEXP log_D2SEXP, SEXP log_F2SEXP, SEXP PARSSEXP, SEXP copulaSEXP, SEXP upPARSSEXP) {
 BEGIN_RCPP
     Rcpp::RObject rcpp_result_gen;
     Rcpp::RNGScope rcpp_rngScope_gen;
     Rcpp::traits::input_parameter< const arma::vec& >::type XX(XXSEXP);
     Rcpp::traits::input_parameter< const arma::uvec& >::type DELTA(DELTASEXP);
-    Rcpp::traits::input_parameter< const arma::vec& >::type D2(D2SEXP);
-    Rcpp::traits::input_parameter< const arma::vec& >::type S2(S2SEXP);
+    Rcpp::traits::input_parameter< const arma::vec& >::type log_D2(log_D2SEXP);
+    Rcpp::traits::input_parameter< const arma::vec& >::type log_F2(log_F2SEXP);
     Rcpp::traits::input_parameter< const arma::vec& >::type PARS(PARSSEXP);
     Rcpp::traits::input_parameter< const std::string& >::type copula(copulaSEXP);
     Rcpp::traits::input_parameter< const arma::vec& >::type upPARS(upPARSSEXP);
-    rcpp_result_gen = Rcpp::wrap(dMrs_cHESS(XX, DELTA, D2, S2, PARS, copula, upPARS));
+    rcpp_result_gen = Rcpp::wrap(dMrs_cHESS(XX, DELTA, log_D2, log_F2, PARS, copula, upPARS));
     return rcpp_result_gen;
 END_RCPP
 }
-// dMrs_BFGS
-void dMrs_BFGS(const arma::vec& XX, const arma::uvec& DELTA, const arma::vec& D2, const arma::vec& S2, arma::vec& PARS, const std::string& copula, const arma::vec& upPARS, const arma::uword& max_iter, const double& eps, const bool& verb);
-RcppExport SEXP _dMrs_dMrs_BFGS(SEXP XXSEXP, SEXP DELTASEXP, SEXP D2SEXP, SEXP S2SEXP, SEXP PARSSEXP, SEXP copulaSEXP, SEXP upPARSSEXP, SEXP max_iterSEXP, SEXP epsSEXP, SEXP verbSEXP) {
-BEGIN_RCPP
-    Rcpp::RNGScope rcpp_rngScope_gen;
-    Rcpp::traits::input_parameter< const arma::vec& >::type XX(XXSEXP);
-    Rcpp::traits::input_parameter< const arma::uvec& >::type DELTA(DELTASEXP);
-    Rcpp::traits::input_parameter< const arma::vec& >::type D2(D2SEXP);
-    Rcpp::traits::input_parameter< const arma::vec& >::type S2(S2SEXP);
-    Rcpp::traits::input_parameter< arma::vec& >::type PARS(PARSSEXP);
-    Rcpp::traits::input_parameter< const std::string& >::type copula(copulaSEXP);
-    Rcpp::traits::input_parameter< const arma::vec& >::type upPARS(upPARSSEXP);
-    Rcpp::traits::input_parameter< const arma::uword& >::type max_iter(max_iterSEXP);
-    Rcpp::traits::input_parameter< const double& >::type eps(epsSEXP);
-    Rcpp::traits::input_parameter< const bool& >::type verb(verbSEXP);
-    dMrs_BFGS(XX, DELTA, D2, S2, PARS, copula, upPARS, max_iter, eps, verb);
-    return R_NilValue;
-END_RCPP
-}
 // dMrs_NR
-void dMrs_NR(const arma::vec& XX, const arma::uvec& DELTA, const arma::vec& D2, const arma::vec& S2, arma::vec& PARS, const std::string& copula, const arma::vec& upPARS, const arma::uword& max_iter, const double& eps, const arma::uword& mult, const bool& verb);
-RcppExport SEXP _dMrs_dMrs_NR(SEXP XXSEXP, SEXP DELTASEXP, SEXP D2SEXP, SEXP S2SEXP, SEXP PARSSEXP, SEXP copulaSEXP, SEXP upPARSSEXP, SEXP max_iterSEXP, SEXP epsSEXP, SEXP multSEXP, SEXP verbSEXP) {
+void dMrs_NR(const arma::vec& XX, const arma::uvec& DELTA, const arma::vec& log_D2, const arma::vec& log_F2, arma::vec& PARS, const std::string& copula, const arma::vec& upPARS, const arma::uword& max_iter, const double& eps, const arma::uword& mult, const bool& verb);
+RcppExport SEXP _dMrs_dMrs_NR(SEXP XXSEXP, SEXP DELTASEXP, SEXP log_D2SEXP, SEXP log_F2SEXP, SEXP PARSSEXP, SEXP copulaSEXP, SEXP upPARSSEXP, SEXP max_iterSEXP, SEXP epsSEXP, SEXP multSEXP, SEXP verbSEXP) {
 BEGIN_RCPP
     Rcpp::RNGScope rcpp_rngScope_gen;
     Rcpp::traits::input_parameter< const arma::vec& >::type XX(XXSEXP);
     Rcpp::traits::input_parameter< const arma::uvec& >::type DELTA(DELTASEXP);
-    Rcpp::traits::input_parameter< const arma::vec& >::type D2(D2SEXP);
-    Rcpp::traits::input_parameter< const arma::vec& >::type S2(S2SEXP);
+    Rcpp::traits::input_parameter< const arma::vec& >::type log_D2(log_D2SEXP);
+    Rcpp::traits::input_parameter< const arma::vec& >::type log_F2(log_F2SEXP);
     Rcpp::traits::input_parameter< arma::vec& >::type PARS(PARSSEXP);
     Rcpp::traits::input_parameter< const std::string& >::type copula(copulaSEXP);
     Rcpp::traits::input_parameter< const arma::vec& >::type upPARS(upPARSSEXP);
@@ -202,20 +178,20 @@ BEGIN_RCPP
     Rcpp::traits::input_parameter< const double& >::type eps(epsSEXP);
     Rcpp::traits::input_parameter< const arma::uword& >::type mult(multSEXP);
     Rcpp::traits::input_parameter< const bool& >::type verb(verbSEXP);
-    dMrs_NR(XX, DELTA, D2, S2, PARS, copula, upPARS, max_iter, eps, mult, verb);
+    dMrs_NR(XX, DELTA, log_D2, log_F2, PARS, copula, upPARS, max_iter, eps, mult, verb);
     return R_NilValue;
 END_RCPP
 }
 // dMrs_GRID
-arma::mat dMrs_GRID(const arma::vec& XX, const arma::uvec& DELTA, const arma::vec& D2, const arma::vec& S2, const arma::vec& log_THETA, const arma::vec& log_ALPHA, const arma::vec& log_LAMBDA, const arma::vec& unc_KAPPA, const std::string& copula, const bool& verb, const int& ncores);
-RcppExport SEXP _dMrs_dMrs_GRID(SEXP XXSEXP, SEXP DELTASEXP, SEXP D2SEXP, SEXP S2SEXP, SEXP log_THETASEXP, SEXP log_ALPHASEXP, SEXP log_LAMBDASEXP, SEXP unc_KAPPASEXP, SEXP copulaSEXP, SEXP verbSEXP, SEXP ncoresSEXP) {
+arma::mat dMrs_GRID(const arma::vec& XX, const arma::uvec& DELTA, const arma::vec& log_D2, const arma::vec& log_F2, const arma::vec& log_THETA, const arma::vec& log_ALPHA, const arma::vec& log_LAMBDA, const arma::vec& unc_KAPPA, const std::string& copula, const bool& verb, const int& ncores);
+RcppExport SEXP _dMrs_dMrs_GRID(SEXP XXSEXP, SEXP DELTASEXP, SEXP log_D2SEXP, SEXP log_F2SEXP, SEXP log_THETASEXP, SEXP log_ALPHASEXP, SEXP log_LAMBDASEXP, SEXP unc_KAPPASEXP, SEXP copulaSEXP, SEXP verbSEXP, SEXP ncoresSEXP) {
 BEGIN_RCPP
     Rcpp::RObject rcpp_result_gen;
     Rcpp::RNGScope rcpp_rngScope_gen;
     Rcpp::traits::input_parameter< const arma::vec& >::type XX(XXSEXP);
     Rcpp::traits::input_parameter< const arma::uvec& >::type DELTA(DELTASEXP);
-    Rcpp::traits::input_parameter< const arma::vec& >::type D2(D2SEXP);
-    Rcpp::traits::input_parameter< const arma::vec& >::type S2(S2SEXP);
+    Rcpp::traits::input_parameter< const arma::vec& >::type log_D2(log_D2SEXP);
+    Rcpp::traits::input_parameter< const arma::vec& >::type log_F2(log_F2SEXP);
     Rcpp::traits::input_parameter< const arma::vec& >::type log_THETA(log_THETASEXP);
     Rcpp::traits::input_parameter< const arma::vec& >::type log_ALPHA(log_ALPHASEXP);
     Rcpp::traits::input_parameter< const arma::vec& >::type log_LAMBDA(log_LAMBDASEXP);
@@ -223,7 +199,7 @@ BEGIN_RCPP
     Rcpp::traits::input_parameter< const std::string& >::type copula(copulaSEXP);
     Rcpp::traits::input_parameter< const bool& >::type verb(verbSEXP);
     Rcpp::traits::input_parameter< const int& >::type ncores(ncoresSEXP);
-    rcpp_result_gen = Rcpp::wrap(dMrs_GRID(XX, DELTA, D2, S2, log_THETA, log_ALPHA, log_LAMBDA, unc_KAPPA, copula, verb, ncores));
+    rcpp_result_gen = Rcpp::wrap(dMrs_GRID(XX, DELTA, log_D2, log_F2, log_THETA, log_ALPHA, log_LAMBDA, unc_KAPPA, copula, verb, ncores));
     return rcpp_result_gen;
 END_RCPP
 }
@@ -247,14 +223,13 @@ static const R_CallMethodDef CallEntries[] = {
     {"_dMrs_Rcpp_max_abs_diff", (DL_FUNC) &_dMrs_Rcpp_max_abs_diff, 2},
     {"_dMrs_Rcpp_logSumExp", (DL_FUNC) &_dMrs_Rcpp_logSumExp, 1},
     {"_dMrs_prt_vec", (DL_FUNC) &_dMrs_prt_vec, 1},
-    {"_dMrs_calc_expweibull_CDF_PDF", (DL_FUNC) &_dMrs_calc_expweibull_CDF_PDF, 4},
-    {"_dMrs_calc_copula", (DL_FUNC) &_dMrs_calc_copula, 4},
-    {"_dMrs_calc_copula_offset", (DL_FUNC) &_dMrs_calc_copula_offset, 7},
-    {"_dMrs_calc_copula_CDF_OFF", (DL_FUNC) &_dMrs_calc_copula_CDF_OFF, 6},
+    {"_dMrs_calc_expweibull_logCDF_logPDF", (DL_FUNC) &_dMrs_calc_expweibull_logCDF_logPDF, 4},
+    {"_dMrs_calc_copula", (DL_FUNC) &_dMrs_calc_copula, 3},
+    {"_dMrs_calc_copula_offset", (DL_FUNC) &_dMrs_calc_copula_offset, 5},
+    {"_dMrs_calc_copula_CDF_OFF", (DL_FUNC) &_dMrs_calc_copula_CDF_OFF, 4},
     {"_dMrs_dMrs_cLL", (DL_FUNC) &_dMrs_dMrs_cLL, 7},
     {"_dMrs_dMrs_cGRAD", (DL_FUNC) &_dMrs_dMrs_cGRAD, 7},
     {"_dMrs_dMrs_cHESS", (DL_FUNC) &_dMrs_dMrs_cHESS, 7},
-    {"_dMrs_dMrs_BFGS", (DL_FUNC) &_dMrs_dMrs_BFGS, 10},
     {"_dMrs_dMrs_NR", (DL_FUNC) &_dMrs_dMrs_NR, 11},
     {"_dMrs_dMrs_GRID", (DL_FUNC) &_dMrs_dMrs_GRID, 11},
     {"_dMrs_dMrs_MATCH", (DL_FUNC) &_dMrs_dMrs_MATCH, 4},

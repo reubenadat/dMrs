@@ -11,7 +11,7 @@
 #'	element_text unit ggtitle element_blank element_line
 #'	element_rect geom_ribbon ylim facet_wrap geom_point
 #'	ggsave
-#' @importFrom copula claytonCopula gumbelCopula mvdc rMvdc
+#' @importFrom copula indepCopula claytonCopula gumbelCopula mvdc rMvdc
 #' @importFrom viridis scale_fill_viridis
 #' @importFrom Rmpfr mpfr
 #' @importFrom utils head

@@ -17,44 +17,40 @@ prt_vec <- function(aa) {
     invisible(.Call('_dMrs_prt_vec', PACKAGE = 'dMrs', aa))
 }
 
-calc_expweibull_CDF_PDF <- function(XX, LAM, ALP, KAP) {
-    .Call('_dMrs_calc_expweibull_CDF_PDF', PACKAGE = 'dMrs', XX, LAM, ALP, KAP)
+calc_expweibull_logCDF_logPDF <- function(XX, LAM, ALP, KAP) {
+    .Call('_dMrs_calc_expweibull_logCDF_logPDF', PACKAGE = 'dMrs', XX, LAM, ALP, KAP)
 }
 
-calc_copula <- function(F1, F2, copula, THETA) {
-    .Call('_dMrs_calc_copula', PACKAGE = 'dMrs', F1, F2, copula, THETA)
+calc_copula <- function(log_CDFs, copula, THETA) {
+    .Call('_dMrs_calc_copula', PACKAGE = 'dMrs', log_CDFs, copula, THETA)
 }
 
-calc_copula_offset <- function(D1, D2, F1, F2, copula, THETA, F_T1_T2) {
-    .Call('_dMrs_calc_copula_offset', PACKAGE = 'dMrs', D1, D2, F1, F2, copula, THETA, F_T1_T2)
+calc_copula_offset <- function(log_DENs, log_CDFs, copula, THETA, cop_CDF) {
+    .Call('_dMrs_calc_copula_offset', PACKAGE = 'dMrs', log_DENs, log_CDFs, copula, THETA, cop_CDF)
 }
 
-calc_copula_CDF_OFF <- function(D1, D2, F1, F2, copula, THETA) {
-    .Call('_dMrs_calc_copula_CDF_OFF', PACKAGE = 'dMrs', D1, D2, F1, F2, copula, THETA)
+calc_copula_CDF_OFF <- function(log_DENs, log_CDFs, copula, THETA) {
+    .Call('_dMrs_calc_copula_CDF_OFF', PACKAGE = 'dMrs', log_DENs, log_CDFs, copula, THETA)
 }
 
-dMrs_cLL <- function(XX, DELTA, D2, S2, PARS, copula, verb = FALSE) {
-    .Call('_dMrs_dMrs_cLL', PACKAGE = 'dMrs', XX, DELTA, D2, S2, PARS, copula, verb)
+dMrs_cLL <- function(XX, DELTA, log_D2, log_F2, PARS, copula, verb = FALSE) {
+    .Call('_dMrs_dMrs_cLL', PACKAGE = 'dMrs', XX, DELTA, log_D2, log_F2, PARS, copula, verb)
 }
 
-dMrs_cGRAD <- function(XX, DELTA, D2, S2, PARS, copula, upPARS) {
-    .Call('_dMrs_dMrs_cGRAD', PACKAGE = 'dMrs', XX, DELTA, D2, S2, PARS, copula, upPARS)
+dMrs_cGRAD <- function(XX, DELTA, log_D2, log_F2, PARS, copula, upPARS) {
+    .Call('_dMrs_dMrs_cGRAD', PACKAGE = 'dMrs', XX, DELTA, log_D2, log_F2, PARS, copula, upPARS)
 }
 
-dMrs_cHESS <- function(XX, DELTA, D2, S2, PARS, copula, upPARS) {
-    .Call('_dMrs_dMrs_cHESS', PACKAGE = 'dMrs', XX, DELTA, D2, S2, PARS, copula, upPARS)
+dMrs_cHESS <- function(XX, DELTA, log_D2, log_F2, PARS, copula, upPARS) {
+    .Call('_dMrs_dMrs_cHESS', PACKAGE = 'dMrs', XX, DELTA, log_D2, log_F2, PARS, copula, upPARS)
 }
 
-dMrs_BFGS <- function(XX, DELTA, D2, S2, PARS, copula, upPARS, max_iter = 4e3L, eps = 1e-7, verb = TRUE) {
-    invisible(.Call('_dMrs_dMrs_BFGS', PACKAGE = 'dMrs', XX, DELTA, D2, S2, PARS, copula, upPARS, max_iter, eps, verb))
+dMrs_NR <- function(XX, DELTA, log_D2, log_F2, PARS, copula, upPARS, max_iter = 2e2L, eps = 5e-2, mult = 5L, verb = TRUE) {
+    invisible(.Call('_dMrs_dMrs_NR', PACKAGE = 'dMrs', XX, DELTA, log_D2, log_F2, PARS, copula, upPARS, max_iter, eps, mult, verb))
 }
 
-dMrs_NR <- function(XX, DELTA, D2, S2, PARS, copula, upPARS, max_iter = 2e2L, eps = 5e-2, mult = 5L, verb = TRUE) {
-    invisible(.Call('_dMrs_dMrs_NR', PACKAGE = 'dMrs', XX, DELTA, D2, S2, PARS, copula, upPARS, max_iter, eps, mult, verb))
-}
-
-dMrs_GRID <- function(XX, DELTA, D2, S2, log_THETA, log_ALPHA, log_LAMBDA, unc_KAPPA, copula, verb = FALSE, ncores = 1L) {
-    .Call('_dMrs_dMrs_GRID', PACKAGE = 'dMrs', XX, DELTA, D2, S2, log_THETA, log_ALPHA, log_LAMBDA, unc_KAPPA, copula, verb, ncores)
+dMrs_GRID <- function(XX, DELTA, log_D2, log_F2, log_THETA, log_ALPHA, log_LAMBDA, unc_KAPPA, copula, verb = FALSE, ncores = 1L) {
+    .Call('_dMrs_dMrs_GRID', PACKAGE = 'dMrs', XX, DELTA, log_D2, log_F2, log_THETA, log_ALPHA, log_LAMBDA, unc_KAPPA, copula, verb, ncores)
 }
 
 dMrs_MATCH <- function(wDAT, rDAT, ncores = 1L, verb = TRUE) {

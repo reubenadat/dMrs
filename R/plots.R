@@ -243,25 +243,25 @@ calc_CDFs = function(DATA,PARS,COPULA){
 	}
 	
 	tmp_mat = sapply(DATA$time,function(tt){
-		calc_expweibull_CDF_PDF(XX = tt,
+		calc_expweibull_logCDF_logPDF(XX = tt,
 			LAM = LAMBDA1,
 			ALP = ALPHA1,
 			KAP = KAPPA1)
 	},USE.NAMES = FALSE)
 	tmp_mat = t(tmp_mat)
 	
-	CDF_1 = tmp_mat[,1]
+	CDF_1 = exp(tmp_mat[,1])
 	CDF_2 = 1 - DATA$surv_t2
 	
 	F_T1_T2 = apply(smart_df(CDF_1,CDF_2),1,function(xx){
-		calc_copula(F1 = xx[1],F2 = xx[2],
+		calc_copula(log_CDFs = log(xx),
 			copula = COPULA,THETA = THETA)
 	})
 	
 	# Calc densities
 	# D1 = dexpweibull(x = DATA$time,lambda = LAMBDA1,
 		# alpha = ALPHA1,kappa = KAPPA1,log = FALSE)
-	D1 = tmp_mat[,2]
+	D1 = exp(tmp_mat[,2])
 	D2 = DATA$dens_t2
 	
 	DATA = cbind(DATA,smart_df(
@@ -270,9 +270,9 @@ calc_CDFs = function(DATA,PARS,COPULA){
 	
 	DATA$D1_D2 = apply(DATA[,c("D1","D2","CDF_1","CDF_2","F_T1_T2")],
 		1,function(xx){
-		calc_copula_offset(D1 = xx[1],D2 = xx[2],
-			F1 = xx[3],F2 = xx[4],copula = COPULA,
-			THETA = THETA,F_T1_T2 = xx[5])
+		calc_copula_offset(log_DENs = log(xx[1:2]),
+			log_CDFs = log(xx[3:4]),copula = COPULA,
+			THETA = THETA,cop_CDF = xx[5])
 	})
 	
 	DATA$H1 = DATA$D1 / (1 - DATA$CDF_1)
@@ -431,7 +431,7 @@ mix_dens = function(COPULA,ALPHA1,LAMBDA1,KAPPA1,
 		kappa = 1)
 	
 	F_T1_T2 = apply(smart_df(F1,F2),1,function(xx){
-		calc_copula(F1 = xx[1],F2 = xx[2],
+		calc_copula(log_CDFs = log(xx),
 			copula = COPULA,THETA = THETA)
 	})
 	
@@ -441,9 +441,9 @@ mix_dens = function(COPULA,ALPHA1,LAMBDA1,KAPPA1,
 	
 	out$D1_D2 = apply(out[,c("D1","D2","F1","F2","F_T1_T2")],
 		1,function(xx){
-		calc_copula_offset(D1 = xx[1],D2 = xx[2],
-			F1 = xx[3],F2 = xx[4],copula = COPULA,
-			THETA = THETA,F_T1_T2 = xx[5])
+		calc_copula_offset(log_DENs = log(xx[1:2]),
+			log_CDFs = log(xx[3:4]),copula = COPULA,
+			THETA = THETA,cop_CDF = xx[5])
 	})
 	
 	out$mDENS = out$D1 + out$D2 - out$D1_D2
