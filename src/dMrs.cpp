@@ -58,6 +58,8 @@ void prt_vec(const arma::vec& aa){
 arma::vec calc_expweibull_logCDF_logPDF(const double& XX,
 	const double& LAM,const double& ALP,const double& KAP){
 	
+	Rcpp::stop("improve pweibull precision");
+	
 	double log_cdf_weibull = R::pweibull(XX,ALP,LAM,1,1);
 	double log_cdf_expweibull = log_cdf_weibull;
 	double log_pdf_expweibull = R::dweibull(XX,ALP,LAM,1);
