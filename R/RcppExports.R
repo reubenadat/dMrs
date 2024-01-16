@@ -17,8 +17,16 @@ prt_vec <- function(aa) {
     invisible(.Call('_dMrs_prt_vec', PACKAGE = 'dMrs', aa))
 }
 
+log_CDF_weibull <- function(XX, LAM, ALP) {
+    .Call('_dMrs_log_CDF_weibull', PACKAGE = 'dMrs', XX, LAM, ALP)
+}
+
 calc_expweibull_logCDF_logPDF <- function(XX, LAM, ALP, KAP) {
     .Call('_dMrs_calc_expweibull_logCDF_logPDF', PACKAGE = 'dMrs', XX, LAM, ALP, KAP)
+}
+
+log_SURV_expweibull <- function(XX, LAM, ALP, KAP) {
+    .Call('_dMrs_log_SURV_expweibull', PACKAGE = 'dMrs', XX, LAM, ALP, KAP)
 }
 
 calc_copula <- function(log_CDFs, copula, THETA) {

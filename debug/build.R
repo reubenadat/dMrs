@@ -4,8 +4,8 @@ rm(list = ls())
 bb = strsplit(getwd(),"/")[[1]]
 pack_dir = paste(bb[-length(bb)],collapse = "/")
 pack = strsplit(pack_dir,"/")[[1]]
-pack = pack[length(pack)]
-pack
+pack = pack[length(pack)]; pack
+if( pack != "dMrs" ) q("no")
 
 chk_pack = tryCatch(find.package(pack),
 	error = function(ee){NULL}); chk_pack
@@ -23,13 +23,19 @@ usethis::use_gpl3_license()
 make_vign = FALSE
 
 # Check: takes some time
-devtools::check(pkg = pack_dir,manual = TRUE,
-	cran = TRUE,error_on = c("warning","note")[2],
-	vignettes = make_vign)
+chk = tryCatch(devtools::check(pkg = pack_dir,
+	manual = TRUE,cran = TRUE,
+	error_on = c("warning","note")[2],
+	vignettes = make_vign),
+	error = function(ee){NULL},
+	warning = function(ww){NULL})
+chk
 
 # Install
-devtools::install(pack_dir,
-	build_vignettes = make_vign,
-	upgrade = FALSE)
+if( !is.null(chk) ){
+	devtools::install(pack_dir,
+		build_vignettes = make_vign,
+		upgrade = FALSE)
+}
 
 ###

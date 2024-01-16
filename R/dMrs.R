@@ -22,9 +22,11 @@ pexpweibull = function(q,lambda,alpha,kappa,log.p = FALSE){
 	# stop("Invalid arguments.  qp,lp,kp ap must be > 0 ")}
 	
 	log_cdf_weib = pweibull(q,scale = lambda,shape = alpha,log.p = TRUE)
-	if( log_cdf_weib == 0 ){
+	if( any(log_cdf_weib == 0) ){
 		# precision fix
-		log_cdf_weib = -1 * pweibull(q,scale = lambda,shape = alpha,lower.tail = FALSE)
+		idx = log_cdf_weib == 0
+		log_cdf_weib[idx] = -1 * pweibull(q[idx],
+			scale = lambda,shape = alpha,lower.tail = FALSE)
 	}
 	
 	log.cdf = kappa * log_cdf_weib
@@ -52,9 +54,11 @@ dexpweibull = function(x,lambda,alpha,kappa,log = FALSE){
 		stop("Non-x parameters must be atomic")
 	
 	log_cdf_weib = pweibull(q = x,scale = lambda,shape = alpha,log.p = TRUE)
-	if( log_cdf_weib == 0 ){
+	if( any(log_cdf_weib == 0) ){
 		# precision fix
-		log_cdf_weib = -1 * pweibull(q = x,scale = lambda,shape = alpha,lower.tail = FALSE)
+		idx = log_cdf_weib == 0
+		log_cdf_weib[idx] = -1 * pweibull(q = x[idx],
+			scale = lambda,shape = alpha,lower.tail = FALSE)
 	}
 	
 	log.pdf <- log(kappa) + (kappa - 1) * 

@@ -55,6 +55,19 @@ BEGIN_RCPP
     return R_NilValue;
 END_RCPP
 }
+// log_CDF_weibull
+double log_CDF_weibull(const double& XX, const double& LAM, const double& ALP);
+RcppExport SEXP _dMrs_log_CDF_weibull(SEXP XXSEXP, SEXP LAMSEXP, SEXP ALPSEXP) {
+BEGIN_RCPP
+    Rcpp::RObject rcpp_result_gen;
+    Rcpp::RNGScope rcpp_rngScope_gen;
+    Rcpp::traits::input_parameter< const double& >::type XX(XXSEXP);
+    Rcpp::traits::input_parameter< const double& >::type LAM(LAMSEXP);
+    Rcpp::traits::input_parameter< const double& >::type ALP(ALPSEXP);
+    rcpp_result_gen = Rcpp::wrap(log_CDF_weibull(XX, LAM, ALP));
+    return rcpp_result_gen;
+END_RCPP
+}
 // calc_expweibull_logCDF_logPDF
 arma::vec calc_expweibull_logCDF_logPDF(const double& XX, const double& LAM, const double& ALP, const double& KAP);
 RcppExport SEXP _dMrs_calc_expweibull_logCDF_logPDF(SEXP XXSEXP, SEXP LAMSEXP, SEXP ALPSEXP, SEXP KAPSEXP) {
@@ -66,6 +79,20 @@ BEGIN_RCPP
     Rcpp::traits::input_parameter< const double& >::type ALP(ALPSEXP);
     Rcpp::traits::input_parameter< const double& >::type KAP(KAPSEXP);
     rcpp_result_gen = Rcpp::wrap(calc_expweibull_logCDF_logPDF(XX, LAM, ALP, KAP));
+    return rcpp_result_gen;
+END_RCPP
+}
+// log_SURV_expweibull
+double log_SURV_expweibull(const double& XX, const double& LAM, const double& ALP, const double& KAP);
+RcppExport SEXP _dMrs_log_SURV_expweibull(SEXP XXSEXP, SEXP LAMSEXP, SEXP ALPSEXP, SEXP KAPSEXP) {
+BEGIN_RCPP
+    Rcpp::RObject rcpp_result_gen;
+    Rcpp::RNGScope rcpp_rngScope_gen;
+    Rcpp::traits::input_parameter< const double& >::type XX(XXSEXP);
+    Rcpp::traits::input_parameter< const double& >::type LAM(LAMSEXP);
+    Rcpp::traits::input_parameter< const double& >::type ALP(ALPSEXP);
+    Rcpp::traits::input_parameter< const double& >::type KAP(KAPSEXP);
+    rcpp_result_gen = Rcpp::wrap(log_SURV_expweibull(XX, LAM, ALP, KAP));
     return rcpp_result_gen;
 END_RCPP
 }
@@ -223,7 +250,9 @@ static const R_CallMethodDef CallEntries[] = {
     {"_dMrs_Rcpp_max_abs_diff", (DL_FUNC) &_dMrs_Rcpp_max_abs_diff, 2},
     {"_dMrs_Rcpp_logSumExp", (DL_FUNC) &_dMrs_Rcpp_logSumExp, 1},
     {"_dMrs_prt_vec", (DL_FUNC) &_dMrs_prt_vec, 1},
+    {"_dMrs_log_CDF_weibull", (DL_FUNC) &_dMrs_log_CDF_weibull, 3},
     {"_dMrs_calc_expweibull_logCDF_logPDF", (DL_FUNC) &_dMrs_calc_expweibull_logCDF_logPDF, 4},
+    {"_dMrs_log_SURV_expweibull", (DL_FUNC) &_dMrs_log_SURV_expweibull, 4},
     {"_dMrs_calc_copula", (DL_FUNC) &_dMrs_calc_copula, 3},
     {"_dMrs_calc_copula_offset", (DL_FUNC) &_dMrs_calc_copula_offset, 5},
     {"_dMrs_calc_copula_CDF_OFF", (DL_FUNC) &_dMrs_calc_copula_CDF_OFF, 4},

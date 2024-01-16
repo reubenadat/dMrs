@@ -55,12 +55,24 @@ void prt_vec(const arma::vec& aa){
 }
 
 // [[Rcpp::export]]
+double log_CDF_weibull(const double& XX,
+	const double& LAM,const double& ALP){
+	
+	double log_CDF = R::pweibull(XX,ALP,LAM,1,1);
+	
+	if( log_CDF == 0.0 && XX != arma::datum::inf ){
+		// Precision fix: -Surv_Weibull
+		log_CDF = -1.0 * R::pweibull(XX,ALP,LAM,0,0);
+	}
+	
+	return log_CDF;
+}
+
+// [[Rcpp::export]]
 arma::vec calc_expweibull_logCDF_logPDF(const double& XX,
 	const double& LAM,const double& ALP,const double& KAP){
 	
-	Rcpp::stop("improve pweibull precision");
-	
-	double log_cdf_weibull = R::pweibull(XX,ALP,LAM,1,1);
+	double log_cdf_weibull = log_CDF_weibull(XX,LAM,ALP);
 	double log_cdf_expweibull = log_cdf_weibull;
 	double log_pdf_expweibull = R::dweibull(XX,ALP,LAM,1);
 	
@@ -77,6 +89,22 @@ arma::vec calc_expweibull_logCDF_logPDF(const double& XX,
 	
 }
 
+// [[Rcpp::export]]
+double log_SURV_expweibull(const double& XX,
+	const double& LAM,const double& ALP,const double& KAP){
+	
+	// Calc log_CDF_expweibull
+	double log_CDF = KAP * log_CDF_weibull(XX,LAM,ALP);
+	
+	// Calc SURV and check for precision problem
+	double log_SURV = std::log(1.0 - std::exp(log_CDF));
+	if( log_SURV == -arma::datum::inf ){
+		// aka log(KAP) + log_SURV_weibull
+		log_SURV = std::log(KAP) + R::pweibull(XX,ALP,LAM,0,1);
+	}
+	
+	return log_SURV;
+}
 
 // --------------------
 // New Functions
