@@ -303,7 +303,7 @@ double dMrs_LL(const arma::vec& XX,const arma::uvec& DELTA,
 			LL_ii = std::log( AA );
 			
 		} else {
-			BB = 1 - CDFs.at(0) - CDFs.at(1) + cop_CDF;
+			BB = 1.0 - CDFs.at(0) - CDFs.at(1) + cop_CDF;
 			if( BB <= 0.0 ) return error_num;
 			LL_ii = std::log( BB );
 			
@@ -663,8 +663,13 @@ arma::mat dMrs_GRID(const arma::vec& XX,const arma::uvec& DELTA,
 	arma::mat DAT = arma::zeros<arma::mat>(tot,5);
 	// double error_num = -999.0;
 	bool verb2 = verb && ncores == 1;
-	if( verb )
+	if( verb ){
+		Rcpp::Rcout << "#ALPHA grid points = " << num_alpha << "\n";
+		Rcpp::Rcout << "#LAMBDA grid points = " << num_lambda << "\n";
+		Rcpp::Rcout << "#KAPPA grid points = " << num_kappa << "\n";
+		Rcpp::Rcout << "#THETA grid points = " << num_theta << "\n";
 		Rcpp::Rcout << "Num grid points = " << tot << "\n";
+	}
 	
 	for(aa = 0; aa < num_alpha; aa++){
 	for(ll = 0; ll < num_lambda; ll++){
