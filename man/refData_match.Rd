@@ -4,20 +4,25 @@
 \alias{refData_match}
 \title{refData_match}
 \usage{
-refData_match(wDAT, rDAT)
+refData_match(wDAT, rDAT, ncores = 1)
 }
 \arguments{
-\item{wDAT}{A working dataset data.frame containing required 
-columns \code{age}, \code{time}, \code{delta}, 
-\code{datediag_yr}, \code{dateEvent_yr}, and \code{sex} 
-corresponding to age, observed time, event status, 
-diagnosis year, observed year, and sex (coded 'female'/'male'), 
-respectively.}
+\item{wDAT}{A working dataset data.frame containing 
+required columns \code{age}, \code{time}, \code{datediag_yr}, 
+and \code{sex} corresponding to age, observed time, 
+diagnosis year, and sex (coded 'female'/'male'), respectively.}
 
 \item{rDAT}{A reference dataset data.frame containing
-required columns \code{Year}, \code{Age}, \code{qx},
+required columns \code{year}, \code{age}, \code{qx},
 and \code{sex} corresponding to reference year, 
-reference age, event hazard, and sex, respectively.}
+reference age, event's interval hazard, and sex, respectively.}
+
+\item{ncores}{Integer number of parallel threads to decrease
+matching runtime.}
+}
+\value{
+A dataframe containing calculated log-transformed density and 
+log-transformed cumulative distribution
 }
 \description{
 This function takes as input

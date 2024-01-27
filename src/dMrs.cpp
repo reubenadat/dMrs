@@ -715,13 +715,14 @@ arma::mat dMrs_GRID(const arma::vec& XX,const arma::uvec& DELTA,
 }
 
 // [[Rcpp::export]]
-arma::mat dMrs_MATCH(const arma::mat& wDAT,const arma::mat& rDAT,
-	const int& ncores = 1,const bool& verb = true){
-	// wDAT columns: age, yr_diag, yr_event, sex
+arma::mat dMrs_MATCH(const arma::mat& wDAT,
+	const arma::mat& rDAT,const int& ncores = 1,
+	const bool& verb = true){
+	// wDAT columns: age, yr_diag, sex, obs_time
 	// rDAT columns: Year, age, qx(hazard), sex
 	
 	arma::uword nn = wDAT.n_rows;
-	arma::mat OUT = arma::zeros<arma::mat>(nn,2); // output dens_t2, surv_t2
+	arma::mat OUT = arma::zeros<arma::mat>(nn,2); // output log_dens_t2, log_cdf_t2
 	bool verb2 = verb && ncores == 1;
 	
 	#ifdef _OPENMP
@@ -738,39 +739,62 @@ arma::mat dMrs_MATCH(const arma::mat& wDAT,const arma::mat& rDAT,
 				Rcpp::Rcout << (ii + 1) << " out of " << nn << " done\n";
 		}
 		
-		double yr_diag, yr_event, age, sex;
-		yr_diag = wDAT.at(ii,1);
-		yr_event = wDAT.at(ii,2);
-		age = wDAT.at(ii,0);
-		sex = wDAT.at(ii,3);
+		double 
+			age 			= wDAT.at(ii,0),
+			yr_diag 	= wDAT.at(ii,1),
+			sex 			= wDAT.at(ii,2),
+			obs_time 	= wDAT.at(ii,3);
 		
-		arma::uvec idx = arma::find(rDAT.col(0) >= yr_diag
-			&& rDAT.col(0) <= yr_event 
+		arma::uvec idx = arma::find( rDAT.col(1) >= age
+			&& rDAT.col(0) >= yr_diag
 			&& rDAT.col(3) == sex
-			
-			/*older incorrect code*/
-			/*&& rDAT.col(1) == age*/
-			
-			/*this assumes 'age' is 'age at diagnosis'*/
 			&& ( rDAT.col(0) - rDAT.col(1) ) == ( yr_diag - age )
-			
+			&& ( rDAT.col(0) - yr_diag ) <= obs_time
 			);
+			
+		if( idx.n_elem == 0 ) Rcpp::stop("check this");
 		
-		arma::mat tmp_mat = rDAT.rows(idx);
-		arma::vec tmp_haz = tmp_mat.col(2);
+		arma::uword nr = idx.n_elem;
 		
-		// Calculate survival aka exp(-cumul hazards)
-		OUT.at(ii,1) = std::exp(-1.0 * arma::sum(tmp_haz));
+		arma::mat tmp_mat = arma::zeros<arma::mat>(nr,3); // t1, t2, qx
+		arma::mat rDAT2 = rDAT.rows(idx);
 		
-		// Calculate density aka hazard * survival
-		OUT.at(ii,0) = tmp_haz.at(tmp_haz.n_elem - 1) * OUT.at(ii,1);
+		// calc t1
+		tmp_mat.col(0) = rDAT2.col(0) - yr_diag;
+		
+		// calc t2
+		if( nr > 1 ) 
+				tmp_mat(arma::span(0,nr - 2),1) = tmp_mat(arma::span(1,nr - 1),0);
+		
+		// set qx
+		tmp_mat.col(2) = rDAT2.col(2);
+		
+		double haz = tmp_mat.at(nr - 1,2), cumHaz = 0.0;
+		
+		if( nr > 1 ){
+			cumHaz = arma::dot(tmp_mat(arma::span(0,nr - 2),2),
+				tmp_mat(arma::span(0,nr - 2),1) - tmp_mat(arma::span(0,nr - 2),0)) +
+				haz * (obs_time - tmp_mat.at(nr - 1,0));
+		} else {
+			cumHaz = haz * obs_time;
+		}
+		
+		double log_surv_t2 = -1.0 * cumHaz;
+		double log_dens_t2 = std::log(haz) + log_surv_t2;
+		double log_cdf_t2 = std::log(1.0 - std::exp(log_surv_t2));
+		
+		if( log_cdf_t2 == -arma::datum::inf ){
+			log_cdf_t2 = -1.0 * std::exp(log_surv_t2);
+		}
+		
+		// log_cdf_t2
+		OUT.at(ii,1) = log_cdf_t2;
+		
+		// log_dens_t2
+		OUT.at(ii,0) = log_dens_t2;
 		
 	}
 	
 	return OUT;
 }
-
-
-
-
 
