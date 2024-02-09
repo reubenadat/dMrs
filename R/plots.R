@@ -155,6 +155,9 @@ plot_SURVs = function(run_ANA,MULTIPLE,ncol = 1,ALPHA = 0.5){
 	res = res[order(res$COPULA,res$DIST,res$THETA,res$KAPPA),]
 	uLABEL = unique(res$LABEL)
 	res$LABEL = factor(res$LABEL,levels = uLABEL)
+	
+	LABEL2 = NULL
+	res$LABEL2 = sprintf("%s + %s",res$COPULA,res$DIST)
 	dim(res); res[1:5,]
 	
 	time = surv = low_surv = high_surv = LABEL = NULL
@@ -176,7 +179,8 @@ plot_SURVs = function(run_ANA,MULTIPLE,ncol = 1,ALPHA = 0.5){
 			geom_line(size = 1,aes(color = LABEL)) + 
 			geom_ribbon(mapping = aes(ymin = low_surv,
 				ymax = high_surv,fill = LABEL),alpha = ALPHA) +
-			ylim(c(0,1)) + xlab("Time") + ylab("Survival Probability") +
+			ylim(c(0,1)) + xlab("Time since Diagnosis (yrs)") + 
+			ylab("Survival Probability") +
 			# ggtitle(my_title) + 
 			facet_wrap(~ LABEL,ncol = ncol) + 
 			my_themes
@@ -184,22 +188,26 @@ plot_SURVs = function(run_ANA,MULTIPLE,ncol = 1,ALPHA = 0.5){
 		
 	} else {
 		my_themes = theme(text = element_text(size = 28),
-			legend.position = c("none","bottom","right")[3],
+			legend.position = c("none","bottom","right")[2],
 			plot.title = element_text(hjust = 0.5),
 			panel.background = element_blank(),
 			panel.grid.major = element_line(colour = "grey50",
 				size = 0.5,linetype = "dotted"),
 			panel.border = element_rect(colour = "black",
-				fill = NA,size = 1))
+				fill = NA,size = 1),
+			legend.key.width = unit(0.85, "inch"),
+			legend.key.size = unit(0.5, "inch"),
+			legend.text = element_text(size = 20))
 		
 		gg = ggplot(data = res,
-			mapping = aes(x = time,y = surv,group = LABEL,
-				fill = LABEL)) +
+			mapping = aes(x = time,y = surv,group = LABEL2,
+				fill = LABEL2)) +
 			geom_line(size = 1.25,alpha = 1,
-				aes(color = LABEL),show.legend = FALSE) +
+				aes(color = LABEL2),show.legend = FALSE) +
 			geom_ribbon(mapping = aes(ymin = low_surv,
 				ymax = high_surv),alpha = ALPHA) +
-			ylim(c(0,1)) + xlab("Time") + ylab("Survival Probability") +
+			ylim(c(0,1)) + xlab("Time since Diagnosis (yrs)") + 
+			ylab("Survival Probability") +
 			# ggtitle(my_title) + 
 			labs(fill = "") + my_themes
 	}

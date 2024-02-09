@@ -783,7 +783,7 @@ arma::mat dMrs_MATCH(const arma::mat& wDAT,
 		double log_dens_t2 = std::log(haz) + log_surv_t2;
 		double log_cdf_t2 = std::log(1.0 - std::exp(log_surv_t2));
 		
-		if( log_cdf_t2 == -arma::datum::inf ){
+		if( log_cdf_t2 == -arma::datum::inf && obs_time > 0.0 ){
 			log_cdf_t2 = -1.0 * std::exp(log_surv_t2);
 		}
 		

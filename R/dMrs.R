@@ -577,6 +577,14 @@ refData_match = function(wDAT,rDAT,ncores = 1){
 		stop("rDAT$sex takes values 'female' and 'male'")
 	}
 	
+	# Check if all values in wDAT are in rDAT
+	if( !all(unique(wDAT$sex) %in% unique(rDAT$sex)) )
+		stop("Not all wDAT sexes contained in rDAT")
+	if( !all(unique(wDAT$age) %in% unique(rDAT$age)) )
+		stop("Not all wDAT ages contained in rDAT")
+	if( !all(unique(wDAT$datediag_yr) %in% unique(rDAT$year)) )
+		stop("Not all wDAT years contained in rDAT")
+	
 	ncores = as.integer(ncores)
 	if( !is(ncores,"integer") ) stop("ncores must be integer")
 	if( ncores < 1 ) stop("ncores >= 1")
