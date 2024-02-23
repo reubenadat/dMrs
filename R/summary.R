@@ -28,7 +28,7 @@ opt_sum = function(OPT){
 		EST
 	})
 	EST = smart_df(t(EST))
-	EST$theta = round(EST$theta,3)
+	# EST$theta = round(EST$theta,3)
 	res = smart_df(res,EST)
 	
 	res$LL = sapply(OPT,function(xx){
