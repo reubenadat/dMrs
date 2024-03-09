@@ -10,12 +10,13 @@
 #'	scale_y_continuous xlab ylab labs theme geom_line
 #'	element_text unit ggtitle element_blank element_line
 #'	element_rect geom_ribbon ylim facet_wrap geom_point
-#'	ggsave
+#'	ggsave guides guide_legend
 #' @importFrom copula indepCopula claytonCopula gumbelCopula mvdc rMvdc
 #' @importFrom viridis scale_fill_viridis
 #' @importFrom Rmpfr mpfr
 #' @importFrom utils head
 #' @importFrom methods is
+#' @importFrom sqldf sqldf
 #' @useDynLib dMrs
 NULL
 

@@ -8,7 +8,7 @@ Maintainer: Paul Little, Reuben Adatorwovor <plittle@fredhutch.org>
 Description: This package performs survival data fitting.
 Encoding: UTF-8
 Imports: methods, Rcpp, Rmpfr, copula, gplots, 
-	ggplot2, viridis
+	ggplot2, viridis, sqldf
 LinkingTo: Rcpp, RcppArmadillo
 Suggests: knitr, rmarkdown, markdown
 VignetteBuilder: knitr
