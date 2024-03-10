@@ -31,7 +31,9 @@ compileAttributes(pkgdir = pack_dir)
 document(pkg = pack_dir)
 use_gpl3_license()
 check_pandoc = pandoc_available(); check_pandoc
-make_vign = check_pandoc
+vign_dir = file.path(pack_dir,"vignettes")
+chk_vign = length(list.files(vign_dir,pattern = "Rmd")) > 0
+make_vign = check_pandoc && chk_vign; make_vign
 
 # Check: takes some time
 chk = tryCatch(check(pkg = pack_dir,

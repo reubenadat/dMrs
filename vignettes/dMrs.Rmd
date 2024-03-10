@@ -19,7 +19,7 @@ vignette: >
 ---
 
 ```{r global_options,include = FALSE}
-knitr::opts_chunk$set(comment = NA)
+knitr::opts_chunk$set(comment = NA,warning = FALSE)
 ```
 
 # Introduction
@@ -27,140 +27,230 @@ This **dMrs** package is designed to fit survival data to the corresponding manu
 
 ```{r load_lib,echo = TRUE,eval = TRUE}
 library(dMrs)
+library(sqldf)
+library(relsurv)
+library(ggplot2)
+library(data.table)
 ```
 
-# Simulation
+# Application
 
-Specify underlying arguments and parameters.
+The code below will load `relsurv`'s working dataset `rdata` and import Slovenia's latest ratetable from HMD.
 
-```{r set_parameters,echo = TRUE,eval = TRUE}
-copula = c("Clayton","Gumbel")[1]
-dist1 = c("weibull","expweibull")[1]
-NN = 2e2 # sample size
-theta = 3/2
-alpha1 = 5
-lambda1 = 1.2
-kappa1 = 2
-kappa1 = ifelse(dist1 == "weibull",1,kappa1)
-alpha2 = 2
-lambda2 = 2.1
-propC = 0.1
+```{r load_data,echo = TRUE,eval = TRUE}
+data(rdata)
+
+rdata$sex = ifelse(rdata$sex == 1,"male","female")
+rdata[1:3,]
+
+# Slovenia population death tables
+female_fn = "./slovenia_female.txt"
+male_fn = "./slovenia_male.txt"
+slotab = transrate.hmd(female = female_fn,male = male_fn)
+dimnames(slotab)
+
+# Hazards calculated per day within age, year, sex strata
+slotab[1:3,1:3,]
+
+# Subset rdata for years captured by slotab
+dim(rdata)
+
+rdata$datediag_yr = as.Date(rdata$year)
+rdata$datediag_yr = as.character(rdata$datediag_yr)
+rdata$datediag_yr = sapply(rdata$datediag_yr,
+  function(xx) strsplit(xx,"-")[[1]][1])
+rdata$datediag_yr = rdata$datediag_yr
+
+table(rdata$datediag_yr)
+dimnames(slotab)[[2]]
+
+rdata = rdata[which(rdata$datediag_yr %in% dimnames(slotab)[[2]]),]
+dim(rdata)
 ```
 
-## One replicate
+# Relsurv Approach
 
-Simulate a dataset.
+```{r ana_relsurv,echo = TRUE,eval = TRUE}
+test = rs.surv(Surv(time,cens) ~ 1,
+  ratetable = slotab,data = rdata,
+  rmap = list(age = age*365.241))
 
-```{r gen_data,echo = TRUE,eval = TRUE}
-set.seed(1)
-one_rep = sim_replicate(copula = copula,dist1 = dist1,
-  NN = NN,theta = theta,alpha1 = alpha1,lambda1 = lambda1,
-  kappa1 = kappa1,alpha2 = alpha2,lambda2 = lambda2,
-  propC = propC,show = TRUE)
-str(one_rep)
-head(one_rep$DATA)
-table(one_rep$DATA$D)
-table(one_rep$DATA$delta)
+str(test)
+COMP = data.frame(Time = test$time / 365.241,
+  SurvEst = test$surv,
+  SurvLow = test$lower,
+  SurvHigh = test$upper)
+plot(COMP$Time,COMP$SurvEst,
+  xlab = "Time (yrs)",type = "l",
+  ylab = "Net Survival",main = "relsurv method",
+  ylim = c(min(COMP$SurvLow),1))
+lines(COMP$Time,COMP$SurvLow,lty = 2)
+lines(COMP$Time,COMP$SurvHigh,lty = 2)
 ```
 
-For a given parameter grid and theta value, first, run a grid search. 
-If `show = TRUE`, verbose output is provided and a heatmap of the log likelihood is generated.
-Then run parameter optimization for the true `theta` value and an arbitrary `theta` value for fixed `theta` (`upTHETA = 0`). We are also assuming the first event time is Weibull distributed (`upKAPPA = 0`).
+# dMrs Approach
 
-```{r opt_sim,echo = TRUE,eval = TRUE,fig.dim = c(12,7)}
-opt_out = opt_replicate(REP = one_rep,
-  param_grid = seq(-1,3,0.25),
-	theta = one_rep$PARAMS$theta,
-  upKAPPA = 0,
-  upTHETA = 0,
-  show = TRUE)
-str(opt_out)
-
-opt_out = opt_replicate(REP = one_rep,
-  param_grid = seq(-1,3,0.25),
-  theta = 2,
-  upKAPPA = 0,
-  upTHETA = 0,
-  show = TRUE)
-str(opt_out)
-```
-
-We can determine if the optimization converged or not by looking at the gradient and check out other quantities when evaluated at the MLE.
+Prep wDAT, working dataset's initial fields.
 
 ```{r}
+wDAT = rdata[,c("datediag_yr","time","cens","age","sex")]
+
+wDAT$delta = wDAT$cens
+
+wDAT$datediag_yr = as.integer(wDAT$datediag_yr)
+
+# time in years
+wDAT$time = wDAT$time / 365.241
+
+wDAT$age = as.integer(wDAT$age)
+
+wDAT[1:5,]
+```
+
+Prep rDAT, the reference data.frame.
+
+```{r}
+mm = fread(file = male_fn,data.table = FALSE)
+ff = fread(file = female_fn,data.table = FALSE)
+
+rDAT = rbind(data.frame(sex = "male",mm,stringsAsFactors = FALSE),
+  data.frame(sex = "female",ff,stringsAsFactors = FALSE))
+rDAT[1:5,]
+
+rDAT = rDAT[,c("Year","Age","sex","qx")]
+# table(rDAT$Age)
+rDAT$Age = ifelse(rDAT$Age == "110+",110,rDAT$Age)
+rDAT$Age = as.integer(rDAT$Age)
+rDAT[1:5,]
+```
+
+Perform matching to calculate log density and log cdf.
+
+```{r}
+aa = refData_match(wDAT = wDAT,rDAT = rDAT)
+head(aa)
+
+wDAT = cbind(wDAT,aa)
+wDAT[1:3,]
+```
+
+Prep `dMrs` inputs.
+
+```{r prep_dMrs}
+len1 = 10
+len2 = 25
+A_range = c(0.4,4)
+L_range = quantile(wDAT$time,c(0.5,1))
+K_range = c(0.1,2)
+T_range = c(0.1,20)
+
+# Less fine grid for alpha/lambda
+A_ugrid = log(seq(A_range[1],A_range[2],length.out = len1))
+L_ugrid = log(seq(L_range[1],L_range[2],length.out = len1))
+# Finer grid for kappa/theta
+K_ugrid = log(seq(K_range[1],K_range[2],length.out = len2))
+T_ugrid = log(seq(T_range[1],T_range[2],length.out = len2))
+
+param_grid = list(A = A_ugrid,
+	L = L_ugrid,K = K_ugrid,T = T_ugrid)
+param_grid
+```
+
+Run data fit with `dMrs`'s main function.
+
+```{r opt_data}
+res = run_analyses(DATA = wDAT,
+	param_grid = param_grid,
+	vec_time = seq(0,100,0.5),
+	ncores = 1,
+	verb = TRUE,
+	PLOT = TRUE)
+```
+
+Check `dMrs` output
+
+```{r chk_out}
+# See all solutions
+OO = opt_sum(OPT = res)
+OO
+
+# Select best model
+idx = which(OO$BIC == max(OO$BIC))
+idx
+
 # MLEs (unconstrained)
-opt_out$out
+res[[idx]]$RES$out
 
 # MLEs (constrained)
-opt_out$cout
+res[[idx]]$RES$cout
 
 # Log-likelihood
-opt_out$LL
+res[[idx]]$RES$LL
 
-# Gradient, Score, first derivative of log-likelihood
-opt_out$GRAD
+# Gradient
+res[[idx]]$RES$GRAD
 
-# Hessian, second derivative of log-likelihood
-opt_out$HESS
+# Hessian
+res[[idx]]$RES$HESS
 
 # Covariance matrix
-opt_out$COVAR
-
+res[[idx]]$RES$COVAR
 ```
 
-Want to re-generate the heatmap of the log likelihood again?
+# Net-survival
 
-```{r}
-plot_LL(GPROF = opt_out$GPROF,GOPT = opt_out$GOPT)
+```{r dmrs_surv}
+# Predicted survivals
+res[[idx]]$PRED[1:3,]
+
+plot_SURVs(run_ANA = res[idx],MULTIPLE = FALSE)
 ```
 
-## Full simulation, multiple replicates
+Compare `dMrs` vs `relsurv`
 
-The code below performs a full simulation across multiple replicates.
+```{r comp_surv,echo = TRUE,eval = TRUE}
+tmp_pred = res[[idx]]$PRED
 
-```{r full_sim,echo = TRUE,eval = TRUE,fig.dim = c(7,4)}
-RR = 1e2 # number of replicates
+out = sqldf("
+select
+	COMP.*,
+	'Pohar-Perme' as Method
+from
+	COMP
 
-sim_out = full_sim(copula = copula,
-  dist1 = dist1,NN = NN,theta = theta,
-  alpha1 = alpha1,lambda1 = lambda1,
-  kappa1 = kappa1,alpha2 = alpha2,
-  lambda2 = lambda2,propC = propC,RR = RR,
-  param_grid = seq(-1,3,0.5),
-  upKAPPA = 1,show = TRUE)
-sim_out
-```
+union
 
-# Applying dMrs
+select
+	DMRS.time as Time,
+	DMRS.surv as SurvEst,
+	DMRS.low_surv2 as SurvLow,
+	DMRS.high_surv2 as SurvHigh,
+	'dMrs' as Method
+from
+	tmp_pred as DMRS
+")
 
-Equivalently, we can run a formal analysis for various thetas, again with the simulated dataset. 
-
-```{r ana,echo = TRUE,eval = TRUE,fig.dim = c(12,7)}
-ana_out = run_analyses(DATA = one_rep$DATA,
-	THETAs = c(0,one_rep$PARAMS$theta,2,5),copula = copula,
-	param_grid = seq(-1,3,0.1),
-	vec_time = seq(0,2 * max(one_rep$DATA$time),length.out = 50),
-  upKAPPA = 0,show = TRUE)
-names(ana_out)
-
-# Estimates per theta
-bb = sapply(names(ana_out),function(xx){
-	# xx = names(run_ana)[1]; xx
-	cat("\n#######\n")
-	print(xx)
-	print(ana_out[[xx]]$RES$cout[,c("PARS","EST","lowCI_2","highCI_2")])
-	print(sprintf("LL = %s",round(ana_out[[xx]]$RES$LL,3)))
-	print(round(ana_out[[xx]]$PRED[1:5,c("time","surv",
-		"low_surv2","high_surv2")],3))
-})
-
-```
-
-Below we plot the corresponding predicted survival with 95% confidence bands. In the latter figure, we can see the corresponding maximum log likelihood estimates per theta.
-
-```{r plot_surv,echo = TRUE,eval = TRUE,fig.dim = c(12,7)}
-plot_SURVs(run_ANA = ana_out,MULTIPLE = FALSE,ALPHA = 0.5)
-plot_SURVs(run_ANA = ana_out,MULTIPLE = TRUE,ALPHA = 0.5)
+my_themes = theme(text = element_text(size = 28),
+	legend.position = "bottom",
+	plot.title = element_text(hjust = 0.5),
+	panel.background = element_blank(),
+	panel.grid.major = element_line(colour = "grey50",
+		linewidth = 0.5,linetype = "dotted"),
+	panel.border = element_rect(colour = "black",
+		fill = NA,linewidth = 1),
+	legend.key.width = unit(1.5, "cm"),
+	legend.key.size = unit(0.5, "inch"),
+	legend.text = element_text(size = 20))
+		
+ggplot(data = out,
+	mapping = aes(x = Time,y = SurvEst,group = Method,fill = Method)) +
+	geom_line(linewidth = 1.25,alpha = 1,
+		aes(color = Method),show.legend = FALSE) +
+	geom_ribbon(mapping = aes(ymin = SurvLow,
+		ymax = SurvHigh),alpha = 0.5) +
+	ylim(c(0.4,1)) + xlim(0,20) +
+	xlab("Time (yrs)") + ylab("Net Survival") +
+	my_themes
 ```
 
 # Session information

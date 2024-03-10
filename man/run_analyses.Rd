@@ -19,8 +19,11 @@ run_analyses(
 )
 }
 \arguments{
-\item{DATA}{A data.frame containing column names \code{time},
-\code{delta}, \code{dens_t2}, and \code{surv_t2}.}
+\item{DATA}{A data.frame containing column names 
+\code{time} (in years),
+\code{delta} (event indicator), 
+\code{log_dens_t2} (log-transformed population-based density), and 
+\code{log_cdf_t2} (log-transformed population-based cumulative density).}
 
 \item{THETAs}{A vector of theta values to explore and optimize over.}
 
@@ -39,15 +42,15 @@ Otherwise set to 'Independent', 'Clayton' or 'Gumbel'}
 log(alpha1), log(lambda1), log(kappa1), unconstrained 
 theta parameters}
 
-\item{vec_time}{Vector of times to calculate predicted survival
-on the same scale as times provided in the \code{DATA} data.frame.}
+\item{vec_time}{Vector of times in years to calculate predicted survival.}
 
-\item{ncores}{An integer for the number of threads}
+\item{ncores}{A positive integer for the number of threads to evaluate 
+log-likelihoods across the parameter grid.}
 
 \item{max_iter}{Maximum Newton Raphson and Gradient Descent iterations
 to set.}
 
-\item{verb}{Boolean, set to TRUE for verbose output.}
+\item{verb}{Boolean value to display verbose information or not}
 
 \item{PLOT}{A logical variable, set to \code{TRUE} by default to
 show the two-dimensional heatmap of the profile likelihood if 

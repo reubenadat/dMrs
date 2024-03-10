@@ -9,7 +9,7 @@ refData_match(wDAT, rDAT, ncores = 1)
 \arguments{
 \item{wDAT}{A working dataset data.frame containing 
 required columns \code{age}, \code{time}, \code{datediag_yr}, 
-and \code{sex} corresponding to age, observed time, 
+and \code{sex} corresponding to age, observed time (in years), 
 diagnosis year, and sex (coded 'female'/'male'), respectively.}
 
 \item{rDAT}{A reference dataset data.frame containing

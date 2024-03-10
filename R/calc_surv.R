@@ -197,106 +197,14 @@ visual_surv_dens = function(SURV_DENS){
 		axis.text.x = element_text(size = 20),
 		legend.position = c("none","bottom","right")[3],
 		legend.text = element_text(size = 10),
-		legend.key.width = unit(3,"cm"),
+		legend.key.width = unit(2,"cm"),
 		panel.spacing = unit(1,"lines"),
-		# panel.background = element_blank(),
-		# panel.grid.major = element_line(colour = "grey50",size = 0.5,linetype = "dotted"),
+		panel.background = element_blank(),
+		panel.grid.major = element_line(colour = "grey50",size = 0.5,linetype = "dotted"),
 		plot.title = element_text(hjust = 0.5),
-		# panel.border = element_rect(colour = "black",fill = NA,size = 1),
+		panel.border = element_rect(colour = "black",fill = NA,size = 1),
 		# strip.text.x = element_text(size = 12),
 		strip.text = element_text(size = 25))
-	
-	if(FALSE){ # For Slovenia
-		if( cohort == "Slovenia Colon Cancer Registry" )
-			aa = aa[which(aa$CONFIG %in% c("N/A",'Independent,Weibull')),]
-		head(aa)
-		# table(aa$time)
-		# head(aa[which(aa$time == 1),])
-		
-		# Append comp res from relsurv
-		head(aa)
-		bb = sqldf("
-		select
-			Time as time,
-			'Pohar-Perme' as METHOD,
-			'N/A' as CONFIG,
-			'Individual' as Type,
-			Survival
-		from
-			COMP
-		
-		union
-		
-		select
-			time,
-			'dMrs' as METHOD,
-			CONFIG,
-			Type,
-			Survival
-		from
-			aa
-		where
-			CATEGORY in ('Disease-specific')
-		")
-		
-		ggplot(data = bb,mapping = aes(x = time,
-				y = Survival,fill = METHOD)) +
-			geom_line(linewidth = 2,aes(color = METHOD)) +
-			# facet_wrap(~ Type,ncol = 1) +
-			guides(color = guide_legend(override.aes = list(linewidth = 5)),
-				linetype = guide_legend(override.aes = list(linewidth = 2))) +
-			xlab("Time (yr)") +
-			xlim(0,16) +
-			my_themes
-		
-		
-	}
-	if(FALSE){ # For French BC
-		head(aa)
-		# table(aa$time)
-		# head(aa[which(aa$time == 1),])
-		
-		# Append comp res from relsurv
-		head(aa)
-		bb = sqldf("
-		select
-			Time as time,
-			'Pohar-Perme' as METHOD,
-			'N/A' as CONFIG,
-			'Individual' as Type,
-			Survival
-		from
-			COMP
-		
-		union
-		
-		select
-			time,
-			'dMrs' as METHOD,
-			CONFIG,
-			Type,
-			Survival
-		from
-			aa
-		where
-			CATEGORY in ('Disease-specific')
-			and
-			CONFIG in ('Clayton,Weibull')
-		")
-		
-		ggplot(data = bb,mapping = aes(x = time,
-				y = Survival,fill = METHOD)) +
-			geom_line(linewidth = 2,aes(color = METHOD)) +
-			# facet_wrap(~ Type,ncol = 1) +
-			guides(color = guide_legend(override.aes = list(linewidth = 5)),
-				linetype = guide_legend(override.aes = list(linewidth = 2))) +
-			xlab("Time (yr)") +
-			ylim(0,1) +
-			xlim(0,30) +
-			my_themes
-		
-		
-	}
 	
 	# Survivals
 	gg1 = ggplot(data = aa,mapping = aes(x = time,
@@ -305,10 +213,8 @@ visual_surv_dens = function(SURV_DENS){
 		facet_wrap(~Type,ncol = 1) +
 		guides(color = guide_legend(override.aes = list(linewidth = 5)),
 			linetype = guide_legend(override.aes = list(linewidth = 2))) +
-		xlab("Time (yr)") +
+		xlab("Time since Diagnosis (yrs)") +
 		my_themes
-	# png_fn = file.path(my_dirs$res_dir,"experiment survivals.png")
-	# ggsave(png_fn,plot = gg,device = "png",width = 15,height = 15,units = "in")
 	
 	# Densities
 	gg2 = ggplot(data = aa,mapping = aes(x = time,
@@ -317,10 +223,8 @@ visual_surv_dens = function(SURV_DENS){
 		facet_wrap(~Type,ncol = 1) +
 		guides(color = guide_legend(override.aes = list(linewidth = 5)),
 			linetype = guide_legend(override.aes = list(linewidth = 2))) +
-		xlab("Time (yr)") + 
+		xlab("Time since Diagnosis (yrs)") + 
 		my_themes
-	# png_fn = file.path(my_dirs$res_dir,"experiment densities.png")
-	# ggsave(png_fn,plot = gg,device = "png",width = 15,height = 15,units = "in")
 	
 	out = list(SURV = gg1,DENS = gg2)
 	return(out)

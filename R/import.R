@@ -17,6 +17,8 @@
 #' @importFrom utils head
 #' @importFrom methods is
 #' @importFrom sqldf sqldf
+#' @importFrom relsurv transrate.hmd
+#' @importFrom data.table fread
 #' @useDynLib dMrs
 NULL
 

@@ -7,7 +7,7 @@
 plot_SURVs(run_ANA, MULTIPLE, ncol = 1, ALPHA = 0.5)
 }
 \arguments{
-\item{run_ANA}{The object outputed from \code{run_analyses}
+\item{run_ANA}{The object outputted from \code{run_analyses}
 function.}
 
 \item{MULTIPLE}{A boolean set to \code{TRUE} to display
@@ -21,5 +21,5 @@ overlayed with a legend.}
 confidence band transparency.}
 }
 \description{
-plot_SURVs
+Plot net survival probabilities per model
 }
