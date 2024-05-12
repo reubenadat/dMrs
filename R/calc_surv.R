@@ -182,7 +182,16 @@ calc_mDENS_mSURV = function(vec_time,run_ANA,rDAT,SEXs,AGEs,YEARs){
 	return(aa)
 	
 }
+
 visual_surv_dens = function(SURV_DENS){
+	#' @title visual_surv_dens
+	#' @description This function
+	#' @export
+	
+	# stop("Edit the labels CATEGORY and CONFIG, refresh the vignette and paper images")
+	# CATEGORY to Strata
+	# CONFIG to Model
+	# Individual to Strata
 	
 	time = NULL
 	Survival = NULL
