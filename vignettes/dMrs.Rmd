@@ -26,11 +26,21 @@ knitr::opts_chunk$set(comment = NA,warning = FALSE)
 This **dMrs** package is designed to fit survival data to the corresponding manuscript.
 
 ```{r load_lib,echo = TRUE,eval = TRUE}
-library(dMrs)
-library(sqldf)
-library(relsurv)
-library(ggplot2)
-library(data.table)
+req_packs = c("sqldf","relsurv","ggplot2","data.table","dMrs")
+for(pack in req_packs){
+  
+  chk_pack = tryCatch(find.package(pack),
+    warning = function(ww){NULL},
+    error = function(ee){NULL})
+  
+  if( !is.null(chk_pack) ){
+      library(pack,character.only = TRUE)
+      next
+  }
+  
+  stop(sprintf("Install %s",pack))
+  
+}
 ```
 
 # Application
@@ -138,7 +148,7 @@ Prep `dMrs` inputs.
 
 ```{r prep_dMrs}
 len1 = 10
-len2 = 25
+len2 = 15
 A_range = c(0.4,4)
 L_range = quantile(wDAT$time,c(0.5,1))
 K_range = c(0.1,2)
