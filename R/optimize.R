@@ -607,6 +607,7 @@ run_analyses = function(DATA,THETAs = NULL,upKAPPA,
 	
 	stopifnot(is(ncores,"numeric"))
 	stopifnot(ncores > 0 && round(ncores) == ncores)
+	if( any(DATA$time == 0) ) stop("Observed time of zero detected, resolve this")
 	
 	COPULAS 		= get_copula(copula = COPULAS,PO = FALSE)
 	verb 				= get_verb(verb = verb)
