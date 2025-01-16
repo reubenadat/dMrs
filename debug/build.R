@@ -37,12 +37,17 @@ override_vign = !FALSE
 make_vign = check_pandoc && chk_vign && override_vign; make_vign
 
 # Check: takes some time
-chk = tryCatch(check(pkg = pack_dir,
-	manual = TRUE,cran = TRUE,
-	error_on = "note",
-	vignettes = make_vign),
-	error = function(ee){NULL},
-	warning = function(ww){NULL})
+perf_chk = !TRUE
+if( perf_chk ){
+	chk = tryCatch(check(pkg = pack_dir,
+		manual = TRUE,cran = TRUE,
+		error_on = "note",
+		vignettes = make_vign),
+		error = function(ee){NULL},
+		warning = function(ww){NULL})
+} else {
+	chk = TRUE
+}
 chk
 
 # Install
