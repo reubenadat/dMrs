@@ -57,5 +57,8 @@ The package's main functions include
 4. Matching working dataset subjects with reference dataset on age, sex, time period.
 
 ## <a href="#CITE" name="CITE">Citation</a>
+1. Adatorwovor, R., Latouche, A., & Fine, J. P. (2022). A parametric approach to relaxing the independence assumption in relative survival analysis. The international journal of biostatistics, 18(2), 577-592.
+2. Perme, M. P., Stare, J., & Estève, J. (2012). On estimation in relative survival. Biometrics, 68(1), 113-120.
+3. Adatorwovor, R. & Little, P.L. (2024). OnlyA Dependent Competing Risks Model for Net Survival
+Estimation. JASA, Under review.
 
-Not done yet
